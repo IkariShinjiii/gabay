@@ -30,6 +30,11 @@ CPU (about 0.5 s of CPU per expand/collapse cycle either way: 5.28 s vs 4.97 s o
 
 Per process, GPU off, after use: main 66 MB, GPU 17 MB, utility 12 MB, renderer 42 MB private.
 
+## Re-check at 0.14.1 (tray, settings, icons added)
+
+Dev launch (`electron .` on the built output), 4 processes, pointer parked: collapsed 126 MB private / 281 MB working set,
+0.03% CPU; with the Settings tab open 128 MB private, 0.00% CPU. Still under the 150 MB and 1% budgets.
+
 ## The "memory rose after first expand" worry
 
 Earlier baseline showed about +20 MB after the first expand and no return. Checked with 10 and 30 cycles: memory

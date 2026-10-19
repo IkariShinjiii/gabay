@@ -1,6 +1,6 @@
 # Gabay
 
-Personal Windows 11 top-edge shell: a center notch that expands into a panel. Currently Milestone 9 (performance check done); the Milestone 1 overlay kill test passed (see below).
+Personal Windows 11 top-edge shell: a center notch that expands into a panel. All nine planned milestones are done (see CHANGELOG.md); the overlay kill test passed (see below).
 Windows 11 only. Electron + React + TypeScript + electron-vite.
 
 ## Setup
@@ -24,7 +24,7 @@ If the main process crashes with `Cannot read properties of undefined (reading '
 npm run dev
 ```
 
-Other scripts: `npm run build`, `npm run typecheck`. Quit with Ctrl+C in the terminal (no tray or hotkey yet).
+Other scripts: `npm run build`, `npm run typecheck`. Quit from the tray icon (right-click, Quit) or with Ctrl+C in the terminal.
 
 ## Taskbar (Phase A)
 
@@ -37,9 +37,9 @@ Settings > Personalization > Taskbar > Taskbar behaviors > **Automatically hide 
 
 ## Launcher and hotkey
 
-- **Ctrl+Alt+G** opens the panel with the search field focused (it tries Ctrl+Alt+G, Ctrl+Shift+G, then Ctrl+Alt+Space,
-  and uses the first free one; the choice is logged at startup). No Win-key shortcuts. Ctrl+Alt+Space is taken by the
-  Claude desktop app on the dev machine.
+- **Ctrl+Alt+G** (default) opens the panel with the search field focused. Pick another in the Settings tab (Ctrl+Shift+G,
+  Ctrl+Alt+Space or Ctrl+Alt+J). If another app owns the chosen combo, Gabay uses the next free one and Settings says so.
+  No Win-key shortcuts. Ctrl+Alt+Space is taken by the Claude desktop app on the dev machine.
 - Search covers everything the Start menu shows, including Store apps (via `Get-StartApps`), with Start Menu `.lnk`
   shortcuts as fallback. Fuzzy matching is a small built-in matcher. Enter launches, arrows move, Esc clears then releases focus.
 - Star an app with the star button to pin it to the Launch tab; recent launches are remembered.
@@ -79,6 +79,14 @@ search field to filter, click a row to copy it back, star to pin, "Clear history
   tab's confirmation. Buttons and commands call the same actions.
 - Focused inputs (search, command, to-do) keep the panel open.
 
+## Tray, Settings and startup
+
+- **Tray icon:** click to show the panel; right-click for Show, Launch at login and Quit. Launch at login works only in
+  the packaged app (it is greyed out in dev). A second launch just opens the panel of the running instance.
+- **Settings tab:** global hotkey, how long the pointer must stay away before the panel collapses (200-1500 ms), and which
+  display the notch sits on. Saved to `settings.json` in `%APPDATA%\gabay`; the main process validates every value.
+- The tray and installer icons are placeholders in `resources/`; replace `icon.png` (512x512) and `tray.png` (32x32).
+
 ## Where the window behavior lives
 
 Everything non-obvious is in `electron/main.ts`, commented per setting. Window is 560x440, never resized.
@@ -93,8 +101,10 @@ Results (2026-10-19, Windows 11 25H2 build 26200.9711, Electron 44.9.0): all six
    - [x] Borderless fullscreen
    - [x] Exclusive fullscreen
 4. [x] Clicks outside the notch reach the window underneath (test with a desktop icon and a browser button).
-5. [x] Hovering the notch makes it interactive and the debug label changes ("click-through" <-> "interactive").
+5. [x] Hovering the notch makes it interactive (the debug label that showed this was removed in 0.14.0).
 6. [x] Windows taskbar auto-hide still reveals on bottom-edge hover.
+
+Items 2 and 3 were tested before hardware acceleration was turned off (0.9.0); re-run them on a current build.
 
 ## Build an installer
 
