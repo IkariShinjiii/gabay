@@ -6,7 +6,6 @@ import ClipboardPanel from './ClipboardPanel'
 import { parseCommand, type CommandActions } from './commands'
 import Launcher from './Launcher'
 import Icon from './Icon'
-import type { IconName } from './icons'
 import PowerPanel from './PowerPanel'
 import SettingsPanel from './SettingsPanel'
 import NotchStatus from './NotchStatus'
@@ -17,22 +16,16 @@ import { useFocusTimer } from './useFocusTimer'
 const TABS = ['Today', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
 type Tab = (typeof TABS)[number]
 
-const TAB_ICONS: Record<Tab, IconName> = {
-  Today: 'calendar-check',
-  System: 'activity',
-  Clipboard: 'clipboard',
-  Launch: 'rocket',
-  Power: 'power',
-  Settings: 'settings'
-}
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
 
 export default function App(): React.JSX.Element {
   const notchRef = useRef<HTMLDivElement>(null)
-  const searchRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [expanded, setExpanded] = useState(false)
   const [tab, setTab] = useState<Tab>('Today')
-  const [query, setQuery] = useState('')
+  // One bar for everything: text that parses as a command is a command, anything else searches apps (or the clipboard).
+  const [input, setInput] = useState('')
+  const [barFocused, setBarFocused] = useState(false)
   const [items, setItems] = useState<LauncherItem[]>([])
   const [selected, setSelected] = useState(0)
 
@@ -72,8 +65,7 @@ export default function App(): React.JSX.Element {
       if (pointerInside.current || holds.current.size > 0) return
       isOpen.current = false
       setExpanded(false)
-      setQuery('')
-      setCmd('')
+      setInput('')
       setInteractive(false)
     }, collapseMs.current)
   }, [setInteractive])
@@ -99,7 +91,7 @@ export default function App(): React.JSX.Element {
     }
     // Global hotkey: open and put the caret in the search field, even with the pointer elsewhere.
     const offSummon = window.overlay.onSummon(() => {
-      searchRef.current?.focus()
+      inputRef.current?.focus()
       evaluate()
     })
 
@@ -112,21 +104,6 @@ export default function App(): React.JSX.Element {
       document.documentElement.removeEventListener('mouseleave', onLeave)
     }
   }, [evaluate])
-
-  // Search results. Stale responses are dropped so a slow reply can't overwrite a newer query.
-  const showResults = expanded && tab !== 'Clipboard' && (query.trim() !== '' || tab === 'Launch')
-  useEffect(() => {
-    if (!showResults) return
-    let stale = false
-    window.overlay.searchApps(query).then((r) => {
-      if (stale) return
-      setItems(r)
-      setSelected(0)
-    })
-    return () => {
-      stale = true
-    }
-  }, [query, showResults])
 
   const onConfirming = useCallback(
     (confirming: boolean): void => {
@@ -167,9 +144,7 @@ export default function App(): React.JSX.Element {
   const focusTimer = useFocusTimer()
   const [todoVersion, setTodoVersion] = useState(0)
 
-  // --- command bar: same actions as the buttons ---
-  const [cmd, setCmd] = useState('')
-  const cmdRef = useRef<HTMLInputElement>(null)
+  // --- commands: same actions as the buttons ---
   const [powerRequest, setPowerRequest] = useState<PowerAction | null>(null)
 
   const commandActions: CommandActions = {
@@ -200,35 +175,39 @@ export default function App(): React.JSX.Element {
       return !!t
     }
   }
-  const parsed = parseCommand(cmd, commandActions)
+  const parsed = parseCommand(input, commandActions)
+  const query = input // the clipboard filter and app search both read the raw text
 
-  const onCommandKey = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    if (e.key === 'Enter') {
-      // Without this, a confirmation button that autofocuses during this very keydown (restart/shutdown)
-      // would receive the Enter's default action and cancel itself instantly.
-      e.preventDefault()
-      if (!parsed) return
-      void Promise.resolve(parsed.run()).then(() => {
-        setCmd('')
-        // Restart/shutdown leave the field focused-free so the confirmation (not the field) holds the panel.
-        cmdRef.current?.blur()
-      })
-    } else if (e.key === 'Escape') {
-      if (cmd) setCmd('')
-      else cmdRef.current?.blur()
+  // App results show on every tab except Clipboard, but only for text that is not a command.
+  const showResults = expanded && tab !== 'Clipboard' && !parsed && (input.trim() !== '' || tab === 'Launch')
+  // Stale responses are dropped so a slow reply can't overwrite a newer query.
+  useEffect(() => {
+    if (!showResults) return
+    let stale = false
+    window.overlay.searchApps(query).then((r) => {
+      if (stale) return
+      setItems(r)
+      setSelected(0)
+    })
+    return () => {
+      stale = true
     }
+  }, [query, showResults])
+
+  const release = (): void => {
+    setInput('')
+    inputRef.current?.blur()
   }
 
-  // After copy-back, release the search field and let the panel close.
+  // After copy-back, release the field and let the panel close.
   const onClipCopied = useCallback((): void => {
-    setQuery('')
-    searchRef.current?.blur()
+    setInput('')
+    inputRef.current?.blur()
   }, [])
 
   const launch = async (item: LauncherItem): Promise<void> => {
     await window.overlay.launchApp(item.id)
-    setQuery('')
-    searchRef.current?.blur()
+    release()
   }
 
   const toggleStar = async (item: LauncherItem): Promise<void> => {
@@ -236,7 +215,7 @@ export default function App(): React.JSX.Element {
     setItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, starred } : p)))
   }
 
-  const onSearchKey = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+  const onInputKey = (e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setSelected((s) => Math.min(s + 1, Math.max(items.length - 1, 0)))
@@ -244,14 +223,41 @@ export default function App(): React.JSX.Element {
       e.preventDefault()
       setSelected((s) => Math.max(s - 1, 0))
     } else if (e.key === 'Enter') {
-      const item = items[selected]
-      if (item) void launch(item)
+      // preventDefault: a confirmation button that autofocuses during this very keydown (restart/shutdown)
+      // would otherwise receive the Enter's default action and cancel itself instantly.
+      e.preventDefault()
+      if (parsed) {
+        void Promise.resolve(parsed.run()).then(() => release())
+      } else if (showResults && items[selected]) {
+        void launch(items[selected])
+      }
     } else if (e.key === 'Escape') {
       // First Esc clears the text, second releases focus so the panel can close.
-      if (query) setQuery('')
-      else searchRef.current?.blur()
+      if (input) setInput('')
+      else inputRef.current?.blur()
     }
   }
+
+  // Picking a tab by hand starts it clean: typed text would otherwise keep covering the new tab with app results.
+  const selectTab = useCallback((t: Tab): void => {
+    setTab(t)
+    setInput('')
+  }, [])
+
+  // Ctrl+1..6 switch tabs while the panel is open.
+  useEffect(() => {
+    if (!expanded) return
+    const onKey = (e: KeyboardEvent): void => {
+      if (!e.ctrlKey || e.altKey || e.shiftKey) return
+      const t = TABS[Number(e.key) - 1]
+      if (t) {
+        e.preventDefault()
+        selectTab(t)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [expanded, selectTab])
 
   const size = expanded ? NOTCH.expanded : NOTCH.collapsed
 
@@ -261,7 +267,7 @@ export default function App(): React.JSX.Element {
       <Launcher
         items={items}
         selected={selected}
-        emptyHint={query.trim() ? 'No matching apps' : 'Type to search apps. Star one to pin it here.'}
+        emptyHint={input.trim() ? 'No matching apps' : 'Type to search apps. Star one to pin it here.'}
         onHover={setSelected}
         onLaunch={(it) => void launch(it)}
         onToggleStar={(it) => void toggleStar(it)}
@@ -313,56 +319,51 @@ export default function App(): React.JSX.Element {
           transition={{ duration: expanded ? 0.2 : 0.1, delay: expanded ? 0.12 : 0 }}
           style={{ pointerEvents: expanded ? 'auto' : 'none' }}
         >
-          <div className="tabs">
-            {TABS.map((t) => (
-              <button key={t} className={t === tab ? 'tab on' : 'tab'} title={t} aria-label={t} onClick={() => setTab(t)}>
-                <Icon name={TAB_ICONS[t]} size={15} />
-                {t === tab && t}
+          <div className="tabs" role="tablist" aria-label="Sections">
+            {TABS.map((t, i) => (
+              <button
+                key={t}
+                role="tab"
+                aria-selected={t === tab}
+                title={`${t} (Ctrl+${i + 1})`}
+                className={t === tab ? 'tab on' : 'tab'}
+                tabIndex={expanded ? 0 : -1}
+                onClick={() => selectTab(t)}
+              >
+                {t}
               </button>
             ))}
           </div>
-          <input
-            ref={searchRef}
-            className="field"
-            placeholder={tab === 'Clipboard' ? 'Search clipboard…' : 'Search apps…'}
-            spellCheck={false}
-            autoComplete="off"
-            value={query}
-            tabIndex={expanded ? 0 : -1}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={onSearchKey}
-            onFocus={() => {
-              hold('search', true)
-              evaluate()
-            }}
-            onBlur={() => {
-              hold('search', false)
-              evaluate()
-            }}
-          />
           {body}
-          <div className="cmd">
+          <label className={parsed ? 'bar is-command' : 'bar'}>
+            <Icon name={parsed ? 'command' : 'search'} size={16} />
             <input
-              ref={cmdRef}
-              className="field"
-              placeholder="Type a command…  (lock, focus 25, todo …, open …)"
+              ref={inputRef}
+              placeholder={tab === 'Clipboard' ? 'Search clipboard, or type a command' : 'Search apps, or type a command'}
+              aria-label="Search or command"
               spellCheck={false}
               autoComplete="off"
-              value={cmd}
+              value={input}
               tabIndex={expanded ? 0 : -1}
-              onChange={(e) => setCmd(e.target.value)}
-              onKeyDown={onCommandKey}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onInputKey}
               onFocus={() => {
-                hold('command', true)
+                hold('input', true)
+                setBarFocused(true)
                 evaluate()
               }}
               onBlur={() => {
-                hold('command', false)
+                hold('input', false)
+                setBarFocused(false)
                 evaluate()
               }}
             />
-            {cmd.trim() && <span className={parsed ? 'hint' : 'hint bad'}>{parsed ? parsed.hint : 'Unknown command'}</span>}
-          </div>
+            {parsed ? (
+              <span className="bar-hint on">{parsed.hint} · Enter</span>
+            ) : (
+              !input && barFocused && <span className="bar-hint">lock · focus 25 · todo … · open …</span>
+            )}
+          </label>
         </motion.div>
 
         {/* Collapsed pill content: clock, or the focus-timer ring while one exists. */}

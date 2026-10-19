@@ -1,6 +1,10 @@
 /* Everything except the notch must stay fully transparent. */
 :root {
   --shoulder: 12px;
+  --accent: #d9622b; /* active tab marker, focus ring, running timer, gauges: state, not decoration */
+  --accent-text: #f0824f; /* the accent for text on dark surfaces (4.5:1 on #141417) */
+  --muted: #8c8c95; /* secondary text; 5.5:1 on #141417, 6.4:1 on black */
+  --line: #26262b;
 }
 
 html,
@@ -66,39 +70,62 @@ body,
   width: 520px;
   height: 400px;
   box-sizing: border-box;
-  padding: 52px 20px 20px;
+  padding: 6px 20px 16px; /* tabs sit in the band where the notch hangs */
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .tabs {
+  flex: none;
+  height: 32px;
   display: flex;
-  gap: 6px;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
 }
 
 .tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  position: relative;
   border: 0;
+  background: none;
   font: inherit;
   cursor: pointer;
-  padding: 7px 11px;
+  padding: 6px 11px;
   border-radius: 8px;
-  background: #1c1c20;
-  color: #9b9ba3;
+  color: var(--muted);
+}
+
+.tab:hover {
+  color: #eee;
+  background: #17171a;
 }
 
 .tab.on {
-  background: #d9622b;
   color: #fff;
+}
+
+/* Active marker: a short bar under the label, the same accent as the focus ring */
+.tab.on::after {
+  content: '';
+  position: absolute;
+  left: 11px;
+  right: 11px;
+  bottom: 1px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .field {
   padding: 10px 12px;
   border-radius: 10px;
-  background: #1c1c20;
+  background: #141417;
   color: #eee;
   border: 0;
   outline: 0;
@@ -107,28 +134,27 @@ body,
 }
 
 .field::placeholder {
-  color: #77777f;
+  color: var(--muted);
 }
 
 .field:focus {
-  box-shadow: 0 0 0 1px #d9622b;
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .field-inert {
-  color: #77777f;
+  color: var(--muted);
 }
 
 .body {
   flex: 1;
-  border-radius: 10px;
-  background: #101012;
+  min-height: 0; /* content sits straight on the black; no box around it */
 }
 
 .body-center {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #55555c;
+  color: var(--muted);
 }
 
 .stats {
@@ -193,7 +219,7 @@ body,
 .star {
   border: 0;
   background: none;
-  color: #55555c;
+  color: #6c6c75;
   font-size: 15px;
   cursor: pointer;
 }
@@ -204,7 +230,7 @@ body,
 
 .star.on,
 .star:hover {
-  color: #d9622b;
+  color: var(--accent-text);
 }
 
 /* Filled when starred or pinned */
@@ -253,7 +279,7 @@ body,
 }
 
 .confirm-sub {
-  color: #77777f;
+  color: var(--muted);
 }
 
 .confirm-buttons {
@@ -282,7 +308,7 @@ body,
   align-self: flex-end;
   border: 0;
   background: none;
-  color: #77777f;
+  color: var(--muted);
   font: 11px/1 'Segoe UI', system-ui, sans-serif;
   padding: 4px 8px;
   cursor: pointer;
@@ -335,31 +361,58 @@ body,
   stroke-linecap: round;
 }
 
-.cmd {
-  position: relative;
-}
-
-.cmd .field {
-  width: 100%;
+/* The one input: search, filter and commands. */
+.bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
   box-sizing: border-box;
+  padding: 0 14px;
+  border-radius: 16px;
+  background: #141417;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--muted);
+  cursor: text;
 }
 
-.hint {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+.bar:focus-within {
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: #eee;
+}
+
+.bar.is-command {
+  color: var(--accent-text);
+}
+
+.bar input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: #eee;
+  font: inherit;
+  user-select: text;
+}
+
+.bar input::placeholder {
+  color: var(--muted);
+}
+
+.bar-hint {
+  flex: none;
   max-width: 55%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #d9622b;
+  color: var(--muted);
   font-size: 12px;
-  pointer-events: none;
 }
 
-.hint.bad {
-  color: #77777f;
+.bar-hint.on {
+  color: var(--accent-text);
 }
 
 .today {
@@ -376,25 +429,35 @@ body,
 }
 
 .clock {
-  font-size: 34px;
+  white-space: nowrap;
+  font-size: 40px;
   line-height: 1.1;
   color: #fff;
   font-variant-numeric: tabular-nums;
 }
 
 .date {
-  color: #77777f;
+  color: var(--muted);
   font-size: 12px;
 }
 
 .timer {
-  margin-top: auto;
+  margin-top: 26px;
 }
 
 .timer-time {
   font-size: 24px;
-  color: #d9622b;
+  color: #eee;
   font-variant-numeric: tabular-nums;
+}
+
+/* Running is the accent, paused is dimmed, done is green: the state reads from the color. */
+.timer-time.running {
+  color: var(--accent-text);
+}
+
+.timer-time.paused {
+  color: var(--muted);
 }
 
 .timer-time.done {
@@ -449,7 +512,7 @@ body,
 }
 
 .todo-empty {
-  color: #55555c;
+  color: var(--muted);
   padding: 8px 4px;
 }
 
@@ -469,7 +532,7 @@ body,
 }
 
 .todo-text.done {
-  color: #55555c;
+  color: var(--muted);
   text-decoration: line-through;
 }
 
@@ -478,9 +541,12 @@ body,
   width: 16px;
   height: 16px;
   border-radius: 5px;
-  border: 1px solid #55555c;
+  border: 1px solid #6c6c75;
   background: none;
   color: #000;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 11px;
   line-height: 1;
   padding: 0;
@@ -488,8 +554,8 @@ body,
 }
 
 .check.on {
-  background: #d9622b;
-  border-color: #d9622b;
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .settings {

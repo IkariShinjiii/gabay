@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.17.0 Notch-native panel
+
+The expanded panel redesigned from a critique: tabs sit in the notch band with text labels and an active marker, one bar replaces the separate search and command fields, content sits on black without boxes, secondary text raised to readable contrast, the accent now means state (active tab, focus, running timer), real icons replace the check and cross glyphs, Ctrl+1 to Ctrl+6 switch tabs, and picking a tab clears the bar.
+
 ## 0.16.0 iPhone-style notch
 
 Collapsed notch redesigned after the iPhone XS Max: flush with the top edge, concave flared shoulders, rounder bottom corners, 210x32, content centered. The expanded panel gets the same shoulders.
