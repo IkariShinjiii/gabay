@@ -5,6 +5,7 @@ directories:
 files:
   - out/**
   - resources/**
+  - "!resources/*.svg"
   - package.json
 asar: true
 electronDist: node_modules/electron/dist

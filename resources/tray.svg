@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- just the notch: readable at 16-32 px on a light or dark taskbar -->
+  <path d="M6 8H58V30A18 18 0 0 1 40 48H24A18 18 0 0 1 6 30Z" fill="#88ffaa"/>
+  <circle cx="32" cy="27" r="6" fill="#101012"/>
+</svg>

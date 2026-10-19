@@ -85,7 +85,7 @@ search field to filter, click a row to copy it back, star to pin, "Clear history
   the packaged app (it is greyed out in dev). A second launch just opens the panel of the running instance.
 - **Settings tab:** global hotkey, how long the pointer must stay away before the panel collapses (200-1500 ms), and which
   display the notch sits on. Saved to `settings.json` in `%APPDATA%\gabay`; the main process validates every value.
-- The tray and installer icons are placeholders in `resources/`; replace `icon.png` (512x512) and `tray.png` (32x32).
+- The app and tray icons are drawn in `resources/` (a notch plus a compass, since gabay means guide); edit `resources/icon.svg` / `tray.svg` and run `npx electron scripts/render-icons.cjs` to regenerate the PNGs.
 
 ## Where the window behavior lives
 
