@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.0 Teal palette
+
+Orange replaced by a deep-teal surface palette and a mint accent matching the editor theme and the Windows accent, defined once as tokens in index.css. Filled accent controls use dark text; selection and caret use the palette.
+
 ## 0.22.0 Content-sized panel, compact Power
 
 The open notch now takes the height of the current tab's content (up to 400 px) and springs between tabs, instead of a fixed box that stretched the content. Power is one row of four buttons, icon over label, with a staggered entrance, hover lift and press; the restart and shut-down confirmation takes the same footprint. System gauges align with the panel edges.

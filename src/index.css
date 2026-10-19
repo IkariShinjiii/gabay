@@ -1,11 +1,22 @@
 /* Everything except the notch must stay fully transparent. */
 :root {
   --shoulder: 12px;
-  --accent: #d9622b; /* active tab marker, focus ring, running timer, gauges: state, not decoration */
-  --accent-text: #f0824f; /* the accent for text on dark surfaces (4.5:1 on #141417) */
-  --muted: #8c8c95; /* secondary text; 5.5:1 on #141417, 6.4:1 on black */
-  --line: #26262b;
-  --accent-strong: #b8501f; /* filled controls with white text (5:1) */
+  /* Palette: deep teal surfaces and a mint accent, matching the editor theme and the Windows accent. */
+  --notch: #04171c; /* the notch itself; near-black teal so it still reads as hardware */
+  --surface: #0b252c; /* tiles, fields, cards */
+  --surface-2: #0e2b33; /* subtle chips and wells */
+  --surface-hover: #10313a;
+  --well: #133944; /* icon wells */
+  --line: #1a4450;
+  --text: #e6f1f2;
+  --text-2: #c4dadd; /* secondary labels */
+  --muted: #8aa9b0; /* 6.2:1 on --surface, 7:1 on --notch */
+  --faint: #5f8189; /* icons only, 3:1+ */
+  --accent: #2fd6bf; /* active tab marker, focus ring, running timer, fills: state, not decoration */
+  --accent-text: #5fe3d0; /* accent for text on dark surfaces */
+  --accent-strong: #2fd6bf; /* filled controls; text on them uses --on-accent */
+  --on-accent: #04231f; /* 9:1 on the accent */
+  --accent-tint: #0c3536; /* an "on" tile's surface */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -29,8 +40,8 @@ body,
 .notch {
   position: relative;
   flex: none;
-  background: #000;
-  color: #eee;
+  background: var(--notch);
+  color: var(--text);
   font: 13px/1.2 'Segoe UI', system-ui, sans-serif;
   user-select: none;
 }
@@ -57,12 +68,12 @@ body,
 
 .notch::before {
   right: 100%;
-  background: radial-gradient(circle at 0 100%, transparent calc(var(--shoulder) - 0.6px), #000 var(--shoulder));
+  background: radial-gradient(circle at 0 100%, transparent calc(var(--shoulder) - 0.6px), var(--notch) var(--shoulder));
 }
 
 .notch::after {
   left: 100%;
-  background: radial-gradient(circle at 100% 100%, transparent calc(var(--shoulder) - 0.6px), #000 var(--shoulder));
+  background: radial-gradient(circle at 100% 100%, transparent calc(var(--shoulder) - 0.6px), var(--notch) var(--shoulder));
 }
 
 .panel {
@@ -99,8 +110,8 @@ body,
 }
 
 .tab:hover {
-  color: #eee;
-  background: #17171a;
+  color: var(--text);
+  background: var(--surface-2);
 }
 
 .tab.on {
@@ -126,8 +137,8 @@ body,
 .field {
   padding: 10px 12px;
   border-radius: 10px;
-  background: #141417;
-  color: #eee;
+  background: var(--surface);
+  color: var(--text);
   border: 0;
   outline: 0;
   font: inherit;
@@ -170,25 +181,25 @@ body,
   display: flex;
   justify-content: space-between;
   margin-bottom: 6px;
-  color: #c8c8ce;
+  color: var(--text-2);
 }
 
 .gauge-detail {
-  color: #9b9ba3;
+  color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
 .gauge-track {
   height: 10px;
   border-radius: 5px;
-  background: #1c1c20;
+  background: var(--surface-hover);
   overflow: hidden;
 }
 
 .gauge-fill {
   height: 100%;
   border-radius: 5px;
-  background: #d9622b;
+  background: var(--accent);
 }
 
 .results {
@@ -209,7 +220,7 @@ body,
 }
 
 .row.on {
-  background: #26262b;
+  background: var(--line);
 }
 
 .row-name {
@@ -223,7 +234,7 @@ body,
 .star {
   border: 0;
   background: none;
-  color: #6c6c75;
+  color: var(--faint);
   font-size: 15px;
   cursor: pointer;
 }
@@ -246,15 +257,15 @@ body,
 .btn {
   border: 0;
   border-radius: 10px;
-  background: #1c1c20;
-  color: #eee;
+  background: var(--surface-hover);
+  color: var(--text);
   font: inherit;
   cursor: pointer;
 }
 
 
 .btn:hover {
-  background: #26262b;
+  background: var(--line);
 }
 
 .confirm {
@@ -263,7 +274,7 @@ body,
 }
 
 .confirm-text {
-  color: #eee;
+  color: var(--text);
   font-size: 18px;
 }
 
@@ -282,7 +293,7 @@ body,
 }
 
 .btn:focus-visible {
-  outline: 1px solid #d9622b;
+  outline: 1px solid var(--accent);
 }
 
 .btn.danger {
@@ -304,7 +315,7 @@ body,
 }
 
 .clear:hover {
-  color: #d9622b;
+  color: var(--accent);
 }
 
 .status {
@@ -320,7 +331,7 @@ body,
 }
 
 .status-clock {
-  color: #eee;
+  color: var(--text);
   font-size: 13px;
 }
 
@@ -328,7 +339,7 @@ body,
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #eee;
+  color: var(--text);
   font-size: 13px;
 }
 
@@ -338,13 +349,13 @@ body,
 
 .ring-bg {
   fill: none;
-  stroke: #26262b;
+  stroke: var(--line);
   stroke-width: 3;
 }
 
 .ring-fg {
   fill: none;
-  stroke: #d9622b;
+  stroke: var(--accent);
   stroke-width: 3;
   stroke-linecap: round;
 }
@@ -359,7 +370,7 @@ body,
   box-sizing: border-box;
   padding: 0 14px;
   border-radius: 16px;
-  background: #141417;
+  background: var(--surface);
   box-shadow: inset 0 0 0 1px var(--line);
   color: var(--muted);
   cursor: text;
@@ -367,7 +378,7 @@ body,
 
 .bar:focus-within {
   box-shadow: inset 0 0 0 1px var(--accent);
-  color: #eee;
+  color: var(--text);
 }
 
 .bar.is-command {
@@ -380,7 +391,7 @@ body,
   border: 0;
   outline: 0;
   background: none;
-  color: #eee;
+  color: var(--text);
   font: inherit;
   user-select: text;
 }
@@ -435,7 +446,7 @@ body,
 
 .timer-time {
   font-size: 24px;
-  color: #eee;
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
@@ -449,7 +460,7 @@ body,
 }
 
 .timer-time.done {
-  color: #8f8;
+  color: #7ee0a0;
 }
 
 .timer-buttons,
@@ -467,15 +478,15 @@ body,
 .chip {
   border: 0;
   border-radius: 999px;
-  background: #1c1c20;
-  color: #9b9ba3;
+  background: var(--surface-hover);
+  color: var(--muted);
   font: 11px/1 'Segoe UI', system-ui, sans-serif;
   padding: 5px 9px;
   cursor: pointer;
 }
 
 .chip:hover {
-  color: #d9622b;
+  color: var(--accent);
 }
 
 .today-right {
@@ -529,7 +540,7 @@ body,
   width: 16px;
   height: 16px;
   border-radius: 5px;
-  border: 1px solid #6c6c75;
+  border: 1px solid var(--faint);
   background: none;
   color: #000;
   display: inline-flex;
@@ -544,6 +555,7 @@ body,
 .check.on {
   background: var(--accent);
   border-color: var(--accent);
+  color: var(--on-accent);
 }
 
 .settings {
@@ -557,12 +569,12 @@ body,
 
 .set-label {
   font-size: 12px;
-  color: #9b9ba3;
+  color: var(--muted);
   margin-bottom: 6px;
 }
 
 .set-val {
-  color: #eee;
+  color: var(--text);
   margin-left: 6px;
 }
 
@@ -576,32 +588,32 @@ body,
   border: 0;
   border-radius: 8px;
   padding: 6px 10px;
-  background: #1c1c20;
-  color: #c9c9cf;
+  background: var(--surface-hover);
+  color: var(--text-2);
   font: inherit;
   font-size: 12px;
   cursor: pointer;
 }
 
 .chip:hover {
-  background: #26262b;
+  background: var(--line);
 }
 
 .chip.on {
-  background: #d9622b;
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .set-note {
   margin-top: 8px;
   font-size: 12px;
-  color: #d9a02b;
+  color: #e3b341;
 }
 
 .slider {
   width: 100%;
   margin: 0;
-  accent-color: #d9622b;
+  accent-color: var(--accent);
 }
 
 .app-icon {
@@ -632,7 +644,7 @@ body,
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #d6d6dc;
+  color: var(--text-2);
 }
 
 .st-left {
@@ -695,16 +707,16 @@ body,
   padding: 0 12px;
   border: 0;
   border-radius: 14px;
-  background: #141417;
+  background: var(--surface);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-  color: #eee;
+  color: var(--text);
   font: inherit;
   cursor: pointer;
   transition: background-color 220ms var(--ease-out), box-shadow 220ms var(--ease-out);
 }
 
 .q-tile:hover {
-  background: #1b1b1f;
+  background: var(--surface-hover);
 }
 
 .q-tile:focus-visible {
@@ -725,19 +737,19 @@ body,
   box-sizing: border-box;
   padding: 7px;
   border-radius: 50%;
-  background: #222227;
-  color: #d6d6dc;
+  background: var(--well);
+  color: var(--text-2);
   transition: background-color 220ms var(--ease-out), color 220ms var(--ease-out);
 }
 
 .q-tile.on {
-  background: #1f1712;
-  box-shadow: inset 0 0 0 1px rgba(217, 98, 43, 0.35);
+  background: var(--accent-tint);
+  box-shadow: inset 0 0 0 1px rgba(47, 214, 191, 0.35);
 }
 
 .q-tile.on > .icon {
   background: var(--accent-strong);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .q-label {
@@ -763,7 +775,7 @@ body,
 }
 
 .q-tile.on .q-sub {
-  color: #e9b39a;
+  color: #9ee9dd;
 }
 
 .q-sliders {
@@ -777,7 +789,7 @@ body,
   grid-template-columns: 24px 1fr 44px;
   align-items: center;
   gap: 10px;
-  color: #d6d6dc;
+  color: var(--text-2);
 }
 
 .q-slider > .icon {
@@ -805,7 +817,7 @@ body,
 .q-range::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 3px;
-  background: linear-gradient(to right, var(--accent) 0 var(--pct, 0%), #26262b var(--pct, 0%) 100%);
+  background: linear-gradient(to right, var(--accent) 0 var(--pct, 0%), var(--line) var(--pct, 0%) 100%);
 }
 
 .q-range::-webkit-slider-thumb {
@@ -829,7 +841,7 @@ body,
 }
 
 .q-range:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px rgba(217, 98, 43, 0.6);
+  box-shadow: 0 0 0 3px rgba(47, 214, 191, 0.6);
 }
 
 .q-icon-btn {
@@ -848,7 +860,7 @@ body,
 }
 
 .q-icon-btn:hover {
-  background: #1b1b1f;
+  background: var(--surface-hover);
 }
 
 .q-icon-btn:focus-visible {
@@ -861,7 +873,7 @@ body,
   align-items: center;
   gap: 14px;
   font-size: 12px;
-  color: #d6d6dc;
+  color: var(--text-2);
 }
 
 .q-battery {
@@ -874,7 +886,7 @@ body,
 .q-layout {
   padding: 2px 7px;
   border-radius: 6px;
-  background: #17171a;
+  background: var(--surface-2);
   color: var(--muted);
   font-size: 11px;
   letter-spacing: 0.02em;
@@ -893,14 +905,14 @@ body,
   padding: 0;
   border: 0;
   border-radius: 3px;
-  background: #3a3a40;
+  background: var(--line);
   cursor: pointer;
   transition: width 260ms var(--ease-out), background-color 260ms var(--ease-out);
 }
 
 .q-dot.on {
   width: 16px;
-  background: #d6d6dc;
+  background: var(--text-2);
 }
 
 /* ---------- Quick tab: sub-views (Project) ---------- */
@@ -928,7 +940,7 @@ body,
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #eee;
+  color: var(--text);
 }
 
 .proj-list {
@@ -947,7 +959,7 @@ body,
   border: 0;
   border-radius: 10px;
   background: none;
-  color: #e6e6ea;
+  color: var(--text);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -955,11 +967,11 @@ body,
 }
 
 .proj-row:hover {
-  background: #17171a;
+  background: var(--surface-2);
 }
 
 .proj-row.on {
-  background: #1b1b1f;
+  background: var(--surface-hover);
 }
 
 .proj-row:disabled {
@@ -995,7 +1007,7 @@ body,
 }
 
 .sub-link:hover {
-  color: #eee;
+  color: var(--text);
 }
 
 /* ---------- Power: one row of four, icon over label; the confirmation takes the same footprint ---------- */
@@ -1018,9 +1030,9 @@ body,
   height: 76px;
   border: 0;
   border-radius: 16px;
-  background: #141417;
+  background: var(--surface);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-  color: #eee;
+  color: var(--text);
   font: inherit;
   font-size: 12.5px;
   font-weight: 600;
@@ -1029,7 +1041,7 @@ body,
 }
 
 .power-btn:hover {
-  background: #1c1c20;
+  background: var(--surface-hover);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09), 0 6px 16px rgba(0, 0, 0, 0.35);
 }
 
@@ -1046,8 +1058,8 @@ body,
   box-sizing: border-box;
   padding: 0 14px;
   border-radius: 16px;
-  background: #1a1210;
-  box-shadow: inset 0 0 0 1px rgba(217, 98, 43, 0.3);
+  background: var(--accent-tint);
+  box-shadow: inset 0 0 0 1px rgba(47, 214, 191, 0.3);
 }
 
 .power-confirm-icon {
@@ -1058,7 +1070,7 @@ body,
   height: 36px;
   border-radius: 50%;
   background: var(--accent-strong);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .power-confirm-text {
@@ -1073,4 +1085,14 @@ body,
 
 .power-confirm .confirm-sub {
   font-size: 12px;
+}
+
+/* Browser surfaces carry the palette too */
+::selection {
+  background: rgba(47, 214, 191, 0.3);
+  color: var(--text);
+}
+
+input {
+  caret-color: var(--accent);
 }
