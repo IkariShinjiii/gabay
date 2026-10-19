@@ -1,6 +1,6 @@
 # Gabay
 
-Personal Windows 11 top-edge shell: a center notch that expands into a panel. Currently Milestone 6 (power tab); the Milestone 1 overlay kill test passed (see below).
+Personal Windows 11 top-edge shell: a center notch that expands into a panel. Currently Milestone 7 (clipboard tab); the Milestone 1 overlay kill test passed (see below).
 Windows 11 only. Electron + React + TypeScript + electron-vite.
 
 ## Setup
@@ -54,6 +54,18 @@ command (`rundll32`, `shutdown /r|/s /t 0`, PowerShell `SetSuspendState`). Sleep
 common `rundll32 powrprof.dll` form hibernates when hibernation is enabled.
 
 Dev-only: `GABAY_DRY_RUN=1 npm run dev` logs the command instead of running it (ignored in packaged builds).
+
+## Clipboard tab
+
+Text clipboard history (polled every second by the main process), newest first with pinned items on top. Type in the
+search field to filter, click a row to copy it back, star to pin, "Clear history" to forget everything unpinned.
+
+- Cap: 50 unpinned + 50 pinned items, 10,000 characters each. Images and files are ignored.
+- **Privacy:** unpinned history is memory-only and gone when Gabay quits. Only pinned items are written to disk
+  (`clipboard-pinned.json` in `%APPDATA%\gabay`, plain text), so don't pin secrets.
+- **Known limit:** Electron 44's clipboard API can't read Windows' "exclude from history" flag, so text copied from a
+  password manager does appear in the list until you clear it or quit.
+- The renderer only ever gets truncated one-line previews and opaque ids; the full text stays in the main process.
 
 ## Where the window behavior lives
 

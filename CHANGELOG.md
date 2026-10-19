@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.0 Clipboard tab
+
+Text clipboard history with search, pin, copy back and clear. Unpinned history is memory-only.
+
 ## 0.6.0 Power tab
 
 Power tab with Lock, Sleep, Restart, Shut down. Confirmation for Restart and Shut down holds the panel open. Dev-only dry-run mode.

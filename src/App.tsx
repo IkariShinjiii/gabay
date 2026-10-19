@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { COLLAPSE_DELAY_MS, NOTCH } from './constants'
 import type { LauncherItem } from './global'
+import ClipboardPanel from './ClipboardPanel'
 import Launcher from './Launcher'
 import PowerPanel from './PowerPanel'
 import StatsPanel from './StatsPanel'
@@ -90,7 +91,7 @@ export default function App(): React.JSX.Element {
   }, [evaluate])
 
   // Search results. Stale responses are dropped so a slow reply can't overwrite a newer query.
-  const showResults = expanded && (query.trim() !== '' || tab === 'Launch')
+  const showResults = expanded && tab !== 'Clipboard' && (query.trim() !== '' || tab === 'Launch')
   useEffect(() => {
     if (!showResults) return
     let stale = false
@@ -118,6 +119,12 @@ export default function App(): React.JSX.Element {
     pointerInside.current = false
     evaluate()
   }, [evaluate])
+
+  // After copy-back, release the search field and let the panel close.
+  const onClipCopied = useCallback((): void => {
+    setQuery('')
+    searchRef.current?.blur()
+  }, [])
 
   const launch = async (item: LauncherItem): Promise<void> => {
     await window.overlay.launchApp(item.id)
@@ -161,6 +168,8 @@ export default function App(): React.JSX.Element {
         onToggleStar={(it) => void toggleStar(it)}
       />
     )
+  } else if (expanded && tab === 'Clipboard') {
+    body = <ClipboardPanel query={query} onCopied={onClipCopied} />
   } else if (expanded && tab === 'Power') {
     body = <PowerPanel onConfirming={onConfirming} onDone={onPowerDone} />
   } else if (expanded && tab === 'System') {
@@ -204,7 +213,7 @@ export default function App(): React.JSX.Element {
         <input
           ref={searchRef}
           className="field"
-          placeholder="Search apps…"
+          placeholder={tab === 'Clipboard' ? 'Search clipboard…' : 'Search apps…'}
           spellCheck={false}
           autoComplete="off"
           value={query}

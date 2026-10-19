@@ -8,10 +8,24 @@ export interface OverlayApi {
   launchApp(id: string): Promise<boolean>
   /** Returns the new starred state. */
   toggleStar(id: string): Promise<boolean>
+  /** Clipboard history, pinned first then newest. Previews only; full text never reaches the renderer. */
+  listClipboard(query: string): Promise<ClipItem[]>
+  /** Forgets all unpinned history. */
+  clearClips(): Promise<void>
+  /** Puts the item back on the clipboard. */
+  copyClip(id: string): Promise<boolean>
+  /** Returns the new pinned state. Pinned items are the only ones saved to disk. */
+  togglePin(id: string): Promise<boolean>
   /** Lock, sleep, restart or shut down. Confirmation for the last two is the caller's job (see PowerPanel). */
   runPower(action: PowerAction): Promise<boolean>
   /** Fires when the global hotkey is pressed. Returns an unsubscribe function. */
   onSummon(cb: () => void): () => void
+}
+
+export interface ClipItem {
+  id: string
+  preview: string
+  pinned: boolean
 }
 
 export type PowerAction = 'lock' | 'sleep' | 'restart' | 'shutdown'
