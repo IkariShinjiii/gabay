@@ -4,10 +4,12 @@ directories:
   output: dist
 files:
   - out/**
+  - resources/**
   - package.json
 asar: true
 electronDist: node_modules/electron/dist
 win:
+  icon: resources/icon.png
   target:
     - target: nsis
       arch: x64

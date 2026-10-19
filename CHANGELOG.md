@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.0 Tray and basics
+
+Tray icon (Show, Launch at login, Quit), placeholder app icon, single-instance lock. Launch at login is enabled only in the packaged app.
+
 ## 0.11.0 Packaging
 
 `npm run dist` builds an unsigned NSIS installer in dist/ with electron-builder. React and motion moved to devDependencies since Vite bundles them.
