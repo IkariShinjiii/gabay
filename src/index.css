@@ -246,3 +246,17 @@ body,
 .btn.danger:hover {
   background: #b13a27;
 }
+
+.clear {
+  align-self: flex-end;
+  border: 0;
+  background: none;
+  color: #77777f;
+  font: 11px/1 'Segoe UI', system-ui, sans-serif;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.clear:hover {
+  color: #d9622b;
+}

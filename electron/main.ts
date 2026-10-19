@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { getStats } from './stats'
 import { ensureIndex, launch, search, toggleStar } from './launcher'
 import { isPowerAction, runPower } from './power'
+import { clearHistory, copyBack, listClipboard, startClipboardHistory, stopClipboardHistory, togglePin } from './clipboardHistory'
 
 const WIN_WIDTH = 560
 const WIN_HEIGHT = 440
@@ -90,6 +91,23 @@ app.whenReady().then(() => {
     fromUi(e)
     return isPowerAction(action) ? runPower(action) : false
   })
+  ipcMain.handle('clipboard:list', (e, q: unknown) => {
+    fromUi(e)
+    return listClipboard(typeof q === 'string' ? q : '')
+  })
+  ipcMain.handle('clipboard:copy', (e, id: unknown) => {
+    fromUi(e)
+    return typeof id === 'string' ? copyBack(id) : false
+  })
+  ipcMain.handle('clipboard:toggle-pin', (e, id: unknown) => {
+    fromUi(e)
+    return typeof id === 'string' ? togglePin(id) : false
+  })
+  ipcMain.handle('clipboard:clear', (e) => {
+    fromUi(e)
+    clearHistory()
+  })
+  startClipboardHistory()
   void ensureIndex() // warm the Start Menu index so the first search is instant
 
   // Global hotkey summons the panel with the search field focused. Never a Win-key combo (Windows reserves
@@ -115,5 +133,8 @@ app.whenReady().then(() => {
 })
 
 // Overlay has no tray yet, so quitting with the last window is the only way out besides Ctrl+C.
-app.on('will-quit', () => globalShortcut.unregisterAll())
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
+  stopClipboardHistory()
+})
 app.on('window-all-closed', () => app.quit())
