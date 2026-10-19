@@ -1,4 +1,8 @@
 /* Everything except the notch must stay fully transparent. */
+:root {
+  --shoulder: 12px;
+}
+
 html,
 body,
 #root {
@@ -20,10 +24,39 @@ body,
   position: relative;
   flex: none;
   background: #000;
-  overflow: hidden;
   color: #eee;
   font: 13px/1.2 'Segoe UI', system-ui, sans-serif;
   user-select: none;
+}
+
+/* Clips the content to the animated shape (the notch itself is unclipped so its shoulders can sit outside it). */
+.notch-clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+/* Concave shoulders: the top corners flare outward into the screen edge, like the iPhone X-series notch.
+   A square beside the notch, black except a quarter circle cut from its outer-bottom corner. */
+.notch::before,
+.notch::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: var(--shoulder);
+  height: var(--shoulder);
+  pointer-events: none;
+}
+
+.notch::before {
+  right: 100%;
+  background: radial-gradient(circle at 0 100%, transparent calc(var(--shoulder) - 0.6px), #000 var(--shoulder));
+}
+
+.notch::after {
+  left: 100%;
+  background: radial-gradient(circle at 100% 100%, transparent calc(var(--shoulder) - 0.6px), #000 var(--shoulder));
 }
 
 .panel {
@@ -262,10 +295,12 @@ body,
 .status {
   position: absolute;
   top: 0;
-  left: 14px;
-  height: 38px;
+  left: 0;
+  right: 0;
+  height: 32px; /* NOTCH.collapsed.height */
   display: flex;
   align-items: center;
+  justify-content: center;
   pointer-events: none;
   font-variant-numeric: tabular-nums;
 }

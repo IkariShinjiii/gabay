@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.0 iPhone-style notch
+
+Collapsed notch redesigned after the iPhone XS Max: flush with the top edge, concave flared shoulders, rounder bottom corners, 210x32, content centered. The expanded panel gets the same shoulders.
+
 ## 0.15.0 Real icon
 
 Notch-and-compass app icon and a notch-only tray mark (with a 2x variant), as SVG sources plus a render script (scripts/render-icons.cjs).
