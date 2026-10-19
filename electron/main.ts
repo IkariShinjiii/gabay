@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { getStats } from './stats'
 import { ensureIndex, launch, search, toggleStar } from './launcher'
 import { isPowerAction, runPower } from './power'
+import { addTodo, listTodos, removeTodo, toggleTodo } from './todos'
 import { clearHistory, copyBack, listClipboard, startClipboardHistory, stopClipboardHistory, togglePin } from './clipboardHistory'
 
 const WIN_WIDTH = 560
@@ -106,6 +107,22 @@ app.whenReady().then(() => {
   ipcMain.handle('clipboard:clear', (e) => {
     fromUi(e)
     clearHistory()
+  })
+  ipcMain.handle('todos:list', (e) => {
+    fromUi(e)
+    return listTodos()
+  })
+  ipcMain.handle('todos:add', (e, text: unknown) => {
+    fromUi(e)
+    return addTodo(typeof text === 'string' ? text : '')
+  })
+  ipcMain.handle('todos:toggle', (e, id: unknown) => {
+    fromUi(e)
+    return toggleTodo(typeof id === 'string' ? id : '')
+  })
+  ipcMain.handle('todos:remove', (e, id: unknown) => {
+    fromUi(e)
+    return removeTodo(typeof id === 'string' ? id : '')
   })
   startClipboardHistory()
   void ensureIndex() // warm the Start Menu index so the first search is instant

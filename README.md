@@ -1,6 +1,6 @@
 # Gabay
 
-Personal Windows 11 top-edge shell: a center notch that expands into a panel. Currently Milestone 7 (clipboard tab); the Milestone 1 overlay kill test passed (see below).
+Personal Windows 11 top-edge shell: a center notch that expands into a panel. Currently Milestone 8 (today and command bar); the Milestone 1 overlay kill test passed (see below).
 Windows 11 only. Electron + React + TypeScript + electron-vite.
 
 ## Setup
@@ -66,6 +66,18 @@ search field to filter, click a row to copy it back, star to pin, "Clear history
 - **Known limit:** Electron 44's clipboard API can't read Windows' "exclude from history" flag, so text copied from a
   password manager does appear in the list until you clear it or quit.
 - The renderer only ever gets truncated one-line previews and opaque ids; the full text stays in the main process.
+
+## Today tab, focus timer and command bar
+
+- **Today:** clock, date, a to-do list (add, check off, delete; saved in `todos.json` in userData), and a focus timer with
+  Start/Pause/Reset and 15/25/50 minute presets.
+- **Collapsed pill:** shows the clock; while a focus timer exists it shows a progress ring and countdown instead
+  (display only; control it from the Today tab or the command bar). The timer keeps running while the panel is closed.
+- **Command bar** (bottom field; a live hint shows what Enter will do):
+  `lock`, `sleep`, `restart`, `shutdown`, `focus [minutes]` / `timer` / `start`, `pause`, `reset`, `todo <text>`,
+  `open <app>`, `clear clipboard`, `go <tab>`. `restart` and `shutdown` never run from the command bar: they open the Power
+  tab's confirmation. Buttons and commands call the same actions.
+- Focused inputs (search, command, to-do) keep the panel open.
 
 ## Where the window behavior lives
 

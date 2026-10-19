@@ -10,6 +10,11 @@ export interface OverlayApi {
   toggleStar(id: string): Promise<boolean>
   /** Clipboard history, pinned first then newest. Previews only; full text never reaches the renderer. */
   listClipboard(query: string): Promise<ClipItem[]>
+  /** To-dos (local file). Each call returns the updated list. */
+  listTodos(): Promise<Todo[]>
+  addTodo(text: string): Promise<Todo[]>
+  toggleTodo(id: string): Promise<Todo[]>
+  removeTodo(id: string): Promise<Todo[]>
   /** Forgets all unpinned history. */
   clearClips(): Promise<void>
   /** Puts the item back on the clipboard. */
@@ -20,6 +25,12 @@ export interface OverlayApi {
   runPower(action: PowerAction): Promise<boolean>
   /** Fires when the global hotkey is pressed. Returns an unsubscribe function. */
   onSummon(cb: () => void): () => void
+}
+
+export interface Todo {
+  id: string
+  text: string
+  done: boolean
 }
 
 export interface ClipItem {
