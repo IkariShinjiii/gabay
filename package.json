@@ -1,6 +1,6 @@
 {
   "name": "gabay",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Gabay - personal Windows top-edge shell",
   "private": true,
   "main": "./out/main/index.js",

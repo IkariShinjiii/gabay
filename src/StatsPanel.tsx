@@ -60,6 +60,13 @@ export default function StatsPanel(): React.JSX.Element {
         percent={ramPercent}
         detail={`${(stats.ramUsedBytes / GB).toFixed(1)} / ${(stats.ramTotalBytes / GB).toFixed(1)} GB`}
       />
+      {stats.diskTotalBytes > 0 && (
+        <Gauge
+          label="Disk"
+          percent={(stats.diskUsedBytes / stats.diskTotalBytes) * 100}
+          detail={`${(stats.diskUsedBytes / GB).toFixed(0)} / ${(stats.diskTotalBytes / GB).toFixed(0)} GB`}
+        />
+      )}
     </div>
   )
 }
