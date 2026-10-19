@@ -37,6 +37,11 @@ function createOverlay(): BrowserWindow {
   // (Windows/macOS only), which is how the renderer knows when the pointer reaches the notch.
   win.setIgnoreMouseEvents(true, { forward: true })
 
+  // Hardening: the overlay only ever shows our own UI. Refuse new windows and any navigation away
+  // from the page we loaded, so injected or linked content can't take over a topmost, mouse-capturing window.
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  win.webContents.on('will-navigate', (e) => e.preventDefault())
+
   if (process.env['ELECTRON_RENDERER_URL']) {
     win.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {

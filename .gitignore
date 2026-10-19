@@ -2,3 +2,20 @@ node_modules
 out
 dist
 graphify-out
+
+# secrets and local config
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+.claude
+.cursor
+
+# OS / editor / logs
+.DS_Store
+Thumbs.db
+*.log
+.vscode/*
+!.vscode/extensions.json
