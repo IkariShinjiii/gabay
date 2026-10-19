@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { SettingsSnapshot } from './global'
-import { COLLAPSE_RANGE } from './constants'
+import { COLLAPSE_STEP_MS } from './constants'
 
 interface Props {
   /** Tells the notch the new collapse delay immediately, without a reload. */
@@ -14,6 +14,7 @@ interface Props {
 export default function SettingsPanel({ onCollapseMs }: Props): React.JSX.Element {
   const [snap, setSnap] = useState<SettingsSnapshot | null>(null)
   const [delay, setDelay] = useState<number | null>(null)
+  const saveTimer = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     void window.overlay.getSettings().then((r) => {
@@ -23,14 +24,27 @@ export default function SettingsPanel({ onCollapseMs }: Props): React.JSX.Elemen
   }, [])
 
   const save = async (patch: Parameters<typeof window.overlay.setSettings>[0]): Promise<void> => {
-    const r = await window.overlay.setSettings(patch)
-    setSnap(r)
-    onCollapseMs(r.settings.collapseMs)
+    try {
+      const r = await window.overlay.setSettings(patch)
+      setSnap(r)
+      onCollapseMs(r.settings.collapseMs)
+    } catch {
+      // Main refused or is closing; the panel keeps showing the last good values.
+    }
   }
+
+  // The slider commits shortly after the last change, whether it was dragged, clicked or moved with the keys,
+  // so there is one write per adjustment and nothing depends on pointer or key release events.
+  const onDelay = (ms: number): void => {
+    setDelay(ms)
+    window.clearTimeout(saveTimer.current)
+    saveTimer.current = window.setTimeout(() => void save({ collapseMs: ms }), 250)
+  }
+  useEffect(() => () => window.clearTimeout(saveTimer.current), [])
 
   if (!snap || delay === null) return <div className="body body-center">Loading…</div>
 
-  const { settings, activeHotkey, hotkeys, displays } = snap
+  const { settings, activeHotkey, hotkeys, displays, collapseRange } = snap
   const hotkeyTaken = activeHotkey !== settings.hotkey
   const shownDisplay = displays.some((d) => d.id === settings.displayId) ? settings.displayId : null
 
@@ -64,13 +78,11 @@ export default function SettingsPanel({ onCollapseMs }: Props): React.JSX.Elemen
         <input
           type="range"
           className="slider"
-          min={COLLAPSE_RANGE.min}
-          max={COLLAPSE_RANGE.max}
-          step={COLLAPSE_RANGE.step}
+          min={collapseRange.min}
+          max={collapseRange.max}
+          step={COLLAPSE_STEP_MS}
           value={delay}
-          onChange={(e) => setDelay(Number(e.target.value))}
-          onPointerUp={() => void save({ collapseMs: delay })}
-          onKeyUp={() => void save({ collapseMs: delay })}
+          onChange={(e) => onDelay(Number(e.target.value))}
         />
       </div>
 

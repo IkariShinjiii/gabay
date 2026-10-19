@@ -1,7 +1,8 @@
 import { app, shell } from 'electron'
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { readdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
+import { writeJsonAtomic } from './atomicWrite'
 import { join } from 'node:path'
 import { fuzzyScore } from './search'
 
@@ -127,9 +128,7 @@ async function loadStore(): Promise<Store> {
 
 async function saveStore(): Promise<void> {
   if (!store) return
-  const tmp = storePath() + '.tmp'
-  await writeFile(tmp, JSON.stringify(store), 'utf8')
-  await rename(tmp, storePath())
+  await writeJsonAtomic(storePath(), store)
 }
 
 const toItem = (e: Entry, s: Store): LauncherItem => ({ id: e.id, name: e.name, starred: s.starred.includes(e.id) })
