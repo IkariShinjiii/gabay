@@ -26,6 +26,15 @@ npm run dev
 
 Other scripts: `npm run build`, `npm run typecheck`. Quit with Ctrl+C in the terminal (no tray or hotkey yet).
 
+## Taskbar (Phase A)
+
+Gabay does not touch the Windows taskbar. To use the notch as the main surface, turn on the Windows setting yourself:
+Settings > Personalization > Taskbar > Taskbar behaviors > **Automatically hide the taskbar**.
+
+- The notch is at the top edge and the taskbar at the bottom, so they never overlap on a normal layout.
+- Reach the tray by moving the pointer to the bottom edge; Windows reveals the taskbar natively (kill-test item 6 passed).
+- Fully reversible: turn the setting off again. Gabay changes no Windows settings.
+
 ## Where the window behavior lives
 
 Everything non-obvious is in `electron/main.ts`, commented per setting. Window is 560x440, never resized.
