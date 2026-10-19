@@ -8,6 +8,8 @@ export interface Settings {
   collapseMs: number
   /** Electron display id, or null for the primary display. */
   displayId: number | null
+  /** 'auto': the notch stays off-screen until the pointer rests on the top edge. 'always': it is always shown. */
+  visibility: 'always' | 'auto'
 }
 
 /** Never a Win-key combo (Windows reserves those). The first free one is used when the saved one is taken. */
@@ -15,7 +17,7 @@ export const HOTKEYS = ['Control+Alt+G', 'Control+Shift+G', 'Control+Alt+Space',
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null }
+const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, visibility: 'auto' }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -29,7 +31,8 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
       : base.collapseMs
   const displayId =
     r.displayId === null ? null : typeof r.displayId === 'number' && Number.isInteger(r.displayId) ? r.displayId : base.displayId
-  return { hotkey, collapseMs, displayId }
+  const visibility = r.visibility === 'always' || r.visibility === 'auto' ? r.visibility : base.visibility
+  return { hotkey, collapseMs, displayId, visibility }
 }
 
 export async function loadSettings(): Promise<Settings> {

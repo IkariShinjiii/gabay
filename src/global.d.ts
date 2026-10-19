@@ -36,6 +36,7 @@ export interface Settings {
   hotkey: string
   collapseMs: number
   displayId: number | null
+  visibility: 'always' | 'auto'
 }
 
 export interface SettingsSnapshot {

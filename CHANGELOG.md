@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.19.0 Auto-hide
+
+The notch no longer sits on top of browser tabs and buttons: new Notch visibility setting, Auto-hide by default (revealed by resting the pointer on the top edge for a moment, hidden again shortly after it leaves) or Always shown.
+
 ## 0.18.0 App icons
 
 Launcher results show each app's own icon. Shortcut icons come from the shortcut or its target; Store app icons come from the package manifest (one background lookup, about 4 s, the first time a Store app is listed). Icons are resolved in the main process and sent as small data URLs keyed by the opaque app id, so paths still never reach the renderer. The page policy gains img-src data: only.

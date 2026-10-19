@@ -3,15 +3,15 @@ import type { SettingsSnapshot } from './global'
 import { COLLAPSE_STEP_MS } from './constants'
 
 interface Props {
-  /** Tells the notch the new collapse delay immediately, without a reload. */
-  onCollapseMs: (ms: number) => void
+  /** Tells the notch the new settings immediately, without a reload. */
+  onSettings: (s: SettingsSnapshot['settings']) => void
 }
 
 /**
  * Buttons and a slider rather than <select>: a native dropdown opens its own popup window, which would take
  * the pointer off the notch and collapse the panel under the user.
  */
-export default function SettingsPanel({ onCollapseMs }: Props): React.JSX.Element {
+export default function SettingsPanel({ onSettings }: Props): React.JSX.Element {
   const [snap, setSnap] = useState<SettingsSnapshot | null>(null)
   const [delay, setDelay] = useState<number | null>(null)
   const saveTimer = useRef<number | undefined>(undefined)
@@ -27,7 +27,7 @@ export default function SettingsPanel({ onCollapseMs }: Props): React.JSX.Elemen
     try {
       const r = await window.overlay.setSettings(patch)
       setSnap(r)
-      onCollapseMs(r.settings.collapseMs)
+      onSettings(r.settings)
     } catch {
       // Main refused or is closing; the panel keeps showing the last good values.
     }
@@ -84,6 +84,25 @@ export default function SettingsPanel({ onCollapseMs }: Props): React.JSX.Elemen
           value={delay}
           onChange={(e) => onDelay(Number(e.target.value))}
         />
+      </div>
+
+      <div className="set-row">
+        <div className="set-label">Notch visibility</div>
+        <div className="set-opts">
+          <button
+            className={settings.visibility === 'auto' ? 'chip on' : 'chip'}
+            title="Hidden until you rest the pointer on the top edge, so it never covers a tab or button"
+            onClick={() => void save({ visibility: 'auto' })}
+          >
+            Auto-hide
+          </button>
+          <button
+            className={settings.visibility === 'always' ? 'chip on' : 'chip'}
+            onClick={() => void save({ visibility: 'always' })}
+          >
+            Always shown
+          </button>
+        </div>
       </div>
 
       <div className="set-row">
