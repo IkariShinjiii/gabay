@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.0 Today tab and command bar
+
+Clock, to-dos, focus timer (ring and countdown on the collapsed pill), and a command bar that routes to the same actions as the buttons.
+
 ## 0.7.0 Clipboard tab
 
 Text clipboard history with search, pin, copy back and clear. Unpinned history is memory-only.
