@@ -95,3 +95,11 @@ Results (2026-10-19, Windows 11 25H2 build 26200.9711, Electron 44.9.0): all six
 4. [x] Clicks outside the notch reach the window underneath (test with a desktop icon and a browser button).
 5. [x] Hovering the notch makes it interactive and the debug label changes ("click-through" <-> "interactive").
 6. [x] Windows taskbar auto-hide still reveals on bottom-edge hover.
+
+## Build an installer
+
+```
+npm run dist
+```
+
+Produces `dist/Gabay Setup <version>.exe` (unsigned, so Windows SmartScreen warns on first run). The config uses the local Electron copy (`electronDist`) because downloading and renaming a fresh one hit an EPERM lock on this machine.

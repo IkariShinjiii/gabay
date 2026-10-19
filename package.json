@@ -1,6 +1,6 @@
 {
   "name": "gabay",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Gabay - personal Windows top-edge shell",
   "private": true,
   "main": "./out/main/index.js",
@@ -8,6 +8,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
+    "dist": "electron-vite build && electron-builder --win",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
@@ -16,13 +17,13 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^6.0.0",
+    "motion": "^14.4.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"
   },
-  "dependencies": {
-    "motion": "^14.4.0",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1"
-  }
+  "author": "IkariShinjiii"
 }

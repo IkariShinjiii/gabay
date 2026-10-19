@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.0 Packaging
+
+`npm run dist` builds an unsigned NSIS installer in dist/ with electron-builder. React and motion moved to devDependencies since Vite bundles them.
+
 ## 0.10.0 Disk gauge
 
 System tab shows system-drive usage next to CPU and RAM. Debug label removed.
