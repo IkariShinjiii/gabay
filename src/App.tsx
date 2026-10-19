@@ -43,6 +43,18 @@ export default function App(): React.JSX.Element {
   const collapseMs = useRef(COLLAPSE_DELAY_MS) // replaced by the saved setting once it loads
   const timer = useRef<number | undefined>(undefined)
 
+  // The open notch takes the height of what the current tab shows (capped at NOTCH.expanded.height), so the box
+  // fits the content instead of stretching it; the spring animates between tabs.
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [panelHeight, setPanelHeight] = useState<number>(NOTCH.expanded.height)
+  useEffect(() => {
+    const el = panelRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setPanelHeight(Math.ceil(el.offsetHeight)))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   // Auto-hide: off-screen until the pointer rests on the top edge. `visibility` mirrors the saved setting.
   const [visibility, setVisibility] = useState<'always' | 'auto'>('always')
   // A full-screen window on the notch's display hides the notch the same way auto-hide does.
@@ -347,7 +359,9 @@ export default function App(): React.JSX.Element {
     return () => document.removeEventListener('keydown', onKey)
   }, [expanded, selectTab])
 
-  const size = expanded ? NOTCH.expanded : NOTCH.collapsed
+  const size = expanded
+    ? { width: NOTCH.expanded.width, height: Math.min(panelHeight, NOTCH.expanded.height) }
+    : NOTCH.collapsed
 
   let body: React.JSX.Element
   if (showResults) {
@@ -405,6 +419,7 @@ export default function App(): React.JSX.Element {
       <div className="notch-clip">
         {/* Fixed-width panel so it never reflows mid-animation. */}
         <motion.div
+          ref={panelRef}
           className="panel"
           initial={false}
           animate={{ opacity: expanded ? 1 : 0 }}
