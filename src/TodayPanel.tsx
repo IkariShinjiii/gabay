@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Icon from './Icon'
 import type { Todo } from './global'
 import { formatMs, type FocusTimer } from './useFocusTimer'
 
@@ -44,7 +45,7 @@ export default function TodayPanel({ timer, todoVersion, onHold }: Props): React
         <div className="date">{now.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}</div>
 
         <div className="timer">
-          <div className={timer.status === 'done' ? 'timer-time done' : 'timer-time'}>
+          <div className={`timer-time ${timer.status}`}>
             {timer.status === 'done' ? 'Done' : formatMs(timer.remainingMs)}
           </div>
           <div className="timer-buttons">
@@ -91,7 +92,7 @@ export default function TodayPanel({ timer, todoVersion, onHold }: Props): React
                 onClick={() => void window.overlay.toggleTodo(t.id).then(setTodos)}
                 aria-label={t.done ? 'Mark not done' : 'Mark done'}
               >
-                {t.done ? '✓' : ''}
+                {t.done && <Icon name="check" size={12} />}
               </button>
               <span className={t.done ? 'todo-text done' : 'todo-text'}>{t.text}</span>
               <button
@@ -100,7 +101,7 @@ export default function TodayPanel({ timer, todoVersion, onHold }: Props): React
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => void window.overlay.removeTodo(t.id).then(setTodos)}
               >
-                ✕
+                <Icon name="x" size={14} />
               </button>
             </div>
           ))}
