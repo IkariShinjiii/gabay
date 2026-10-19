@@ -297,14 +297,14 @@ export default function App(): React.JSX.Element {
       animate={{
         width: size.width,
         height: size.height,
-        // Flat at the screen edge when open, pill-shaped when collapsed.
-        borderTopLeftRadius: expanded ? 0 : 19,
-        borderTopRightRadius: expanded ? 0 : 19,
-        borderBottomLeftRadius: expanded ? 28 : 19,
-        borderBottomRightRadius: expanded ? 28 : 19
+        // Always flush with the top edge (the concave shoulders are drawn in CSS); only the bottom corners animate.
+        borderBottomLeftRadius: expanded ? 28 : NOTCH.collapsedBottomRadius,
+        borderBottomRightRadius: expanded ? 28 : NOTCH.collapsedBottomRadius
       }}
       transition={SPRING}
     >
+      {/* The clip layer keeps content inside the animated shape while .notch itself stays unclipped for its shoulders. */}
+      <div className="notch-clip">
       {/* Fixed-width panel so it never reflows mid-animation. */}
       <motion.div
         className="panel"
@@ -374,6 +374,7 @@ export default function App(): React.JSX.Element {
       >
         <NotchStatus clock={clock} timer={focusTimer} />
       </motion.div>
+      </div>
     </motion.div>
   )
 }
