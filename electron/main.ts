@@ -1,6 +1,8 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, screen, Tray } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, screen, shell, Tray } from 'electron'
+import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { getStats } from './stats'
+import { isSettingsKey, networkKind, quickGet, quickSet, SETTINGS_PAGES, stopQuick } from './quick'
 import { COLLAPSE_MAX, COLLAPSE_MIN, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
 import { ensureIndex, getIcon, launch, search, toggleStar } from './launcher'
 import { isPowerAction, runPower } from './power'
@@ -12,8 +14,14 @@ import { clearHistory, copyBack, listClipboard, startClipboardHistory, stopClipb
 // turn hardware acceleration back on, e.g. to compare. Must run before the app is ready.
 if (process.env['GABAY_GPU'] !== '1') app.disableHardwareAcceleration()
 
+// Dev-only preview: GABAY_PREVIEW=<tab> renders the expanded panel in a hidden window, saves a screenshot to
+// GABAY_PREVIEW_OUT and quits. It never shows a window, registers no hotkey or tray icon, never reads the clipboard
+// and uses a throwaway data folder, so it can run while the real Gabay is in use without touching input or data.
+const PREVIEW = app.isPackaged ? undefined : process.env['GABAY_PREVIEW']
+if (PREVIEW) app.setPath('userData', join(app.getPath('temp'), 'gabay-preview'))
+
 // One notch at a time. A second launch (login item plus a manual start, say) hands over to the first and exits.
-const gotLock = app.requestSingleInstanceLock()
+const gotLock = PREVIEW ? true : app.requestSingleInstanceLock()
 if (!gotLock) app.quit()
 
 // Registered at module level so a second launch during startup isn't missed. summonNow is set once the window exists.
@@ -47,6 +55,7 @@ function createOverlay(display: Electron.Display): BrowserWindow {
     x,                           // horizontally centered on the chosen display
     y,                           // top edge of that display
     frame: false,                // no title bar / borders
+    show: !PREVIEW,
     transparent: true,           // per-pixel alpha; needs frame:false
     backgroundColor: '#00000000',// fully transparent background
     hasShadow: false,            // no OS drop shadow around the (mostly empty) window
@@ -74,10 +83,21 @@ function createOverlay(display: Electron.Display): BrowserWindow {
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   win.webContents.on('will-navigate', (e) => e.preventDefault())
 
+  const hash = PREVIEW ? `preview=${encodeURIComponent(PREVIEW)}` : ''
   if (process.env['ELECTRON_RENDERER_URL']) {
-    win.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    win.loadURL(process.env['ELECTRON_RENDERER_URL'] + (hash ? '#' + hash : ''))
   } else {
-    win.loadFile(join(__dirname, '../renderer/index.html'))
+    win.loadFile(join(__dirname, '../renderer/index.html'), { hash })
+  }
+
+  if (PREVIEW) {
+    win.webContents.once('did-finish-load', () => {
+      setTimeout(async () => {
+        const out = process.env['GABAY_PREVIEW_OUT']
+        if (out) writeFileSync(out, (await win.webContents.capturePage()).toPNG())
+        app.quit()
+      }, Number(process.env['GABAY_PREVIEW_WAIT'] ?? 2500))
+    })
   }
 
   return win
@@ -159,7 +179,7 @@ app.whenReady().then(async () => {
     fromUi(e)
     return removeTodo(typeof id === 'string' ? id : '')
   })
-  startClipboardHistory()
+  if (!PREVIEW) startClipboardHistory()
   void ensureIndex() // warm the Start Menu index so the first search is instant
 
   // Global hotkey summons the panel with the search field focused. Never a Win-key combo (Windows reserves
@@ -178,7 +198,7 @@ app.whenReady().then(async () => {
     if (activeHotkey) console.log(`[gabay] global hotkey: ${activeHotkey}`)
     else console.warn(`[gabay] no global hotkey available (tried ${HOTKEYS.join(', ')})`)
   }
-  applyHotkey(settings.hotkey)
+  if (!PREVIEW) applyHotkey(settings.hotkey)
 
   // Put the window back at top-center of the chosen display. Setting bounds twice is deliberate: moving to a
   // display with a different scale factor can rescale the window on the first call, and the second pins it.
@@ -228,30 +248,53 @@ app.whenReady().then(async () => {
 
   // Tray: the way to quit without killing the process. Launch at login is offered only when packaged,
   // because in dev it would register the bare electron.exe as the login item.
-  tray = new Tray(nativeImage.createFromPath(join(app.getAppPath(), 'resources', 'tray.png')))
-  tray.setToolTip('Gabay')
-  tray.on('click', summon)
-  const buildMenu = (): Menu =>
-    Menu.buildFromTemplate([
-      { label: 'Show Gabay', click: summon },
-      {
-        label: 'Launch at login',
-        type: 'checkbox',
-        enabled: app.isPackaged,
-        checked: app.getLoginItemSettings().openAtLogin,
-        click: (item) => {
-          if (!app.isPackaged) return // dev would register the bare electron.exe
-          app.setLoginItemSettings({ openAtLogin: item.checked })
-          tray?.setContextMenu(buildMenu())
-        }
-      },
-      { type: 'separator' },
-      { label: 'Quit', click: () => app.quit() }
-    ])
-  tray.setContextMenu(buildMenu())
+  if (!PREVIEW) {
+    tray = new Tray(nativeImage.createFromPath(join(app.getAppPath(), 'resources', 'tray.png')))
+    tray.setToolTip('Gabay')
+    tray.on('click', summon)
+    const buildMenu = (): Menu =>
+      Menu.buildFromTemplate([
+        { label: 'Show Gabay', click: summon },
+        {
+          label: 'Launch at login',
+          type: 'checkbox',
+          enabled: app.isPackaged,
+          checked: app.getLoginItemSettings().openAtLogin,
+          click: (item) => {
+            if (!app.isPackaged) return // dev would register the bare electron.exe
+            app.setLoginItemSettings({ openAtLogin: item.checked })
+            tray?.setContextMenu(buildMenu())
+          }
+        },
+        { type: 'separator' },
+        { label: 'Quit', click: () => app.quit() }
+      ])
+    tray.setContextMenu(buildMenu())
+  }
 
   // System stats on demand. The renderer only polls while the panel is open on the System tab,
   // so nothing runs in the background while the notch is collapsed.
+  // Quick settings (volume, brightness, radios, layout) and the network type for the collapsed pill. The renderer
+  // sends an action object or a key; main validates it and maps it to a fixed command or a fixed Settings page.
+  ipcMain.handle('quick:get', (e) => {
+    fromUi(e)
+    return quickGet()
+  })
+  ipcMain.handle('quick:set', (e, action: unknown) => {
+    fromUi(e)
+    return quickSet(action)
+  })
+  ipcMain.handle('quick:open', async (e, key: unknown) => {
+    fromUi(e)
+    if (!isSettingsKey(key)) return false
+    await shell.openExternal(SETTINGS_PAGES[key])
+    return true
+  })
+  ipcMain.handle('network:kind', (e) => {
+    fromUi(e)
+    return networkKind()
+  })
+
   ipcMain.handle('stats:get', (event) => {
     if (event.sender !== win.webContents) throw new Error('forbidden')
     return getStats()
@@ -261,5 +304,6 @@ app.whenReady().then(async () => {
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
   stopClipboardHistory()
+  stopQuick()
 })
 app.on('window-all-closed', () => app.quit())
