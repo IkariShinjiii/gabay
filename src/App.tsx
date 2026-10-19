@@ -5,6 +5,8 @@ import type { LauncherItem, PowerAction } from './global'
 import ClipboardPanel from './ClipboardPanel'
 import { parseCommand, type CommandActions } from './commands'
 import Launcher from './Launcher'
+import Icon from './Icon'
+import type { IconName } from './icons'
 import PowerPanel from './PowerPanel'
 import SettingsPanel from './SettingsPanel'
 import NotchStatus from './NotchStatus'
@@ -14,6 +16,15 @@ import { useFocusTimer } from './useFocusTimer'
 
 const TABS = ['Today', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
 type Tab = (typeof TABS)[number]
+
+const TAB_ICONS: Record<Tab, IconName> = {
+  Today: 'calendar-check',
+  System: 'activity',
+  Clipboard: 'clipboard',
+  Launch: 'rocket',
+  Power: 'power',
+  Settings: 'settings'
+}
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
 
 export default function App(): React.JSX.Element {
@@ -304,8 +315,9 @@ export default function App(): React.JSX.Element {
       >
         <div className="tabs">
           {TABS.map((t) => (
-            <button key={t} className={t === tab ? 'tab on' : 'tab'} onClick={() => setTab(t)}>
-              {t}
+            <button key={t} className={t === tab ? 'tab on' : 'tab'} title={t} aria-label={t} onClick={() => setTab(t)}>
+              <Icon name={TAB_ICONS[t]} size={15} />
+              {t === tab && t}
             </button>
           ))}
         </div>

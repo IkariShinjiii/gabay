@@ -45,10 +45,13 @@ body,
 }
 
 .tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 0;
   font: inherit;
   cursor: pointer;
-  padding: 6px 12px;
+  padding: 7px 11px;
   border-radius: 8px;
   background: #1c1c20;
   color: #9b9ba3;
@@ -162,9 +165,18 @@ body,
   cursor: pointer;
 }
 
+.star {
+  display: inline-flex;
+}
+
 .star.on,
 .star:hover {
   color: #d9622b;
+}
+
+/* Filled when starred or pinned */
+.star.on .icon {
+  fill: currentColor;
 }
 
 .power {
@@ -186,6 +198,10 @@ body,
 
 .power-btn {
   font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 
 .power-btn:hover,

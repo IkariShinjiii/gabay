@@ -1,3 +1,4 @@
+import Icon from './Icon'
 import type { LauncherItem } from './global'
 
 interface Props {
@@ -33,7 +34,7 @@ export default function Launcher({ items, selected, emptyHint, onHover, onLaunch
               onToggleStar(it)
             }}
           >
-            {it.starred ? '★' : '☆'}
+            <Icon name="star" size={15} />
           </button>
         </div>
       ))}

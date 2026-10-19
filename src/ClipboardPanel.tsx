@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Icon from './Icon'
 import type { ClipItem } from './global'
 
 const REFRESH_MS = 1000
@@ -75,7 +76,7 @@ export default function ClipboardPanel({ query, onCopied }: Props): React.JSX.El
               void pin(it)
             }}
           >
-            {it.pinned ? '★' : '☆'}
+            <Icon name="pin" size={15} />
           </button>
         </div>
       ))}
