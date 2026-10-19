@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain, screen } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, screen } from 'electron'
 import { join } from 'node:path'
 import { getStats } from './stats'
+import { ensureIndex, launch, search, toggleStar } from './launcher'
 
 const WIN_WIDTH = 560
 const WIN_HEIGHT = 440
@@ -61,8 +62,44 @@ app.whenReady().then(() => {
   ipcMain.on('overlay:set-interactive', (event, interactive: unknown) => {
     if (event.sender !== win.webContents || typeof interactive !== 'boolean') return
     if (interactive) win.setIgnoreMouseEvents(false)
-    else win.setIgnoreMouseEvents(true, { forward: true })
+    else {
+      win.setIgnoreMouseEvents(true, { forward: true })
+      // Hand keyboard focus back to the app underneath if a summon had given it to us.
+      if (win.isFocused()) win.blur()
+    }
   })
+
+  // Launcher. The renderer only ever handles opaque ids; paths stay in the main process.
+  const fromUi = (e: Electron.IpcMainInvokeEvent): void => {
+    if (e.sender !== win.webContents) throw new Error('forbidden')
+  }
+  ipcMain.handle('launcher:search', (e, q: unknown) => {
+    fromUi(e)
+    return search(typeof q === 'string' ? q : '')
+  })
+  ipcMain.handle('launcher:launch', (e, id: unknown) => {
+    fromUi(e)
+    return typeof id === 'string' ? launch(id) : false
+  })
+  ipcMain.handle('launcher:toggle-star', (e, id: unknown) => {
+    fromUi(e)
+    return typeof id === 'string' ? toggleStar(id) : false
+  })
+  void ensureIndex() // warm the Start Menu index so the first search is instant
+
+  // Global hotkey summons the panel with the search field focused. Never a Win-key combo (Windows reserves
+  // those). Ctrl+Alt+Space is already taken by the Claude desktop app on this machine, so try candidates in
+  // order and use the first one that is free. register() returns false if another app owns the combo.
+  const HOTKEYS = ['Control+Alt+G', 'Control+Shift+G', 'Control+Alt+Space']
+  const summon = (): void => {
+    // The window is click-through by default and unfocused; make it take input before the renderer opens.
+    win.setIgnoreMouseEvents(false)
+    win.focus()
+    win.webContents.send('overlay:summon')
+  }
+  const hotkey = HOTKEYS.find((k) => globalShortcut.register(k, summon))
+  if (hotkey) console.log(`[gabay] global hotkey: ${hotkey}`)
+  else console.warn(`[gabay] no global hotkey available (tried ${HOTKEYS.join(', ')})`)
 
   // System stats on demand. The renderer only polls while the panel is open on the System tab,
   // so nothing runs in the background while the notch is collapsed.
@@ -73,4 +110,5 @@ app.whenReady().then(() => {
 })
 
 // Overlay has no tray yet, so quitting with the last window is the only way out besides Ctrl+C.
+app.on('will-quit', () => globalShortcut.unregisterAll())
 app.on('window-all-closed', () => app.quit())

@@ -63,6 +63,22 @@ body,
   padding: 10px 12px;
   border-radius: 10px;
   background: #1c1c20;
+  color: #eee;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  user-select: text;
+}
+
+.field::placeholder {
+  color: #77777f;
+}
+
+.field:focus {
+  box-shadow: 0 0 0 1px #d9622b;
+}
+
+.field-inert {
   color: #77777f;
 }
 
@@ -127,4 +143,44 @@ body,
   height: 100%;
   border-radius: 5px;
   background: #d9622b;
+}
+
+.results {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.row.on {
+  background: #26262b;
+}
+
+.row-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.star {
+  border: 0;
+  background: none;
+  color: #55555c;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.star.on,
+.star:hover {
+  color: #d9622b;
 }

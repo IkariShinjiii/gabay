@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0 Search bar and launcher
+
+Real search field with fuzzy app search (Start menu + Store apps), recents and stars, global hotkey (Ctrl+Alt+G), panel stays open while the search field is focused.
+
 ## 0.4.0 Taskbar Phase A
 
 Document the auto-hide taskbar setup. No code change; Gabay does not modify Windows settings.
