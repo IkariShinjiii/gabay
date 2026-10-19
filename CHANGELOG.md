@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.0 Real icon
+
+Notch-and-compass app icon and a notch-only tray mark (with a 2x variant), as SVG sources plus a render script (scripts/render-icons.cjs).
+
 ## 0.14.2 Polish
 
 README and performance notes brought up to date; performance re-checked (126 MB private, 0.03% CPU).
