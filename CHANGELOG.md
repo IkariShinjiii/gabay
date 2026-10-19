@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0 Power tab
+
+Power tab with Lock, Sleep, Restart, Shut down. Confirmation for Restart and Shut down holds the panel open. Dev-only dry-run mode.
+
 ## 0.5.0 Search bar and launcher
 
 Real search field with fuzzy app search (Start menu + Store apps), recents and stars, global hotkey (Ctrl+Alt+G), panel stays open while the search field is focused.
