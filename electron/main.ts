@@ -2,6 +2,8 @@ import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, screen,
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { getStats } from './stats'
+import { startFullscreenWatch, stopFullscreenWatch } from './fullscreen'
+import { currentProjectMode, isProjectMode, setProjectMode } from './project'
 import { isSettingsKey, networkKind, quickGet, quickSet, SETTINGS_PAGES, stopQuick } from './quick'
 import { COLLAPSE_MAX, COLLAPSE_MIN, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
 import { ensureIndex, getIcon, launch, search, toggleStar } from './launcher'
@@ -83,7 +85,7 @@ function createOverlay(display: Electron.Display): BrowserWindow {
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   win.webContents.on('will-navigate', (e) => e.preventDefault())
 
-  const hash = PREVIEW ? `preview=${encodeURIComponent(PREVIEW)}` : ''
+  const hash = PREVIEW ? `preview=${PREVIEW}` : '' // dev-only env value, e.g. Quick or Quick&sub=project
   if (process.env['ELECTRON_RENDERER_URL']) {
     win.loadURL(process.env['ELECTRON_RENDERER_URL'] + (hash ? '#' + hash : ''))
   } else {
@@ -180,6 +182,15 @@ app.whenReady().then(async () => {
     return removeTodo(typeof id === 'string' ? id : '')
   })
   if (!PREVIEW) startClipboardHistory()
+  // Full screen on the notch's display (video, game, F11): the renderer tucks the notch away until it's revealed.
+  if (!PREVIEW) {
+    void startFullscreenWatch(
+      () => pickDisplay(settings.displayId).bounds,
+      (fs) => {
+        if (!win.isDestroyed()) win.webContents.send('overlay:fullscreen', fs)
+      }
+    )
+  }
   void ensureIndex() // warm the Start Menu index so the first search is instant
 
   // Global hotkey summons the panel with the search field focused. Never a Win-key combo (Windows reserves
@@ -290,6 +301,14 @@ app.whenReady().then(async () => {
     await shell.openExternal(SETTINGS_PAGES[key])
     return true
   })
+  ipcMain.handle('project:get', (e) => {
+    fromUi(e)
+    return currentProjectMode()
+  })
+  ipcMain.handle('project:set', (e, mode: unknown) => {
+    fromUi(e)
+    return isProjectMode(mode) ? setProjectMode(mode) : false
+  })
   ipcMain.handle('network:kind', (e) => {
     fromUi(e)
     return networkKind()
@@ -305,5 +324,6 @@ app.on('will-quit', () => {
   globalShortcut.unregisterAll()
   stopClipboardHistory()
   stopQuick()
+  stopFullscreenWatch()
 })
 app.on('window-all-closed', () => app.quit())

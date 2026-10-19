@@ -89,7 +89,8 @@ The taskbar's system-tray features, built into the notch.
   the right (red at 20% or less when not charging). Battery comes from Chromium's event-based battery API and the network type
   from the network adapters, so the collapsed notch still runs no timers or processes.
 - **Quick tab** (Ctrl+2), laid out like Windows quick settings: Wi-Fi, Bluetooth and Airplane mode toggle directly (right-click
-  a tile for its Settings page); Energy saver, Accessibility, Project, Live captions, Night light, Mobile hotspot, Nearby
+  a tile for its Settings page; Airplane mode uses Windows' own airplane switch); Project opens the Win+P chooser (PC screen
+  only, Duplicate, Extend, Second screen only) through Windows' DisplaySwitch; Energy saver, Accessibility, Live captions, Night light, Mobile hotspot, Nearby
   sharing, Cast and Notifications open their Windows Settings page, because Windows gives apps no supported switch for them.
   Brightness (built-in displays only) and volume sliders, mute, battery, and the keyboard layout of the focused window.
 - Volume, brightness, radios and layout go through one hidden PowerShell helper that starts when the Quick tab opens and exits
@@ -101,9 +102,13 @@ The taskbar's system-tray features, built into the notch.
 
 - **Tray icon:** click to show the panel; right-click for Show, Launch at login and Quit. Launch at login works only in
   the packaged app (it is greyed out in dev). A second launch just opens the panel of the running instance.
-- **Auto-hide (default):** the notch stays off-screen so it never covers a browser tab or button. Rest the pointer on the very
-  top edge, within the notch's width, for a moment and it slides in; it slides away shortly after the pointer leaves. Passing
-  through the top-center on the way to a tab does not trigger it. Switch to *Always shown* in Settings if you prefer.
+- **Always shown (default):** the notch stays visible, and steps aside by itself while a video, game or any window is full
+  screen on its display (a maximized window doesn't count). Rest the pointer on the very top edge, within the notch's width,
+  to bring it back while hidden; it slides away again shortly after the pointer leaves.
+- **Auto-hide** (Settings): the notch is always tucked away until revealed that way, so it never covers a browser tab.
+- Full screen is detected by a tiny watcher (about 9 MB, no measurable CPU) compiled once from source in
+  `electron/fullscreen.ts` with the C# compiler built into Windows and cached in `%APPDATA%\gabay\bin`. Without that
+  compiler the notch simply stays visible.
 - **Settings tab:** global hotkey, how long the pointer must stay away before the panel collapses (200-1500 ms), and which
   display the notch sits on. Saved to `settings.json` in `%APPDATA%\gabay`; the main process validates every value.
 - The app and tray icons are drawn in `resources/` (a notch plus a compass, since gabay means guide); edit `resources/icon.svg` / `tray.svg` and run `npx electron scripts/render-icons.cjs` to regenerate the PNGs.
