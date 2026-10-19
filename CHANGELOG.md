@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.14.0 Icons
+
+Lucide icons on the tabs (active tab shows its label), power actions, and star and pin buttons. Inline SVG, no new dependency.
+
 ## 0.13.0 Settings
 
 Settings tab: global hotkey (from a fixed list, with a notice when another app owns it), collapse delay, and which display the notch sits on. Saved to settings.json in the app data folder and validated in the main process.

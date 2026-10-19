@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import Icon from './Icon'
+import type { IconName } from './icons'
 import type { PowerAction } from './global'
 
 interface Props {
@@ -11,11 +13,11 @@ interface Props {
   onDone: () => void
 }
 
-const ACTIONS: { action: PowerAction; label: string; confirm: boolean }[] = [
-  { action: 'lock', label: 'Lock', confirm: false },
-  { action: 'sleep', label: 'Sleep', confirm: false },
-  { action: 'restart', label: 'Restart', confirm: true },
-  { action: 'shutdown', label: 'Shut down', confirm: true }
+const ACTIONS: { action: PowerAction; label: string; confirm: boolean; icon: IconName }[] = [
+  { action: 'lock', label: 'Lock', confirm: false, icon: 'lock' },
+  { action: 'sleep', label: 'Sleep', confirm: false, icon: 'moon' },
+  { action: 'restart', label: 'Restart', confirm: true, icon: 'rotate-cw' },
+  { action: 'shutdown', label: 'Shut down', confirm: true, icon: 'power' }
 ]
 
 export default function PowerPanel({ request, onRequestHandled, onConfirming, onDone }: Props): React.JSX.Element {
@@ -73,8 +75,9 @@ export default function PowerPanel({ request, onRequestHandled, onConfirming, on
 
   return (
     <div className="body power">
-      {ACTIONS.map(({ action, label, confirm }) => (
+      {ACTIONS.map(({ action, label, confirm, icon }) => (
         <button key={action} className="power-btn" onClick={() => (confirm ? confirming(action) : void run(action))}>
+          <Icon name={icon} size={18} />
           {label}
         </button>
       ))}
