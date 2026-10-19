@@ -1,6 +1,6 @@
 # Gabay
 
-Personal Windows 11 top-edge shell: a center notch that expands into a panel. Currently Milestone 8 (today and command bar); the Milestone 1 overlay kill test passed (see below).
+Personal Windows 11 top-edge shell: a center notch that expands into a panel. Currently Milestone 9 (performance check done); the Milestone 1 overlay kill test passed (see below).
 Windows 11 only. Electron + React + TypeScript + electron-vite.
 
 ## Setup

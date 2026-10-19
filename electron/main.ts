@@ -6,6 +6,11 @@ import { isPowerAction, runPower } from './power'
 import { addTodo, listTodos, removeTodo, toggleTodo } from './todos'
 import { clearHistory, copyBack, listClipboard, startClipboardHistory, stopClipboardHistory, togglePin } from './clipboardHistory'
 
+// Software rendering. The GPU process alone cost ~110 MB of private memory (about 134 MB vs 16 MB) for a 520x400
+// overlay, with no measurable CPU difference for our animations (see docs/PERFORMANCE.md). Set GABAY_GPU=1 to
+// turn hardware acceleration back on, e.g. to compare. Must run before the app is ready.
+if (process.env['GABAY_GPU'] !== '1') app.disableHardwareAcceleration()
+
 const WIN_WIDTH = 560
 const WIN_HEIGHT = 440
 

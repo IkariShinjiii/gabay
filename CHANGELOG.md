@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.0 Performance check
+
+Disable hardware acceleration (saves about 110 MB private memory with no CPU cost). Budget check and baseline in docs/PERFORMANCE.md.
+
 ## 0.8.0 Today tab and command bar
 
 Clock, to-dos, focus timer (ring and countdown on the collapsed pill), and a command bar that routes to the same actions as the buttons.
