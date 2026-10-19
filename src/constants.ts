@@ -9,3 +9,6 @@ export const NOTCH = {
 
 // How long the pointer must stay outside the notch before it collapses.
 export const COLLAPSE_DELAY_MS = 400
+
+// Stats refresh interval; polling runs only while the panel is open on the System tab.
+export const STATS_POLL_MS = 1500

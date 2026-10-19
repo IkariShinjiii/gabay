@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'node:path'
+import { getStats } from './stats'
 
 const WIN_WIDTH = 560
 const WIN_HEIGHT = 440
@@ -61,6 +62,13 @@ app.whenReady().then(() => {
     if (event.sender !== win.webContents || typeof interactive !== 'boolean') return
     if (interactive) win.setIgnoreMouseEvents(false)
     else win.setIgnoreMouseEvents(true, { forward: true })
+  })
+
+  // System stats on demand. The renderer only polls while the panel is open on the System tab,
+  // so nothing runs in the background while the notch is collapsed.
+  ipcMain.handle('stats:get', (event) => {
+    if (event.sender !== win.webContents) throw new Error('forbidden')
+    return getStats()
   })
 })
 

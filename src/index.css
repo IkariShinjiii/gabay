@@ -45,6 +45,9 @@ body,
 }
 
 .tab {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
   padding: 6px 12px;
   border-radius: 8px;
   background: #1c1c20;
@@ -85,4 +88,43 @@ body,
   right: 14px;
   width: auto;
   top: 14px;
+}
+
+.body-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #55555c;
+}
+
+.stats {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.gauge-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  color: #c8c8ce;
+}
+
+.gauge-detail {
+  color: #9b9ba3;
+  font-variant-numeric: tabular-nums;
+}
+
+.gauge-track {
+  height: 10px;
+  border-radius: 5px;
+  background: #1c1c20;
+  overflow: hidden;
+}
+
+.gauge-fill {
+  height: 100%;
+  border-radius: 5px;
+  background: #d9622b;
 }

@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { COLLAPSE_DELAY_MS, NOTCH } from './constants'
+import StatsPanel from './StatsPanel'
 
 type Mode = 'click-through' | 'interactive'
 
-const TABS = ['Today', 'System', 'Clipboard', 'Launch']
+const TABS = ['Today', 'System', 'Clipboard', 'Launch'] as const
+type Tab = (typeof TABS)[number]
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
 
 export default function App(): React.JSX.Element {
   const notchRef = useRef<HTMLDivElement>(null)
   const [expanded, setExpanded] = useState(false)
   const [mode, setMode] = useState<Mode>('click-through')
+  const [tab, setTab] = useState<Tab>('Today')
 
   useEffect(() => {
     let inside = false
@@ -89,14 +92,15 @@ export default function App(): React.JSX.Element {
         style={{ pointerEvents: expanded ? 'auto' : 'none' }}
       >
         <div className="tabs">
-          {TABS.map((t, i) => (
-            <span key={t} className={i === 0 ? 'tab on' : 'tab'}>
+          {TABS.map((t) => (
+            <button key={t} className={t === tab ? 'tab on' : 'tab'} onClick={() => setTab(t)}>
               {t}
-            </span>
+            </button>
           ))}
         </div>
         <div className="field">Search apps…</div>
-        <div className="body" />
+        {/* StatsPanel exists only while visible, so its polling stops when the notch collapses or the tab changes. */}
+        {expanded && tab === 'System' ? <StatsPanel /> : <div className="body body-center">{tab}</div>}
         <div className="field">Type a command…</div>
       </motion.div>
 
