@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0 Taskbar Phase A
+
+Document the auto-hide taskbar setup. No code change; Gabay does not modify Windows settings.
+
 ## 0.3.0 Stats tab
 
 System tab shows live CPU and RAM gauges, polled every 1.5 s only while the panel is open on that tab. Uses Node's built-in os module (no new dependency). Performance baseline recorded in docs/PERFORMANCE.md.
