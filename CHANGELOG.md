@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.22.0 Content-sized panel, compact Power
+
+The open notch now takes the height of the current tab's content (up to 400 px) and springs between tabs, instead of a fixed box that stretched the content. Power is one row of four buttons, icon over label, with a staggered entrance, hover lift and press; the restart and shut-down confirmation takes the same footprint. System gauges align with the panel edges.
+
 ## 0.21.0 Full-screen aware, real airplane mode, Project chooser
 
 The notch is Always shown again by default and steps aside only while something is full screen on its display (a 9 MB watcher compiled once with the C# compiler built into Windows). Reveal from hidden is faster (90 ms rest on the top edge, was 350). Airplane mode now reads and sets Windows' own airplane switch, so turning Wi-Fi off with Bluetooth already off no longer shows as airplane mode. Project opens a Win+P chooser (PC screen only, Duplicate, Extend, Second screen only) with the current mode marked.

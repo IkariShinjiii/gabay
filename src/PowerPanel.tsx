@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import Icon from './Icon'
 import type { IconName } from './icons'
 import type { PowerAction } from './global'
@@ -54,33 +55,49 @@ export default function PowerPanel({ request, onRequestHandled, onConfirming, on
     onDone()
   }
 
-  if (pending) {
-    const label = ACTIONS.find((a) => a.action === pending)!.label.toLowerCase()
-    return (
-      <div className="body body-center confirm">
-        <div className="confirm-text">{`Really ${label} now?`}</div>
-        <div className="confirm-sub">Unsaved work in open apps may be lost.</div>
-        <div className="confirm-buttons">
-          {/* Cancel is first and autofocused so a stray Enter never powers the machine off. */}
-          <button className="btn" autoFocus onClick={() => confirming(null)}>
-            Cancel
-          </button>
-          <button className="btn danger" onClick={() => void run(pending)}>
-            {label.charAt(0).toUpperCase() + label.slice(1)}
-          </button>
-        </div>
-      </div>
-    )
-  }
+  const pendingAction = pending ? ACTIONS.find((a) => a.action === pending)! : null
+  const SWAP = { initial: { opacity: 0, scale: 0.97 }, animate: { opacity: 1, scale: 1 }, exit: { opacity: 0, scale: 0.97 } }
 
   return (
-    <div className="body power">
-      {ACTIONS.map(({ action, label, confirm, icon }) => (
-        <button key={action} className="power-btn" onClick={() => (confirm ? confirming(action) : void run(action))}>
-          <Icon name={icon} size={18} />
-          {label}
-        </button>
-      ))}
+    <div className="body power-wrap">
+      <AnimatePresence mode="wait" initial={false}>
+        {pendingAction ? (
+          <motion.div key="confirm" className="power-confirm" {...SWAP} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}>
+            <span className="power-confirm-icon">
+              <Icon name={pendingAction.icon} size={18} />
+            </span>
+            <div className="power-confirm-text">
+              <div className="confirm-text">{`${pendingAction.label} now?`}</div>
+              <div className="confirm-sub">Unsaved work in open apps may be lost.</div>
+            </div>
+            {/* Cancel is first and autofocused so a stray Enter never powers the machine off. */}
+            <button className="btn" autoFocus onClick={() => confirming(null)}>
+              Cancel
+            </button>
+            <button className="btn danger" onClick={() => void run(pendingAction.action)}>
+              {pendingAction.label}
+            </button>
+          </motion.div>
+        ) : (
+          <motion.div key="actions" className="power" {...SWAP} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}>
+            {ACTIONS.map(({ action, label, confirm, icon }, i) => (
+              <motion.button
+                key={action}
+                className="power-btn"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03, type: 'spring', stiffness: 500, damping: 34 }}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => (confirm ? confirming(action) : void run(action))}
+              >
+                <Icon name={icon} size={18} />
+                <span>{label}</span>
+              </motion.button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

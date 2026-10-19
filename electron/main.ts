@@ -68,7 +68,9 @@ function createOverlay(display: Electron.Display): BrowserWindow {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true
+      sandbox: true,
+      // Hidden preview windows would otherwise get throttled animation frames, freezing springs mid-way.
+      backgroundThrottling: !PREVIEW
     }
   })
 
