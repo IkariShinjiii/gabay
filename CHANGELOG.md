@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.14.2 Polish
+
+README and performance notes brought up to date; performance re-checked (126 MB private, 0.03% CPU).
+
 ## 0.14.1 Review fixes
 
 Saves are serialized and atomic for every store. The notch re-centers when displays change. A second launch during startup is no longer dropped. Re-picking a hotkey retries it. The slider commits with a debounce.
