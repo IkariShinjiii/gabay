@@ -1,5 +1,6 @@
 import { app } from 'electron'
-import { readFile, rename, writeFile } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
+import { writeJsonAtomic } from './atomicWrite'
 import { join } from 'node:path'
 
 export interface Settings {
@@ -40,7 +41,5 @@ export async function loadSettings(): Promise<Settings> {
 }
 
 export async function saveSettings(s: Settings): Promise<void> {
-  const tmp = storePath() + '.tmp'
-  await writeFile(tmp, JSON.stringify(s), 'utf8')
-  await rename(tmp, storePath())
+  await writeJsonAtomic(storePath(), s)
 }

@@ -1,6 +1,7 @@
 import { app, clipboard } from 'electron'
 import { randomUUID } from 'node:crypto'
-import { readFile, rename, writeFile } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
+import { writeJsonAtomic } from './atomicWrite'
 import { join } from 'node:path'
 
 export interface ClipItem {
@@ -50,9 +51,7 @@ async function loadPinned(): Promise<void> {
 
 async function savePinned(): Promise<void> {
   const pinned = items.filter((i) => i.pinned).map(({ id, text }) => ({ id, text }))
-  const tmp = storePath() + '.tmp'
-  await writeFile(tmp, JSON.stringify(pinned), 'utf8')
-  await rename(tmp, storePath())
+  await writeJsonAtomic(storePath(), pinned)
 }
 
 let polling = false

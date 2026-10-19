@@ -1,7 +1,7 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, screen, Tray } from 'electron'
 import { join } from 'node:path'
 import { getStats } from './stats'
-import { HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
+import { COLLAPSE_MAX, COLLAPSE_MIN, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
 import { ensureIndex, launch, search, toggleStar } from './launcher'
 import { isPowerAction, runPower } from './power'
 import { addTodo, listTodos, removeTodo, toggleTodo } from './todos'
@@ -15,6 +15,14 @@ if (process.env['GABAY_GPU'] !== '1') app.disableHardwareAcceleration()
 // One notch at a time. A second launch (login item plus a manual start, say) hands over to the first and exits.
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) app.quit()
+
+// Registered at module level so a second launch during startup isn't missed. summonNow is set once the window exists.
+let summonNow: (() => void) | null = null
+let summonPending = false
+app.on('second-instance', () => {
+  if (summonNow) summonNow()
+  else summonPending = true
+})
 
 const WIN_WIDTH = 560
 const WIN_HEIGHT = 440
@@ -168,6 +176,17 @@ app.whenReady().then(async () => {
   }
   applyHotkey(settings.hotkey)
 
+  // Put the window back at top-center of the chosen display. Setting bounds twice is deliberate: moving to a
+  // display with a different scale factor can rescale the window on the first call, and the second pins it.
+  const placeNotch = (): void => {
+    const b = notchBounds(pickDisplay(settings.displayId))
+    win.setBounds(b)
+    win.setBounds(b)
+  }
+  screen.on('display-added', placeNotch)
+  screen.on('display-removed', placeNotch)
+  screen.on('display-metrics-changed', placeNotch)
+
   // Settings. The renderer sends a partial patch; main validates every field (settings.ts) before using it.
   const snapshot = (): unknown => {
     const primary = screen.getPrimaryDisplay().id
@@ -175,6 +194,7 @@ app.whenReady().then(async () => {
       settings,
       activeHotkey,
       hotkeys: HOTKEYS,
+      collapseRange: { min: COLLAPSE_MIN, max: COLLAPSE_MAX },
       displays: screen.getAllDisplays().map((d, i) => ({
         id: d.id,
         label: `Display ${i + 1} (${d.bounds.width}x${d.bounds.height})${d.id === primary ? ', primary' : ''}`
@@ -187,16 +207,20 @@ app.whenReady().then(async () => {
   })
   ipcMain.handle('settings:set', async (e, patch: unknown) => {
     fromUi(e)
+    const prevDisplay = settings.displayId
     const next: Settings = sanitize(patch, settings)
-    if (next.hotkey !== settings.hotkey) applyHotkey(next.hotkey)
-    if (next.displayId !== settings.displayId) win.setBounds(notchBounds(pickDisplay(next.displayId)))
+    // Also retry when the same hotkey is picked again: the other app that held it may have exited since.
+    const pickedHotkey = typeof patch === 'object' && patch !== null && 'hotkey' in patch
+    if (next.hotkey !== settings.hotkey || (pickedHotkey && next.hotkey !== activeHotkey)) applyHotkey(next.hotkey)
     settings = next
+    if (next.displayId !== prevDisplay) placeNotch()
     await saveSettings(settings)
     return snapshot()
   })
 
   // A second launch summons the existing instance instead of starting another.
-  app.on('second-instance', summon)
+  summonNow = summon
+  if (summonPending) summon()
 
   // Tray: the way to quit without killing the process. Launch at login is offered only when packaged,
   // because in dev it would register the bare electron.exe as the login item.
@@ -212,6 +236,7 @@ app.whenReady().then(async () => {
         enabled: app.isPackaged,
         checked: app.getLoginItemSettings().openAtLogin,
         click: (item) => {
+          if (!app.isPackaged) return // dev would register the bare electron.exe
           app.setLoginItemSettings({ openAtLogin: item.checked })
           tray?.setContextMenu(buildMenu())
         }

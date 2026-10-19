@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.14.1 Review fixes
+
+Saves are serialized and atomic for every store. The notch re-centers when displays change. A second launch during startup is no longer dropped. Re-picking a hotkey retries it. The slider commits with a debounce.
+
 ## 0.14.0 Icons
 
 Lucide icons on the tabs (active tab shows its label), power actions, and star and pin buttons. Inline SVG, no new dependency.

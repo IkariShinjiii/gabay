@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import { randomUUID } from 'node:crypto'
-import { readFile, rename, writeFile } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
+import { writeJsonAtomic } from './atomicWrite'
 import { join } from 'node:path'
 
 export interface Todo {
@@ -32,9 +33,7 @@ async function load(): Promise<Todo[]> {
 }
 
 async function save(): Promise<void> {
-  const tmp = storePath() + '.tmp'
-  await writeFile(tmp, JSON.stringify(todos ?? []), 'utf8')
-  await rename(tmp, storePath())
+  await writeJsonAtomic(storePath(), todos ?? [])
 }
 
 export async function listTodos(): Promise<Todo[]> {

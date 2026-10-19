@@ -41,6 +41,7 @@ export interface SettingsSnapshot {
   /** The hotkey actually registered, which differs from settings.hotkey when another app owns it. */
   activeHotkey: string | null
   hotkeys: string[]
+  collapseRange: { min: number; max: number }
   displays: { id: number; label: string }[]
 }
 
