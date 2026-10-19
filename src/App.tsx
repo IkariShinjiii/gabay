@@ -11,8 +11,6 @@ import StatsPanel from './StatsPanel'
 import TodayPanel from './TodayPanel'
 import { useFocusTimer } from './useFocusTimer'
 
-type Mode = 'click-through' | 'interactive'
-
 const TABS = ['Today', 'System', 'Clipboard', 'Launch', 'Power'] as const
 type Tab = (typeof TABS)[number]
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
@@ -21,7 +19,6 @@ export default function App(): React.JSX.Element {
   const notchRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const [expanded, setExpanded] = useState(false)
-  const [mode, setMode] = useState<Mode>('click-through')
   const [tab, setTab] = useState<Tab>('Today')
   const [query, setQuery] = useState('')
   const [items, setItems] = useState<LauncherItem[]>([])
@@ -42,7 +39,6 @@ export default function App(): React.JSX.Element {
 
   const setInteractive = useCallback((interactive: boolean): void => {
     window.overlay.setInteractive(interactive)
-    setMode(interactive ? 'interactive' : 'click-through')
   }, [])
 
   const evaluate = useCallback((): void => {
@@ -358,9 +354,6 @@ export default function App(): React.JSX.Element {
       >
         <NotchStatus clock={clock} timer={focusTimer} />
       </motion.div>
-
-      {/* Debug label: remove later. */}
-      <span className={expanded ? 'debug debug-open' : 'debug'}>{mode}</span>
     </motion.div>
   )
 }

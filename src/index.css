@@ -88,20 +88,6 @@ body,
   background: #101012;
 }
 
-/* Debug label: centered in the collapsed pill, tucked into the corner when open. Remove later. */
-.debug {
-  position: absolute;
-  top: 13px;
-  right: 14px;
-  text-align: right;
-  color: #8f8;
-  font: 11px/1 ui-monospace, Consolas, monospace;
-}
-
-.debug-open {
-  top: 14px;
-}
-
 .body-center {
   display: flex;
   align-items: center;
