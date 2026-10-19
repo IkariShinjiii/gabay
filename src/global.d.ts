@@ -5,6 +5,8 @@ export interface OverlayApi {
   getStats(): Promise<SystemStats>
   /** Fuzzy-search Start Menu apps. Empty query returns starred, then recent. */
   searchApps(query: string): Promise<LauncherItem[]>
+  /** Small PNG data URL for an app's icon, or null. Resolved in main; the renderer never sees a path. */
+  appIcon(id: string): Promise<string | null>
   launchApp(id: string): Promise<boolean>
   /** Returns the new starred state. */
   toggleStar(id: string): Promise<boolean>

@@ -1,3 +1,4 @@
+import AppIcon from './AppIcon'
 import Icon from './Icon'
 import type { LauncherItem } from './global'
 
@@ -24,6 +25,7 @@ export default function Launcher({ items, selected, emptyHint, onHover, onLaunch
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onLaunch(it)}
         >
+          <AppIcon id={it.id} />
           <span className="row-name">{it.name}</span>
           <button
             className={it.starred ? 'star on' : 'star'}

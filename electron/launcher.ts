@@ -1,4 +1,4 @@
-import { app, shell } from 'electron'
+import { app, nativeImage, shell } from 'electron'
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { readdir, readFile } from 'node:fs/promises'
@@ -154,6 +154,99 @@ export async function search(query: string): Promise<LauncherItem[]> {
   }
   scored.sort((a, b) => b.score - a.score || a.e.name.localeCompare(b.e.name))
   return scored.slice(0, MAX_RESULTS).map(({ e }) => toItem(e, s))
+}
+
+// --- icons ---
+// Resolved here and sent to the renderer as small data: URLs keyed by the opaque id, so paths never leave main.
+const ICON_PX = 32
+const iconCache = new Map<string, string | null>()
+let storeLogos: Promise<Map<string, string>> | null = null
+
+// Store apps have no .lnk and the shell only gives a blank-page icon for their AppID, so read the logo each package
+// declares in its manifest (Square44x44Logo), preferring the unplated 48 px variant. Best effort, one slow call (about
+// 4 s on a typical machine) made lazily the first time a Store app's icon is wanted.
+const LOGO_SCRIPT = `
+$ErrorActionPreference = 'SilentlyContinue'
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+$pk = @{}
+Get-AppxPackage | ForEach-Object { $pk[$_.PackageFamilyName] = $_.InstallLocation }
+$out = @{}
+foreach ($a in Get-StartApps) {
+  $id = $a.AppID
+  if ($id -notmatch '^([^!]+)!(.+)$') { continue }
+  $loc = $pk[$Matches[1]]
+  $appId = $Matches[2]
+  if (-not $loc) { continue }
+  $m = [xml](Get-Content -LiteralPath (Join-Path $loc 'AppxManifest.xml') -Raw)
+  $ap = $m.Package.Applications.Application | Where-Object { $_.Id -eq $appId } | Select-Object -First 1
+  $logo = $ap.VisualElements.Square44x44Logo
+  if (-not $logo) { continue }
+  $full = Join-Path $loc $logo
+  $dir = Split-Path $full
+  $base = [IO.Path]::GetFileNameWithoutExtension($full)
+  $files = Get-ChildItem -LiteralPath $dir -Filter ($base + '*.png')
+  $pick = $null
+  foreach ($pat in 'targetsize-(48|44)_altform-unplated\.png$', 'targetsize-(48|44)\.png$', 'targetsize-(256|96|72|64)(_altform-unplated)?\.png$', 'scale-(200|150|125|100)\.png$', '\.png$') {
+    $pick = $files | Where-Object { $_.Name -match $pat } | Select-Object -First 1
+    if ($pick) { break }
+  }
+  if ($pick) { $out[$id] = $pick.FullName }
+}
+$out | ConvertTo-Json -Compress
+`
+
+function loadStoreLogos(): Promise<Map<string, string>> {
+  return new Promise((resolve) => {
+    execFile(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-Command', LOGO_SCRIPT],
+      { windowsHide: true, timeout: 40000, maxBuffer: 8 * 1024 * 1024 },
+      (err, stdout) => {
+        if (err) return resolve(new Map())
+        try {
+          const raw = JSON.parse(stdout) as Record<string, unknown>
+          resolve(new Map(Object.entries(raw).filter((kv): kv is [string, string] => typeof kv[1] === 'string')))
+        } catch {
+          resolve(new Map())
+        }
+      }
+    )
+  })
+}
+
+/** A small PNG data URL for the app's icon, or null (the renderer then shows a generic glyph). */
+export async function getIcon(id: string): Promise<string | null> {
+  if (iconCache.has(id)) return iconCache.get(id) ?? null
+  const e = entries.get(id)
+  if (!e) return null
+  let icon: string | null = null
+  try {
+    if (e.kind === 'lnk') {
+      // A shortcut often has no icon of its own (the shell then draws a blank page with an arrow), so ask where it
+      // points: its icon file if it names one, else its target exe. Fall back to the shortcut itself.
+      let src = e.target
+      try {
+        const link = shell.readShortcutLink(e.target)
+        src = (link.icon || link.target || src).replace(/%([^%]+)%/g, (m, v: string) => process.env[v] ?? m)
+      } catch {
+        // Not a readable shortcut: use the file itself.
+      }
+      let img = await app.getFileIcon(src, { size: 'large' })
+      if (img.isEmpty() && src !== e.target) img = await app.getFileIcon(e.target, { size: 'large' })
+      if (!img.isEmpty()) icon = img.toDataURL()
+    } else {
+      storeLogos ??= loadStoreLogos()
+      const path = (await storeLogos).get(e.target)
+      if (path && path.toLowerCase().endsWith('.png')) {
+        const img = nativeImage.createFromPath(path)
+        if (!img.isEmpty()) icon = img.resize({ width: ICON_PX, height: ICON_PX, quality: 'best' }).toDataURL()
+      }
+    }
+  } catch {
+    // Unreadable shortcut or logo: fall through to null.
+  }
+  iconCache.set(id, icon)
+  return icon
 }
 
 export async function launch(id: string): Promise<boolean> {

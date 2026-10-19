@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.0 App icons
+
+Launcher results show each app's own icon. Shortcut icons come from the shortcut or its target; Store app icons come from the package manifest (one background lookup, about 4 s, the first time a Store app is listed). Icons are resolved in the main process and sent as small data URLs keyed by the opaque app id, so paths still never reach the renderer. The page policy gains img-src data: only.
+
 ## 0.17.0 Notch-native panel
 
 The expanded panel redesigned from a critique: tabs sit in the notch band with text labels and an active marker, one bar replaces the separate search and command fields, content sits on black without boxes, secondary text raised to readable contrast, the accent now means state (active tab, focus, running timer), real icons replace the check and cross glyphs, Ctrl+1 to Ctrl+6 switch tabs, and picking a tab clears the bar.
