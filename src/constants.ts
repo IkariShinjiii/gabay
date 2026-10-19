@@ -6,7 +6,7 @@ export const NOTCH = {
   // Proportions follow an iPhone XS Max notch: wide and short, flush with the top edge, rounder at the bottom.
   collapsed: { width: 268, height: 32 },
   collapsedBottomRadius: 18,
-  expanded: { width: 520, height: 400 }
+  expanded: { width: 520, height: 540 } // height is the cap; the notch takes the content's height
 } as const
 
 // Auto-hide: how long the pointer must rest on the top edge to reveal the notch, and how long after it leaves

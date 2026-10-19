@@ -81,7 +81,7 @@ body,
   top: 0;
   left: 0;
   width: 520px;
-  max-height: 400px; /* NOTCH.expanded.height: the notch grows to fit the content, up to this */
+  max-height: 540px; /* NOTCH.expanded.height: the notch grows to fit the content, up to this */
   box-sizing: border-box;
   padding: 6px 20px 16px; /* tabs sit in the band where the notch hangs */
   display: flex;
@@ -672,178 +672,6 @@ body,
   flex-direction: column;
 }
 
-/* ---------- Quick tab ---------- */
-.quick {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 2px 0 0;
-}
-
-.q-grid-wrap {
-  position: relative;
-  flex: none;
-  height: 136px; /* two rows of tiles; pages slide inside this */
-  overflow: hidden;
-}
-
-.q-grid {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-auto-rows: 64px;
-  gap: 8px;
-}
-
-.q-tile {
-  display: grid;
-  grid-template-columns: 30px 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 10px;
-  align-content: center;
-  min-width: 0;
-  text-align: left;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 14px;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-  transition: background-color 220ms var(--ease-out), box-shadow 220ms var(--ease-out);
-}
-
-.q-tile:hover {
-  background: var(--surface-hover);
-}
-
-.q-tile:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.q-tile:disabled {
-  cursor: default;
-  opacity: 0.45;
-}
-
-/* The icon sits in a round well that fills with the accent when the toggle is on, like Control Center. */
-.q-tile > .icon {
-  grid-row: 1 / span 2;
-  width: 30px;
-  height: 30px;
-  box-sizing: border-box;
-  padding: 7px;
-  border-radius: 50%;
-  background: var(--well);
-  color: var(--text-2);
-  transition: background-color 220ms var(--ease-out), color 220ms var(--ease-out);
-}
-
-.q-tile.on {
-  background: var(--accent-tint);
-  box-shadow: inset 0 0 0 1px rgba(47, 214, 191, 0.35);
-}
-
-.q-tile.on > .icon {
-  background: var(--accent-strong);
-  color: var(--on-accent);
-}
-
-.q-label {
-  min-width: 0;
-  font-size: 12.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.q-tile:not(:has(.q-sub)) > .q-label {
-  grid-row: 1 / span 2; /* no subtitle: centre the label against the icon */
-  align-self: center;
-}
-
-.q-sub {
-  min-width: 0;
-  font-size: 11px;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.q-tile.on .q-sub {
-  color: #9ee9dd;
-}
-
-.q-sliders {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.q-slider {
-  display: grid;
-  grid-template-columns: 24px 1fr 44px;
-  align-items: center;
-  gap: 10px;
-  color: var(--text-2);
-}
-
-.q-slider > .icon {
-  justify-self: center;
-}
-
-.q-val {
-  justify-self: end;
-  font-size: 12px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Custom range: a 6 px track whose filled part is painted from --pct, and a white thumb that grows on press. */
-.q-range {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 20px;
-  margin: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
-.q-range::-webkit-slider-runnable-track {
-  height: 6px;
-  border-radius: 3px;
-  background: linear-gradient(to right, var(--accent) 0 var(--pct, 0%), var(--line) var(--pct, 0%) 100%);
-}
-
-.q-range::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  margin-top: -5px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
-  transition: transform 160ms var(--ease-out);
-}
-
-.q-range:active::-webkit-slider-thumb {
-  transform: scale(1.2);
-}
-
-.q-range:focus-visible {
-  outline: none;
-}
-
-.q-range:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px rgba(47, 214, 191, 0.6);
-}
-
 .q-icon-btn {
   display: inline-flex;
   align-items: center;
@@ -913,20 +741,6 @@ body,
 .q-dot.on {
   width: 16px;
   background: var(--text-2);
-}
-
-/* ---------- Quick tab: sub-views (Project) ---------- */
-.q-tile {
-  position: relative;
-}
-
-.q-chev {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--muted);
-  display: inline-flex;
 }
 
 .quick-sub {
@@ -1095,4 +909,425 @@ body,
 
 input {
   caret-color: var(--accent);
+}
+
+/* ---------- Controls tab ---------- */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.ct-page {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ct-row {
+  display: grid;
+  gap: 8px;
+}
+
+.ct-row.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ct-row.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Split tile: main part acts, the chevron part opens Settings. Filled with the accent when on. */
+.ct {
+  display: flex;
+  height: 54px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  overflow: hidden;
+  transition: background-color 240ms var(--ease-out), color 240ms var(--ease-out);
+}
+
+.ct.on {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.ct-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px 0 11px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ct-main:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.ct-main:focus-visible,
+.ct-chev:focus-visible,
+.more-tile:focus-visible,
+.media-btn:focus-visible,
+.media-play:focus-visible,
+.big-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.ct.on .ct-main:focus-visible,
+.ct.on .ct-chev:focus-visible {
+  outline-color: var(--on-accent);
+}
+
+.ct-well {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--well);
+  color: var(--text-2);
+  transition: background-color 240ms var(--ease-out), color 240ms var(--ease-out);
+}
+
+.ct.on .ct-well,
+.more-tile.on .ct-well {
+  background: rgba(4, 35, 31, 0.14);
+  color: var(--on-accent);
+}
+
+.ct-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ct-label {
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ct-sub {
+  min-width: 0;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 240ms var(--ease-out);
+}
+
+.ct.on .ct-sub {
+  color: rgba(4, 35, 31, 0.72);
+}
+
+.ct-chev {
+  position: relative;
+  flex: none;
+  width: 30px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 160ms var(--ease-out);
+}
+
+.ct-chev::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 15px;
+  bottom: 15px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ct-chev:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ct.on .ct-chev {
+  color: var(--on-accent);
+}
+
+.ct.on .ct-chev::before {
+  background: rgba(4, 35, 31, 0.22);
+}
+
+.ct.on .ct-chev:hover {
+  background: rgba(4, 35, 31, 0.08);
+}
+
+/* iOS-style slider: a thick rounded bar that fills from the left. The real range input sits invisibly on top and
+   takes the drag; the bar swells a touch while held, like Control Center. */
+.big {
+  position: relative;
+  height: 40px;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  transition: transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out);
+}
+
+.big::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--pct);
+  background: #e8f4f2;
+  transition: width 90ms linear;
+}
+
+.big:active {
+  transform: scale(1.012, 1.08);
+}
+
+.big:has(.big-range:focus-visible) {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.big-range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.big-icon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  pointer-events: none;
+  transition: color 160ms var(--ease-out);
+}
+
+button.big-icon {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.big-icon.on-fill,
+.big-val.on-fill {
+  color: #0b252c;
+}
+
+.big-val {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+  pointer-events: none;
+  transition: color 160ms var(--ease-out);
+}
+
+/* Now playing */
+.media {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 12px;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.media-src {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.media-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.media-art {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a4a55, #0e2b33);
+  color: var(--muted);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.media-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.media-title {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.media-artist {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.media-ctl {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.media-btn,
+.media-play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.media-btn {
+  width: 32px;
+  height: 32px;
+  background: var(--well);
+  color: var(--text-2);
+}
+
+.media-play {
+  width: 38px;
+  height: 38px;
+  background: #e8f4f2;
+  color: #0b252c;
+}
+
+.media-btn .icon,
+.media-play .icon {
+  fill: currentColor;
+}
+
+.media-time {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.media-time span:last-child {
+  text-align: right;
+}
+
+.media-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.media-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--text-2);
+  transition: width 1s linear;
+}
+
+/* Second page */
+.more-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.more-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 50px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 220ms var(--ease-out);
+}
+
+.more-tile .ct-label {
+  flex: 1;
+}
+
+.more-tile:hover {
+  background: var(--surface-hover);
+}
+
+.more-tile.on {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.more-tile:disabled {
+  opacity: 0.45;
+  cursor: default;
 }

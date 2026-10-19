@@ -15,7 +15,7 @@ import StatsPanel from './StatsPanel'
 import TodayPanel from './TodayPanel'
 import { useFocusTimer } from './useFocusTimer'
 
-const TABS = ['Today', 'Quick', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
+const TABS = ['Controls', 'Today', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
 type Tab = (typeof TABS)[number]
 
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
@@ -393,7 +393,7 @@ export default function App(): React.JSX.Element {
   } else if (expanded && tab === 'System') {
     // StatsPanel exists only while visible, so its polling stops when the notch collapses or the tab changes.
     body = <StatsPanel />
-  } else if (expanded && tab === 'Quick') {
+  } else if (expanded && tab === 'Controls') {
     body = <QuickPanel battery={battery} />
   } else {
     body = <div className="body body-center">{tab}</div>
