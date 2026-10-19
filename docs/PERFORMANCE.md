@@ -1,24 +1,46 @@
-# Performance baseline
+# Performance
 
-Measured 2026-10-19 on Windows 11 25H2 (build 26200.9711), Electron 44.9.0, 12 logical cores, 23.7 GB RAM.
-Method: sum of all `electron.exe` processes (4: main, GPU, network, renderer) via `Get-Process`, sampled over 10 s
-with the mouse parked, after pointer-driven expand and click on the System tab. Working set double-counts pages
-shared between processes, so "private" is the fairer number.
+Measured on Windows 11 25H2 (build 26200.9711), Electron 44.9.0, 12 logical cores, 23.7 GB RAM.
+Method: sum of the 4 `electron.exe` processes (main, GPU, utility/network, renderer) from `Get-Process`, sampled over
+5-10 s with the pointer parked. "Private" is the fair number; working set double-counts pages shared between processes.
+Production build (`npm run build` then `electron-vite preview`).
 
-| State | Working set | Private | CPU (of total) |
-| --- | --- | --- | --- |
-| Production build, collapsed, idle | 319 MB | 181 MB | 0.00% |
-| Production build, expanded, System tab polling every 1.5 s | 335 MB | 198 MB | 0.98% |
-| Production build, collapsed again after closing | 338 MB | 204 MB | 0.01% |
-| Dev build, collapsed idle | 357 MB | 217 MB | 0.00% |
-| Dev build, expanded, System tab polling | 359 MB | 217 MB | 1.38% |
+## Budget check (Milestone 9)
 
-## Against the plan's budget
+| Budget (from the plan) | Result | Verdict |
+| --- | --- | --- |
+| Collapsed: under 150 MB RAM | 125 MB private fresh, 137 MB after use | **Pass** (after the GPU change below) |
+| Collapsed: under 1% CPU | 0.00% idle, 0.01% after use | Pass |
+| Expanded: stats every 1-2 s, only while open | 1.5 s poll, only on the System tab; 0.57% CPU | Pass |
+| Clipboard: slow poll, capped history | 1 s poll, 50 unpinned + 50 pinned, 10k chars each | Pass |
+| No background work while collapsed except the clock | Clock re-renders once a minute; clipboard poll (1 s) and an optional running focus timer (0.5 s render tick) are the only other work | Pass, with those two noted |
 
-- **CPU:** collapsed is under 1% (0.00%). Expanded polling is about 1% of total CPU. Within budget.
-- **RAM: over budget.** The plan guessed under 150 MB collapsed; the measured private total is 181 MB (319 MB working set).
-  A bare multi-process Electron app has a high floor, so the 150 MB figure was a guess and likely needs revising
-  rather than chasing. Re-check at Milestone 9.
-- Memory rose about 20 MB after the first expand and did not return to the starting level after collapsing
-  (204 MB private vs 181 MB). Worth watching for a leak in later milestones.
-- Polling runs only while the notch is expanded on the System tab; nothing polls while collapsed.
+## What changed
+
+Before this milestone the collapsed app used about 213 MB private (255 MB after the first uses), over the 150 MB guess.
+The GPU process was the cost: 105 MB fresh, 134 MB after use, for a 520x400 transparent overlay. Turning hardware
+acceleration off (`app.disableHardwareAcceleration()`) cut it to 16 MB with the same transparency and the same animation
+CPU (about 0.5 s of CPU per expand/collapse cycle either way: 5.28 s vs 4.97 s over 10 cycles).
+
+| State (production build) | GPU on (before) | GPU off (now) |
+| --- | --- | --- |
+| Collapsed idle, fresh start | 213 MB private, 327 MB working set | 125 MB private, 276 MB working set |
+| After 10 expand/collapse cycles | 255 MB | 142 MB |
+| After 30 cycles | 253 MB | not measured |
+
+Per process, GPU off, after use: main 66 MB, GPU 17 MB, utility 12 MB, renderer 42 MB private.
+
+## The "memory rose after first expand" worry
+
+Earlier baseline showed about +20 MB after the first expand and no return. Checked with 10 and 30 cycles: memory
+rises once on first use (renderer and GPU allocate for the expanded layout) and then stays flat (255 MB after 10 cycles,
+253 MB after 30). That is warm-up, not a leak.
+
+## Trade-offs and caveats
+
+- Software rendering is fine for the current UI. If a later feature needs heavy animation or video, set `GABAY_GPU=1`
+  to compare and reconsider.
+- The kill test (overlay above full-screen video and games) was run before this change. Window stacking does not depend
+  on the GPU, but re-run kill-test items 2 and 3 once to be sure.
+- Dev builds use more (about 217 MB private at Milestone 3); only production numbers are judged against the budget.
+- One machine, one run per figure. Treat differences under ~10 MB as noise.
