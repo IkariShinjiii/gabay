@@ -8,9 +8,13 @@ export interface OverlayApi {
   launchApp(id: string): Promise<boolean>
   /** Returns the new starred state. */
   toggleStar(id: string): Promise<boolean>
+  /** Lock, sleep, restart or shut down. Confirmation for the last two is the caller's job (see PowerPanel). */
+  runPower(action: PowerAction): Promise<boolean>
   /** Fires when the global hotkey is pressed. Returns an unsubscribe function. */
   onSummon(cb: () => void): () => void
 }
+
+export type PowerAction = 'lock' | 'sleep' | 'restart' | 'shutdown'
 
 export interface LauncherItem {
   id: string

@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('overlay', {
   searchApps: (query: string) => ipcRenderer.invoke('launcher:search', query),
   launchApp: (id: string) => ipcRenderer.invoke('launcher:launch', id),
   toggleStar: (id: string) => ipcRenderer.invoke('launcher:toggle-star', id),
+  runPower: (action: string) => ipcRenderer.invoke('power:run', action),
   // Subscribe to the global-hotkey summon. Returns an unsubscribe function.
   onSummon: (cb: () => void): (() => void) => {
     const handler = (): void => cb()

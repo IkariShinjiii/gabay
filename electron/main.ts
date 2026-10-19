@@ -2,6 +2,7 @@ import { app, BrowserWindow, globalShortcut, ipcMain, screen } from 'electron'
 import { join } from 'node:path'
 import { getStats } from './stats'
 import { ensureIndex, launch, search, toggleStar } from './launcher'
+import { isPowerAction, runPower } from './power'
 
 const WIN_WIDTH = 560
 const WIN_HEIGHT = 440
@@ -84,6 +85,10 @@ app.whenReady().then(() => {
   ipcMain.handle('launcher:toggle-star', (e, id: unknown) => {
     fromUi(e)
     return typeof id === 'string' ? toggleStar(id) : false
+  })
+  ipcMain.handle('power:run', (e, action: unknown) => {
+    fromUi(e)
+    return isPowerAction(action) ? runPower(action) : false
   })
   void ensureIndex() // warm the Start Menu index so the first search is instant
 

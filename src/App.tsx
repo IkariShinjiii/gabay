@@ -3,11 +3,12 @@ import { motion } from 'motion/react'
 import { COLLAPSE_DELAY_MS, NOTCH } from './constants'
 import type { LauncherItem } from './global'
 import Launcher from './Launcher'
+import PowerPanel from './PowerPanel'
 import StatsPanel from './StatsPanel'
 
 type Mode = 'click-through' | 'interactive'
 
-const TABS = ['Today', 'System', 'Clipboard', 'Launch'] as const
+const TABS = ['Today', 'System', 'Clipboard', 'Launch', 'Power'] as const
 type Tab = (typeof TABS)[number]
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
 
@@ -25,6 +26,7 @@ export default function App(): React.JSX.Element {
   // `evaluate` is the single place that decides open vs. start-the-collapse-timer.
   const pointerInside = useRef(false)
   const searchFocused = useRef(false)
+  const confirmingPower = useRef(false) // a restart/shutdown confirmation is on screen
   const isOpen = useRef(false)
   const timer = useRef<number | undefined>(undefined)
 
@@ -34,7 +36,7 @@ export default function App(): React.JSX.Element {
   }, [])
 
   const evaluate = useCallback((): void => {
-    if (pointerInside.current || searchFocused.current) {
+    if (pointerInside.current || searchFocused.current || confirmingPower.current) {
       window.clearTimeout(timer.current)
       timer.current = undefined
       if (!isOpen.current) {
@@ -48,7 +50,7 @@ export default function App(): React.JSX.Element {
     // Collapse (and go click-through again) only after the pointer has stayed out for the delay.
     timer.current = window.setTimeout(() => {
       timer.current = undefined
-      if (pointerInside.current || searchFocused.current) return
+      if (pointerInside.current || searchFocused.current || confirmingPower.current) return
       isOpen.current = false
       setExpanded(false)
       setQuery('')
@@ -102,6 +104,21 @@ export default function App(): React.JSX.Element {
     }
   }, [query, showResults])
 
+  const onConfirming = useCallback(
+    (confirming: boolean): void => {
+      confirmingPower.current = confirming
+      evaluate()
+    },
+    [evaluate]
+  )
+
+  // After a power action was sent, drop all holds and let the panel close.
+  const onPowerDone = useCallback((): void => {
+    confirmingPower.current = false
+    pointerInside.current = false
+    evaluate()
+  }, [evaluate])
+
   const launch = async (item: LauncherItem): Promise<void> => {
     await window.overlay.launchApp(item.id)
     setQuery('')
@@ -144,6 +161,8 @@ export default function App(): React.JSX.Element {
         onToggleStar={(it) => void toggleStar(it)}
       />
     )
+  } else if (expanded && tab === 'Power') {
+    body = <PowerPanel onConfirming={onConfirming} onDone={onPowerDone} />
   } else if (expanded && tab === 'System') {
     // StatsPanel exists only while visible, so its polling stops when the notch collapses or the tab changes.
     body = <StatsPanel />

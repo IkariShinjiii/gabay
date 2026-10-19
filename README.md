@@ -1,6 +1,6 @@
 # Gabay
 
-Personal Windows 11 top-edge shell: a center notch that expands into a panel. Currently Milestone 5 (search and launcher); the Milestone 1 overlay kill test passed (see below).
+Personal Windows 11 top-edge shell: a center notch that expands into a panel. Currently Milestone 6 (power tab); the Milestone 1 overlay kill test passed (see below).
 Windows 11 only. Electron + React + TypeScript + electron-vite.
 
 ## Setup
@@ -45,6 +45,15 @@ Settings > Personalization > Taskbar > Taskbar behaviors > **Automatically hide 
 - Star an app with the star button to pin it to the Launch tab; recent launches are remembered.
 - Recents and stars live in `launcher.json` in Electron's userData folder (`%APPDATA%\gabay`). The renderer only handles opaque ids; paths never leave the main process.
 - While the search field has focus the panel stays open even if the pointer is elsewhere.
+
+## Power tab
+
+Lock, Sleep, Restart, Shut down. Restart and Shut down ask for confirmation in the panel (Cancel is focused, Esc cancels,
+and the panel stays open while the prompt is up). The renderer sends only an action name; the main process maps it to a fixed
+command (`rundll32`, `shutdown /r|/s /t 0`, PowerShell `SetSuspendState`). Sleep uses `SetSuspendState(Suspend)` because the
+common `rundll32 powrprof.dll` form hibernates when hibernation is enabled.
+
+Dev-only: `GABAY_DRY_RUN=1 npm run dev` logs the command instead of running it (ignored in packaged builds).
 
 ## Where the window behavior lives
 
