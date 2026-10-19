@@ -305,75 +305,75 @@ export default function App(): React.JSX.Element {
     >
       {/* The clip layer keeps content inside the animated shape while .notch itself stays unclipped for its shoulders. */}
       <div className="notch-clip">
-      {/* Fixed-width panel so it never reflows mid-animation. */}
-      <motion.div
-        className="panel"
-        initial={false}
-        animate={{ opacity: expanded ? 1 : 0 }}
-        transition={{ duration: expanded ? 0.2 : 0.1, delay: expanded ? 0.12 : 0 }}
-        style={{ pointerEvents: expanded ? 'auto' : 'none' }}
-      >
-        <div className="tabs">
-          {TABS.map((t) => (
-            <button key={t} className={t === tab ? 'tab on' : 'tab'} title={t} aria-label={t} onClick={() => setTab(t)}>
-              <Icon name={TAB_ICONS[t]} size={15} />
-              {t === tab && t}
-            </button>
-          ))}
-        </div>
-        <input
-          ref={searchRef}
-          className="field"
-          placeholder={tab === 'Clipboard' ? 'Search clipboard…' : 'Search apps…'}
-          spellCheck={false}
-          autoComplete="off"
-          value={query}
-          tabIndex={expanded ? 0 : -1}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={onSearchKey}
-          onFocus={() => {
-            hold('search', true)
-            evaluate()
-          }}
-          onBlur={() => {
-            hold('search', false)
-            evaluate()
-          }}
-        />
-        {body}
-        <div className="cmd">
+        {/* Fixed-width panel so it never reflows mid-animation. */}
+        <motion.div
+          className="panel"
+          initial={false}
+          animate={{ opacity: expanded ? 1 : 0 }}
+          transition={{ duration: expanded ? 0.2 : 0.1, delay: expanded ? 0.12 : 0 }}
+          style={{ pointerEvents: expanded ? 'auto' : 'none' }}
+        >
+          <div className="tabs">
+            {TABS.map((t) => (
+              <button key={t} className={t === tab ? 'tab on' : 'tab'} title={t} aria-label={t} onClick={() => setTab(t)}>
+                <Icon name={TAB_ICONS[t]} size={15} />
+                {t === tab && t}
+              </button>
+            ))}
+          </div>
           <input
-            ref={cmdRef}
+            ref={searchRef}
             className="field"
-            placeholder="Type a command…  (lock, focus 25, todo …, open …)"
+            placeholder={tab === 'Clipboard' ? 'Search clipboard…' : 'Search apps…'}
             spellCheck={false}
             autoComplete="off"
-            value={cmd}
+            value={query}
             tabIndex={expanded ? 0 : -1}
-            onChange={(e) => setCmd(e.target.value)}
-            onKeyDown={onCommandKey}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={onSearchKey}
             onFocus={() => {
-              hold('command', true)
+              hold('search', true)
               evaluate()
             }}
             onBlur={() => {
-              hold('command', false)
+              hold('search', false)
               evaluate()
             }}
           />
-          {cmd.trim() && <span className={parsed ? 'hint' : 'hint bad'}>{parsed ? parsed.hint : 'Unknown command'}</span>}
-        </div>
-      </motion.div>
+          {body}
+          <div className="cmd">
+            <input
+              ref={cmdRef}
+              className="field"
+              placeholder="Type a command…  (lock, focus 25, todo …, open …)"
+              spellCheck={false}
+              autoComplete="off"
+              value={cmd}
+              tabIndex={expanded ? 0 : -1}
+              onChange={(e) => setCmd(e.target.value)}
+              onKeyDown={onCommandKey}
+              onFocus={() => {
+                hold('command', true)
+                evaluate()
+              }}
+              onBlur={() => {
+                hold('command', false)
+                evaluate()
+              }}
+            />
+            {cmd.trim() && <span className={parsed ? 'hint' : 'hint bad'}>{parsed ? parsed.hint : 'Unknown command'}</span>}
+          </div>
+        </motion.div>
 
-      {/* Collapsed pill content: clock, or the focus-timer ring while one exists. */}
-      <motion.div
-        className="status"
-        initial={false}
-        animate={{ opacity: expanded ? 0 : 1 }}
-        transition={{ duration: 0.12 }}
-      >
-        <NotchStatus clock={clock} timer={focusTimer} />
-      </motion.div>
+        {/* Collapsed pill content: clock, or the focus-timer ring while one exists. */}
+        <motion.div
+          className="status"
+          initial={false}
+          animate={{ opacity: expanded ? 0 : 1 }}
+          transition={{ duration: 0.12 }}
+        >
+          <NotchStatus clock={clock} timer={focusTimer} />
+        </motion.div>
       </div>
     </motion.div>
   )
