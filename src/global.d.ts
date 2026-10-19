@@ -23,8 +23,25 @@ export interface OverlayApi {
   togglePin(id: string): Promise<boolean>
   /** Lock, sleep, restart or shut down. Confirmation for the last two is the caller's job (see PowerPanel). */
   runPower(action: PowerAction): Promise<boolean>
+  getSettings(): Promise<SettingsSnapshot>
+  /** Partial patch; main validates it and returns the settings now in effect. */
+  setSettings(patch: Partial<Settings>): Promise<SettingsSnapshot>
   /** Fires when the global hotkey is pressed. Returns an unsubscribe function. */
   onSummon(cb: () => void): () => void
+}
+
+export interface Settings {
+  hotkey: string
+  collapseMs: number
+  displayId: number | null
+}
+
+export interface SettingsSnapshot {
+  settings: Settings
+  /** The hotkey actually registered, which differs from settings.hotkey when another app owns it. */
+  activeHotkey: string | null
+  hotkeys: string[]
+  displays: { id: number; label: string }[]
 }
 
 export interface Todo {

@@ -1,6 +1,7 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, screen, Tray } from 'electron'
 import { join } from 'node:path'
 import { getStats } from './stats'
+import { HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
 import { ensureIndex, launch, search, toggleStar } from './launcher'
 import { isPowerAction, runPower } from './power'
 import { addTodo, listTodos, removeTodo, toggleTodo } from './todos'
@@ -18,16 +19,25 @@ if (!gotLock) app.quit()
 const WIN_WIDTH = 560
 const WIN_HEIGHT = 440
 
-function createOverlay(): BrowserWindow {
-  // `bounds` (not `workArea`) so y = 0 is the true top edge of the screen,
-  // regardless of where the taskbar sits.
-  const { x, y, width } = screen.getPrimaryDisplay().bounds
+/** The chosen display, or the primary one if it is unset or no longer attached. */
+function pickDisplay(id: number | null): Electron.Display {
+  return screen.getAllDisplays().find((d) => d.id === id) ?? screen.getPrimaryDisplay()
+}
+
+/** Top-center of a display. `bounds` (not `workArea`) so y = 0 is the true top edge, wherever the taskbar sits. */
+function notchBounds(display: Electron.Display): Electron.Rectangle {
+  const { x, y, width } = display.bounds
+  return { x: Math.round(x + (width - WIN_WIDTH) / 2), y, width: WIN_WIDTH, height: WIN_HEIGHT }
+}
+
+function createOverlay(display: Electron.Display): BrowserWindow {
+  const { x, y } = notchBounds(display)
 
   const win = new BrowserWindow({
     width: WIN_WIDTH,
     height: WIN_HEIGHT,
-    x: Math.round(x + (width - WIN_WIDTH) / 2), // horizontally centered
-    y,                                          // top edge of the primary display
+    x,                           // horizontally centered on the chosen display
+    y,                           // top edge of that display
     frame: false,                // no title bar / borders
     transparent: true,           // per-pixel alpha; needs frame:false
     backgroundColor: '#00000000',// fully transparent background
@@ -67,9 +77,10 @@ function createOverlay(): BrowserWindow {
 
 let tray: Tray | null = null // module-level so it isn't garbage-collected (the icon would vanish)
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   if (!gotLock) return
-  const win = createOverlay()
+  let settings = await loadSettings()
+  const win = createOverlay(pickDisplay(settings.displayId))
 
   // Renderer reports whether the pointer is over the notch.
   // true  -> window captures the mouse (interactive)
@@ -140,18 +151,49 @@ app.whenReady().then(() => {
   void ensureIndex() // warm the Start Menu index so the first search is instant
 
   // Global hotkey summons the panel with the search field focused. Never a Win-key combo (Windows reserves
-  // those). Ctrl+Alt+Space is already taken by the Claude desktop app on this machine, so try candidates in
-  // order and use the first one that is free. register() returns false if another app owns the combo.
-  const HOTKEYS = ['Control+Alt+G', 'Control+Shift+G', 'Control+Alt+Space']
+  // those). Ctrl+Alt+Space is already taken by the Claude desktop app on this machine, so the saved choice is
+  // tried first, then the other candidates. register() returns false if another app owns the combo.
   const summon = (): void => {
     // The window is click-through by default and unfocused; make it take input before the renderer opens.
     win.setIgnoreMouseEvents(false)
     win.focus()
     win.webContents.send('overlay:summon')
   }
-  const hotkey = HOTKEYS.find((k) => globalShortcut.register(k, summon))
-  if (hotkey) console.log(`[gabay] global hotkey: ${hotkey}`)
-  else console.warn(`[gabay] no global hotkey available (tried ${HOTKEYS.join(', ')})`)
+  let activeHotkey: string | null = null
+  const applyHotkey = (want: string): void => {
+    if (activeHotkey) globalShortcut.unregister(activeHotkey)
+    activeHotkey = [want, ...HOTKEYS.filter((k) => k !== want)].find((k) => globalShortcut.register(k, summon)) ?? null
+    if (activeHotkey) console.log(`[gabay] global hotkey: ${activeHotkey}`)
+    else console.warn(`[gabay] no global hotkey available (tried ${HOTKEYS.join(', ')})`)
+  }
+  applyHotkey(settings.hotkey)
+
+  // Settings. The renderer sends a partial patch; main validates every field (settings.ts) before using it.
+  const snapshot = (): unknown => {
+    const primary = screen.getPrimaryDisplay().id
+    return {
+      settings,
+      activeHotkey,
+      hotkeys: HOTKEYS,
+      displays: screen.getAllDisplays().map((d, i) => ({
+        id: d.id,
+        label: `Display ${i + 1} (${d.bounds.width}x${d.bounds.height})${d.id === primary ? ', primary' : ''}`
+      }))
+    }
+  }
+  ipcMain.handle('settings:get', (e) => {
+    fromUi(e)
+    return snapshot()
+  })
+  ipcMain.handle('settings:set', async (e, patch: unknown) => {
+    fromUi(e)
+    const next: Settings = sanitize(patch, settings)
+    if (next.hotkey !== settings.hotkey) applyHotkey(next.hotkey)
+    if (next.displayId !== settings.displayId) win.setBounds(notchBounds(pickDisplay(next.displayId)))
+    settings = next
+    await saveSettings(settings)
+    return snapshot()
+  })
 
   // A second launch summons the existing instance instead of starting another.
   app.on('second-instance', summon)

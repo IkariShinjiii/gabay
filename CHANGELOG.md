@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.0 Settings
+
+Settings tab: global hotkey (from a fixed list, with a notice when another app owns it), collapse delay, and which display the notch sits on. Saved to settings.json in the app data folder and validated in the main process.
+
 ## 0.12.0 Tray and basics
 
 Tray icon (Show, Launch at login, Quit), placeholder app icon, single-instance lock. Launch at login is enabled only in the packaged app.

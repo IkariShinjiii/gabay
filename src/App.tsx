@@ -6,12 +6,13 @@ import ClipboardPanel from './ClipboardPanel'
 import { parseCommand, type CommandActions } from './commands'
 import Launcher from './Launcher'
 import PowerPanel from './PowerPanel'
+import SettingsPanel from './SettingsPanel'
 import NotchStatus from './NotchStatus'
 import StatsPanel from './StatsPanel'
 import TodayPanel from './TodayPanel'
 import { useFocusTimer } from './useFocusTimer'
 
-const TABS = ['Today', 'System', 'Clipboard', 'Launch', 'Power'] as const
+const TABS = ['Today', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
 type Tab = (typeof TABS)[number]
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
 
@@ -30,6 +31,7 @@ export default function App(): React.JSX.Element {
   const pointerInside = useRef(false)
   const holds = useRef(new Set<string>())
   const isOpen = useRef(false)
+  const collapseMs = useRef(COLLAPSE_DELAY_MS) // replaced by the saved setting once it loads
   const timer = useRef<number | undefined>(undefined)
 
   const hold = useCallback((name: string, on: boolean): void => {
@@ -62,8 +64,12 @@ export default function App(): React.JSX.Element {
       setQuery('')
       setCmd('')
       setInteractive(false)
-    }, COLLAPSE_DELAY_MS)
+    }, collapseMs.current)
   }, [setInteractive])
+
+  useEffect(() => {
+    void window.overlay.getSettings().then((r) => (collapseMs.current = r.settings.collapseMs))
+  }, [])
 
   useEffect(() => {
     // The hit area is the notch's CURRENT rect, so it follows the spring as the notch grows/shrinks.
@@ -263,6 +269,8 @@ export default function App(): React.JSX.Element {
         onDone={onPowerDone}
       />
     )
+  } else if (expanded && tab === 'Settings') {
+    body = <SettingsPanel onCollapseMs={(ms) => (collapseMs.current = ms)} />
   } else if (expanded && tab === 'System') {
     // StatsPanel exists only while visible, so its polling stops when the notch collapses or the tab changes.
     body = <StatsPanel />

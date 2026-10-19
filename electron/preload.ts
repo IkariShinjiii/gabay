@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('overlay', {
   clearClips: () => ipcRenderer.invoke('clipboard:clear'),
   copyClip: (id: string) => ipcRenderer.invoke('clipboard:copy', id),
   togglePin: (id: string) => ipcRenderer.invoke('clipboard:toggle-pin', id),
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setSettings: (patch: unknown) => ipcRenderer.invoke('settings:set', patch),
   runPower: (action: string) => ipcRenderer.invoke('power:run', action),
   // Subscribe to the global-hotkey summon. Returns an unsubscribe function.
   onSummon: (cb: () => void): (() => void) => {
