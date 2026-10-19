@@ -1,7 +1,7 @@
 {
-  "name": "desktop-companion",
-  "version": "0.1.0",
-  "description": "Desktop Companion - Milestone 1: overlay kill test",
+  "name": "gabay",
+  "version": "0.2.0",
+  "description": "Gabay - personal Windows top-edge shell",
   "private": true,
   "main": "./out/main/index.js",
   "scripts": {

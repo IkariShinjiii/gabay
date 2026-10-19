@@ -1,6 +1,6 @@
-# Desktop Companion (working name)
+# Gabay
 
-Milestone 1: a fixed, transparent, always-on-top overlay window with a click-through notch placeholder.
+Personal Windows 11 top-edge shell: a center notch that expands into a panel. Currently Milestone 2 (notch states); the Milestone 1 overlay kill test passed (see below).
 Windows 11 only. Electron + React + TypeScript + electron-vite.
 
 ## Setup

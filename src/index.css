@@ -9,19 +9,80 @@ body,
   overflow: hidden;
 }
 
+#root {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* Sized by Motion (width/height/radii). Pinned to the top edge, centered by the flex parent. */
 .notch {
+  position: relative;
+  flex: none;
+  background: #000;
+  overflow: hidden;
+  color: #eee;
+  font: 13px/1.2 'Segoe UI', system-ui, sans-serif;
+  user-select: none;
+}
+
+.panel {
   position: absolute;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 200px;
-  height: 38px;
-  border-radius: 19px;
-  background: #000;
+  left: 0;
+  width: 520px;
+  height: 400px;
+  box-sizing: border-box;
+  padding: 52px 20px 20px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.tab {
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: #1c1c20;
+  color: #9b9ba3;
+}
+
+.tab.on {
+  background: #d9622b;
+  color: #fff;
+}
+
+.field {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #1c1c20;
+  color: #77777f;
+}
+
+.body {
+  flex: 1;
+  border-radius: 10px;
+  background: #101012;
+}
+
+/* Debug label: centered in the collapsed pill, tucked into the corner when open. Remove later. */
+.debug {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  width: 200px;
+  text-align: center;
   color: #8f8;
   font: 11px/1 ui-monospace, Consolas, monospace;
-  user-select: none;
+}
+
+.debug-open {
+  left: auto;
+  right: 14px;
+  width: auto;
+  top: 14px;
 }
