@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.0 Quick tab and status
+
+The taskbar's tray features in the notch: the collapsed pill shows network, clock and battery; a new Quick tab has Wi-Fi, Bluetooth and Airplane mode toggles, shortcuts to Windows Settings pages, brightness and volume sliders, mute, battery and keyboard layout. One hidden helper process runs only while the Quick tab is used. Motion polish: sliding tab marker, tab crossfade, spring press on tiles, sliding quick-settings pages, iOS-style page dots and custom sliders. Dev-only hidden preview mode for screenshots.
+
 ## 0.19.0 Auto-hide
 
 The notch no longer sits on top of browser tabs and buttons: new Notch visibility setting, Auto-hide by default (revealed by resting the pointer on the top edge for a moment, hidden again shortly after it leaves) or Always shown.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { COLLAPSE_DELAY_MS, HIDE_DELAY_MS, NOTCH, REVEAL_DWELL_MS } from './constants'
 import type { LauncherItem, PowerAction } from './global'
 import ClipboardPanel from './ClipboardPanel'
@@ -8,12 +8,14 @@ import Launcher from './Launcher'
 import Icon from './Icon'
 import PowerPanel from './PowerPanel'
 import SettingsPanel from './SettingsPanel'
-import NotchStatus from './NotchStatus'
+import NotchStatus, { type NetKind } from './NotchStatus'
+import QuickPanel from './QuickPanel'
+import { useBattery } from './useBattery'
 import StatsPanel from './StatsPanel'
 import TodayPanel from './TodayPanel'
 import { useFocusTimer } from './useFocusTimer'
 
-const TABS = ['Today', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
+const TABS = ['Today', 'Quick', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
 type Tab = (typeof TABS)[number]
 
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
@@ -21,8 +23,11 @@ const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
 export default function App(): React.JSX.Element {
   const notchRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const [expanded, setExpanded] = useState(false)
-  const [tab, setTab] = useState<Tab>('Today')
+  // Dev preview (see electron/main.ts): open straight onto the named tab, with no pointer involved.
+  const previewParam = new URLSearchParams(location.hash.slice(1)).get('preview')
+  const previewTab = TABS.find((t) => t === previewParam)
+  const [expanded, setExpanded] = useState(previewTab !== undefined)
+  const [tab, setTab] = useState<Tab>(previewTab ?? 'Today')
   // One bar for everything: text that parses as a command is a command, anything else searches apps (or the clipboard).
   const [input, setInput] = useState('')
   const [barFocused, setBarFocused] = useState(false)
@@ -34,7 +39,7 @@ export default function App(): React.JSX.Element {
   // `evaluate` is the single place that decides open vs. start-the-collapse-timer.
   const pointerInside = useRef(false)
   const holds = useRef(new Set<string>())
-  const isOpen = useRef(false)
+  const isOpen = useRef(previewTab !== undefined)
   const collapseMs = useRef(COLLAPSE_DELAY_MS) // replaced by the saved setting once it loads
   const timer = useRef<number | undefined>(undefined)
 
@@ -80,8 +85,10 @@ export default function App(): React.JSX.Element {
 
   const applySettings = useCallback((s: { collapseMs: number; visibility: 'always' | 'auto' }): void => {
     collapseMs.current = s.collapseMs
-    visibilityRef.current = s.visibility
-    setVisibility(s.visibility)
+    // A preview of the collapsed pill must show it, whatever the saved visibility is.
+    const v = previewParam ? 'always' : s.visibility
+    visibilityRef.current = v
+    setVisibility(v)
   }, [])
 
   useEffect(() => {
@@ -194,6 +201,26 @@ export default function App(): React.JSX.Element {
   }, [])
 
   const focusTimer = useFocusTimer()
+  const battery = useBattery()
+
+  // Network type for the pill: read on start, when Windows reports going on/offline, and whenever the notch opens or
+  // is revealed. No timer: the collapsed notch does no work of its own.
+  const [net, setNet] = useState<NetKind>('wifi')
+  const refreshNet = useCallback((): void => {
+    void window.overlay.networkKind().then(setNet, () => undefined)
+  }, [])
+  useEffect(() => {
+    refreshNet()
+    window.addEventListener('online', refreshNet)
+    window.addEventListener('offline', refreshNet)
+    return () => {
+      window.removeEventListener('online', refreshNet)
+      window.removeEventListener('offline', refreshNet)
+    }
+  }, [refreshNet])
+  useEffect(() => {
+    if (expanded || revealed) refreshNet()
+  }, [expanded, revealed, refreshNet])
   const [todoVersion, setTodoVersion] = useState(0)
 
   // --- commands: same actions as the buttons ---
@@ -296,7 +323,7 @@ export default function App(): React.JSX.Element {
     setInput('')
   }, [])
 
-  // Ctrl+1..6 switch tabs while the panel is open.
+  // Ctrl+1..7 switch tabs while the panel is open.
   useEffect(() => {
     if (!expanded) return
     const onKey = (e: KeyboardEvent): void => {
@@ -343,6 +370,8 @@ export default function App(): React.JSX.Element {
   } else if (expanded && tab === 'System') {
     // StatsPanel exists only while visible, so its polling stops when the notch collapses or the tab changes.
     body = <StatsPanel />
+  } else if (expanded && tab === 'Quick') {
+    body = <QuickPanel battery={battery} />
   } else {
     body = <div className="body body-center">{tab}</div>
   }
@@ -385,10 +414,23 @@ export default function App(): React.JSX.Element {
                 onClick={() => selectTab(t)}
               >
                 {t}
+                {/* One marker shared by all tabs: Motion slides it from the old tab to the new one. */}
+                {t === tab && <motion.span layoutId="tab-marker" className="tab-marker" transition={SPRING} />}
               </button>
             ))}
           </div>
-          {body}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={showResults ? 'results' : tab}
+              className="body-wrap"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {body}
+            </motion.div>
+          </AnimatePresence>
           <label className={parsed ? 'bar is-command' : 'bar'}>
             <Icon name={parsed ? 'command' : 'search'} size={16} />
             <input
@@ -427,7 +469,7 @@ export default function App(): React.JSX.Element {
           animate={{ opacity: expanded ? 0 : 1 }}
           transition={{ duration: 0.12 }}
         >
-          <NotchStatus clock={clock} timer={focusTimer} />
+          <NotchStatus clock={clock} timer={focusTimer} battery={battery} net={net} />
         </motion.div>
       </div>
     </motion.div>

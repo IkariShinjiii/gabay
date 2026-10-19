@@ -81,6 +81,22 @@ search field to filter, click a row to copy it back, star to pin, "Clear history
   tab's confirmation. Buttons and commands call the same actions.
 - Focused inputs (search, command, to-do) keep the panel open.
 
+## Quick tab and status
+
+The taskbar's system-tray features, built into the notch.
+
+- **Collapsed pill:** network (Wi-Fi, Ethernet or offline) on the left, the clock or focus-timer ring in the middle, battery on
+  the right (red at 20% or less when not charging). Battery comes from Chromium's event-based battery API and the network type
+  from the network adapters, so the collapsed notch still runs no timers or processes.
+- **Quick tab** (Ctrl+2), laid out like Windows quick settings: Wi-Fi, Bluetooth and Airplane mode toggle directly (right-click
+  a tile for its Settings page); Energy saver, Accessibility, Project, Live captions, Night light, Mobile hotspot, Nearby
+  sharing, Cast and Notifications open their Windows Settings page, because Windows gives apps no supported switch for them.
+  Brightness (built-in displays only) and volume sliders, mute, battery, and the keyboard layout of the focused window.
+- Volume, brightness, radios and layout go through one hidden PowerShell helper that starts when the Quick tab opens and exits
+  30 seconds after it was last used. Commands are fixed strings built from validated values; the renderer never sends text.
+- **Not possible from an app:** reading Windows notifications and showing other apps' tray icons (the overflow arrow). Keep the
+  Windows taskbar on auto-hide and reach those at the bottom edge as before.
+
 ## Tray, Settings and startup
 
 - **Tray icon:** click to show the panel; right-click for Show, Launch at login and Quit. Launch at login works only in
@@ -110,6 +126,16 @@ Results (2026-10-19, Windows 11 25H2 build 26200.9711, Electron 44.9.0): all six
 6. [x] Windows taskbar auto-hide still reveals on bottom-edge hover.
 
 Items 2 and 3 were tested before hardware acceleration was turned off (0.9.0); re-run them on a current build.
+
+## UI preview without touching the desktop (dev only)
+
+```powershell
+$env:GABAY_PREVIEW='Quick'; $env:GABAY_PREVIEW_OUT="$PWD\quick.png"; npx electron .
+```
+
+Renders the panel on that tab (or `Pill` for the collapsed notch) in a hidden window, saves a screenshot and quits. It shows no
+window, registers no hotkey or tray icon, never reads the clipboard and uses a throwaway data folder, so it is safe to run
+while Gabay is in use. Ignored in packaged builds.
 
 ## Build an installer
 

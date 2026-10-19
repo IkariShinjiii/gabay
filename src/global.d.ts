@@ -3,6 +3,12 @@ export interface OverlayApi {
   setInteractive(interactive: boolean): void
   /** CPU/RAM snapshot. Only call while the System tab is visible. */
   getStats(): Promise<SystemStats>
+  /** Volume, brightness, radios, keyboard layout and Wi-Fi name; helper process runs only while this is being polled. */
+  quickGet(): Promise<QuickState>
+  quickSet(action: QuickAction): Promise<QuickState>
+  /** Opens a fixed Windows Settings page by key. */
+  quickOpen(key: SettingsKey): Promise<boolean>
+  networkKind(): Promise<'wifi' | 'ethernet' | 'offline'>
   /** Fuzzy-search Start Menu apps. Empty query returns starred, then recent. */
   searchApps(query: string): Promise<LauncherItem[]>
   /** Small PNG data URL for an app's icon, or null. Resolved in main; the renderer never sees a path. */
@@ -67,6 +73,37 @@ export interface LauncherItem {
   name: string
   starred: boolean
 }
+
+export interface QuickState {
+  volume: number | null
+  muted: boolean
+  brightness: number | null
+  layout: string
+  radios: { wifi?: boolean; bluetooth?: boolean }
+  wifi: { ssid: string | null; signal: number | null }
+}
+
+export type QuickAction =
+  | { kind: 'volume'; value: number }
+  | { kind: 'mute' }
+  | { kind: 'brightness'; value: number }
+  | { kind: 'radio'; radio: 'wifi' | 'bluetooth'; on: boolean }
+  | { kind: 'airplane' }
+
+export type SettingsKey =
+  | 'energy'
+  | 'nightlight'
+  | 'accessibility'
+  | 'project'
+  | 'captions'
+  | 'hotspot'
+  | 'nearby'
+  | 'cast'
+  | 'sound'
+  | 'notifications'
+  | 'network'
+  | 'bluetooth'
+  | 'settings'
 
 export interface SystemStats {
   cpuPercent: number

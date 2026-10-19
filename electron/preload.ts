@@ -5,6 +5,10 @@ contextBridge.exposeInMainWorld('overlay', {
   setInteractive: (interactive: boolean): void => {
     ipcRenderer.send('overlay:set-interactive', interactive)
   },
+  quickGet: () => ipcRenderer.invoke('quick:get'),
+  quickSet: (action: unknown) => ipcRenderer.invoke('quick:set', action),
+  quickOpen: (key: string) => ipcRenderer.invoke('quick:open', key),
+  networkKind: () => ipcRenderer.invoke('network:kind'),
   getStats: () => ipcRenderer.invoke('stats:get'),
   searchApps: (query: string) => ipcRenderer.invoke('launcher:search', query),
   appIcon: (id: string) => ipcRenderer.invoke('launcher:icon', id),
