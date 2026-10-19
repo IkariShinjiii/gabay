@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, screen } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, screen, Tray } from 'electron'
 import { join } from 'node:path'
 import { getStats } from './stats'
 import { ensureIndex, launch, search, toggleStar } from './launcher'
@@ -10,6 +10,10 @@ import { clearHistory, copyBack, listClipboard, startClipboardHistory, stopClipb
 // overlay, with no measurable CPU difference for our animations (see docs/PERFORMANCE.md). Set GABAY_GPU=1 to
 // turn hardware acceleration back on, e.g. to compare. Must run before the app is ready.
 if (process.env['GABAY_GPU'] !== '1') app.disableHardwareAcceleration()
+
+// One notch at a time. A second launch (login item plus a manual start, say) hands over to the first and exits.
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) app.quit()
 
 const WIN_WIDTH = 560
 const WIN_HEIGHT = 440
@@ -61,7 +65,10 @@ function createOverlay(): BrowserWindow {
   return win
 }
 
+let tray: Tray | null = null // module-level so it isn't garbage-collected (the icon would vanish)
+
 app.whenReady().then(() => {
+  if (!gotLock) return
   const win = createOverlay()
 
   // Renderer reports whether the pointer is over the notch.
@@ -146,6 +153,32 @@ app.whenReady().then(() => {
   if (hotkey) console.log(`[gabay] global hotkey: ${hotkey}`)
   else console.warn(`[gabay] no global hotkey available (tried ${HOTKEYS.join(', ')})`)
 
+  // A second launch summons the existing instance instead of starting another.
+  app.on('second-instance', summon)
+
+  // Tray: the way to quit without killing the process. Launch at login is offered only when packaged,
+  // because in dev it would register the bare electron.exe as the login item.
+  tray = new Tray(nativeImage.createFromPath(join(app.getAppPath(), 'resources', 'tray.png')))
+  tray.setToolTip('Gabay')
+  tray.on('click', summon)
+  const buildMenu = (): Menu =>
+    Menu.buildFromTemplate([
+      { label: 'Show Gabay', click: summon },
+      {
+        label: 'Launch at login',
+        type: 'checkbox',
+        enabled: app.isPackaged,
+        checked: app.getLoginItemSettings().openAtLogin,
+        click: (item) => {
+          app.setLoginItemSettings({ openAtLogin: item.checked })
+          tray?.setContextMenu(buildMenu())
+        }
+      },
+      { type: 'separator' },
+      { label: 'Quit', click: () => app.quit() }
+    ])
+  tray.setContextMenu(buildMenu())
+
   // System stats on demand. The renderer only polls while the panel is open on the System tab,
   // so nothing runs in the background while the notch is collapsed.
   ipcMain.handle('stats:get', (event) => {
@@ -154,7 +187,6 @@ app.whenReady().then(() => {
   })
 })
 
-// Overlay has no tray yet, so quitting with the last window is the only way out besides Ctrl+C.
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
   stopClipboardHistory()
