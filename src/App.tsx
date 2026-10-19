@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { COLLAPSE_DELAY_MS, NOTCH } from './constants'
+import { COLLAPSE_DELAY_MS, HIDE_DELAY_MS, NOTCH, REVEAL_DWELL_MS } from './constants'
 import type { LauncherItem, PowerAction } from './global'
 import ClipboardPanel from './ClipboardPanel'
 import { parseCommand, type CommandActions } from './commands'
@@ -38,6 +38,14 @@ export default function App(): React.JSX.Element {
   const collapseMs = useRef(COLLAPSE_DELAY_MS) // replaced by the saved setting once it loads
   const timer = useRef<number | undefined>(undefined)
 
+  // Auto-hide: off-screen until the pointer rests on the top edge. `visibility` mirrors the saved setting.
+  const [visibility, setVisibility] = useState<'always' | 'auto'>('auto')
+  const [revealed, setRevealed] = useState(false)
+  const visibilityRef = useRef<'always' | 'auto'>('auto')
+  const revealedRef = useRef(false)
+  const edgeTimer = useRef<number | undefined>(undefined)
+  const hideTimer = useRef<number | undefined>(undefined)
+
   const hold = useCallback((name: string, on: boolean): void => {
     if (on) holds.current.add(name)
     else holds.current.delete(name)
@@ -70,8 +78,25 @@ export default function App(): React.JSX.Element {
     }, collapseMs.current)
   }, [setInteractive])
 
+  const applySettings = useCallback((s: { collapseMs: number; visibility: 'always' | 'auto' }): void => {
+    collapseMs.current = s.collapseMs
+    visibilityRef.current = s.visibility
+    setVisibility(s.visibility)
+  }, [])
+
   useEffect(() => {
-    void window.overlay.getSettings().then((r) => (collapseMs.current = r.settings.collapseMs))
+    void window.overlay.getSettings().then((r) => applySettings(r.settings))
+  }, [applySettings])
+
+  // Slide the notch away again once the pointer is gone, nothing holds the panel open and it isn't expanded.
+  const scheduleHide = useCallback((): void => {
+    window.clearTimeout(hideTimer.current)
+    hideTimer.current = window.setTimeout(() => {
+      hideTimer.current = undefined
+      if (pointerInside.current || isOpen.current || holds.current.size > 0) return
+      revealedRef.current = false
+      setRevealed(false)
+    }, HIDE_DELAY_MS)
   }, [])
 
   useEffect(() => {
@@ -83,11 +108,36 @@ export default function App(): React.JSX.Element {
       pointerInside.current =
         e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom
       evaluate()
+
+      if (visibilityRef.current !== 'auto') return
+      if (!revealedRef.current) {
+        // Reveal only on a rest at the very top edge within the notch's width, never on a pass through to a tab.
+        const atEdge = e.clientY <= 2 && Math.abs(e.clientX - window.innerWidth / 2) <= NOTCH.collapsed.width / 2 + 24
+        if (!atEdge) {
+          window.clearTimeout(edgeTimer.current)
+          edgeTimer.current = undefined
+        } else if (edgeTimer.current === undefined) {
+          edgeTimer.current = window.setTimeout(() => {
+            edgeTimer.current = undefined
+            revealedRef.current = true
+            setRevealed(true)
+            scheduleHide()
+          }, REVEAL_DWELL_MS)
+        }
+      } else if (pointerInside.current || isOpen.current) {
+        window.clearTimeout(hideTimer.current)
+        hideTimer.current = undefined
+      } else if (hideTimer.current === undefined) {
+        scheduleHide()
+      }
     }
     // Pointer left the whole window while interactive: no mousemove will follow, so treat as outside.
     const onLeave = (): void => {
       pointerInside.current = false
+      window.clearTimeout(edgeTimer.current)
+      edgeTimer.current = undefined
       evaluate()
+      if (revealedRef.current) scheduleHide()
     }
     // Global hotkey: open and put the caret in the search field, even with the pointer elsewhere.
     const offSummon = window.overlay.onSummon(() => {
@@ -99,11 +149,13 @@ export default function App(): React.JSX.Element {
     document.documentElement.addEventListener('mouseleave', onLeave)
     return () => {
       window.clearTimeout(timer.current)
+      window.clearTimeout(edgeTimer.current)
+      window.clearTimeout(hideTimer.current)
       offSummon()
       document.removeEventListener('mousemove', onMove)
       document.documentElement.removeEventListener('mouseleave', onLeave)
     }
-  }, [evaluate])
+  }, [evaluate, scheduleHide])
 
   const onConfirming = useCallback(
     (confirming: boolean): void => {
@@ -287,7 +339,7 @@ export default function App(): React.JSX.Element {
       />
     )
   } else if (expanded && tab === 'Settings') {
-    body = <SettingsPanel onCollapseMs={(ms) => (collapseMs.current = ms)} />
+    body = <SettingsPanel onSettings={applySettings} />
   } else if (expanded && tab === 'System') {
     // StatsPanel exists only while visible, so its polling stops when the notch collapses or the tab changes.
     body = <StatsPanel />
@@ -303,6 +355,8 @@ export default function App(): React.JSX.Element {
       animate={{
         width: size.width,
         height: size.height,
+        // Auto-hide parks the collapsed notch just above the screen; it slides in when revealed or expanded.
+        y: expanded || revealed || visibility === 'always' ? 0 : -(NOTCH.collapsed.height + 4),
         // Always flush with the top edge (the concave shoulders are drawn in CSS); only the bottom corners animate.
         borderBottomLeftRadius: expanded ? 28 : NOTCH.collapsedBottomRadius,
         borderBottomRightRadius: expanded ? 28 : NOTCH.collapsedBottomRadius

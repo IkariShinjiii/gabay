@@ -85,6 +85,9 @@ search field to filter, click a row to copy it back, star to pin, "Clear history
 
 - **Tray icon:** click to show the panel; right-click for Show, Launch at login and Quit. Launch at login works only in
   the packaged app (it is greyed out in dev). A second launch just opens the panel of the running instance.
+- **Auto-hide (default):** the notch stays off-screen so it never covers a browser tab or button. Rest the pointer on the very
+  top edge, within the notch's width, for a moment and it slides in; it slides away shortly after the pointer leaves. Passing
+  through the top-center on the way to a tab does not trigger it. Switch to *Always shown* in Settings if you prefer.
 - **Settings tab:** global hotkey, how long the pointer must stay away before the panel collapses (200-1500 ms), and which
   display the notch sits on. Saved to `settings.json` in `%APPDATA%\gabay`; the main process validates every value.
 - The app and tray icons are drawn in `resources/` (a notch plus a compass, since gabay means guide); edit `resources/icon.svg` / `tray.svg` and run `npx electron scripts/render-icons.cjs` to regenerate the PNGs.
