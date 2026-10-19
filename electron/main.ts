@@ -2,7 +2,7 @@ import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, screen,
 import { join } from 'node:path'
 import { getStats } from './stats'
 import { COLLAPSE_MAX, COLLAPSE_MIN, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
-import { ensureIndex, launch, search, toggleStar } from './launcher'
+import { ensureIndex, getIcon, launch, search, toggleStar } from './launcher'
 import { isPowerAction, runPower } from './power'
 import { addTodo, listTodos, removeTodo, toggleTodo } from './todos'
 import { clearHistory, copyBack, listClipboard, startClipboardHistory, stopClipboardHistory, togglePin } from './clipboardHistory'
@@ -110,6 +110,10 @@ app.whenReady().then(async () => {
   ipcMain.handle('launcher:search', (e, q: unknown) => {
     fromUi(e)
     return search(typeof q === 'string' ? q : '')
+  })
+  ipcMain.handle('launcher:icon', (e, id: unknown) => {
+    fromUi(e)
+    return typeof id === 'string' ? getIcon(id) : null
   })
   ipcMain.handle('launcher:launch', (e, id: unknown) => {
     fromUi(e)
