@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.0 Disk gauge
+
+System tab shows system-drive usage next to CPU and RAM. Debug label removed.
+
 ## 0.9.0 Performance check
 
 Disable hardware acceleration (saves about 110 MB private memory with no CPU cost). Budget check and baseline in docs/PERFORMANCE.md.

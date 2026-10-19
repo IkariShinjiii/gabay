@@ -51,6 +51,8 @@ export interface SystemStats {
   cpuPercent: number
   ramUsedBytes: number
   ramTotalBytes: number
+  diskUsedBytes: number
+  diskTotalBytes: number
 }
 
 declare global {
