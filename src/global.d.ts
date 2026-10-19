@@ -86,7 +86,20 @@ export interface QuickState {
   layout: string
   radios: { wifi?: boolean; bluetooth?: boolean }
   airplane: boolean | null
+  audioName: string | null
+  dark: boolean | null
+  media: MediaInfo | null
   wifi: { ssid: string | null; signal: number | null }
+}
+
+export interface MediaInfo {
+  title: string
+  artist: string
+  playing: boolean
+  position: number
+  duration: number
+  updated: number
+  art: string | null
 }
 
 export type QuickAction =
@@ -95,6 +108,8 @@ export type QuickAction =
   | { kind: 'brightness'; value: number }
   | { kind: 'radio'; radio: 'wifi' | 'bluetooth'; on: boolean }
   | { kind: 'airplane' }
+  | { kind: 'dark'; on: boolean }
+  | { kind: 'media'; command: 'toggle' | 'next' | 'prev' }
 
 export type ProjectMode = 'internal' | 'clone' | 'extend' | 'external'
 
@@ -103,6 +118,7 @@ export type SettingsKey =
   | 'nightlight'
   | 'accessibility'
   | 'display'
+  | 'colors'
   | 'captions'
   | 'hotspot'
   | 'nearby'

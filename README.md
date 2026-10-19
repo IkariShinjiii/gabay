@@ -81,19 +81,25 @@ search field to filter, click a row to copy it back, star to pin, "Clear history
   tab's confirmation. Buttons and commands call the same actions.
 - Focused inputs (search, command, to-do) keep the panel open.
 
-## Quick tab and status
+## Controls tab and status
 
 The taskbar's system-tray features, built into the notch.
 
 - **Collapsed pill:** network (Wi-Fi, Ethernet or offline) on the left, the clock or focus-timer ring in the middle, battery on
   the right (red at 20% or less when not charging). Battery comes from Chromium's event-based battery API and the network type
   from the network adapters, so the collapsed notch still runs no timers or processes.
-- **Quick tab** (Ctrl+2), laid out like Windows quick settings: Wi-Fi, Bluetooth and Airplane mode toggle directly (right-click
-  a tile for its Settings page; Airplane mode uses Windows' own airplane switch); Project opens the Win+P chooser (PC screen
-  only, Duplicate, Extend, Second screen only) through Windows' DisplaySwitch; Energy saver, Accessibility, Live captions, Night light, Mobile hotspot, Nearby
-  sharing, Cast and Notifications open their Windows Settings page, because Windows gives apps no supported switch for them.
-  Brightness (built-in displays only) and volume sliders, mute, battery, and the keyboard layout of the focused window.
-- Volume, brightness, radios and layout go through one hidden PowerShell helper that starts when the Quick tab opens and exits
+- **Controls tab** (Ctrl+1):
+  - Split tiles: the main part acts, the chevron opens the matching Windows Settings page. Wi-Fi and Bluetooth switch the
+    radios; Audio mutes and shows the output device; Dark mode switches Windows' app and system theme (applied live);
+    Night light opens its settings (Windows gives apps no supported switch for it).
+  - iOS-style volume and brightness bars (brightness on built-in displays only); click the speaker icon to mute.
+  - Now playing, from Windows' media session (browsers, Spotify and other players that show in the volume flyout): artwork,
+    title, artist, previous, play/pause, next and progress.
+  - Second page (dots in the footer): Airplane mode (Windows' own switch), Project (the Win+P chooser: PC screen only,
+    Duplicate, Extend, Second screen only, through Windows' DisplaySwitch), and shortcuts to Energy saver, Accessibility,
+    Live captions, Mobile hotspot, Nearby sharing, Cast and Notifications settings.
+  - Footer: battery, keyboard layout of the focused window, Windows Settings.
+- Volume, brightness, radios and layout go through one hidden PowerShell helper that starts when the Controls tab opens and exits
   30 seconds after it was last used. Commands are fixed strings built from validated values; the renderer never sends text.
 - **Not possible from an app:** reading Windows notifications and showing other apps' tray icons (the overflow arrow). Keep the
   Windows taskbar on auto-hide and reach those at the bottom edge as before.
@@ -135,10 +141,10 @@ Items 2 and 3 were tested before hardware acceleration was turned off (0.9.0); r
 ## UI preview without touching the desktop (dev only)
 
 ```powershell
-$env:GABAY_PREVIEW='Quick'; $env:GABAY_PREVIEW_OUT="$PWD\quick.png"; npx electron .
+$env:GABAY_PREVIEW='Controls'; $env:GABAY_PREVIEW_OUT="$PWD\controls.png"; npx electron .
 ```
 
-Renders the panel on that tab (or `Pill` for the collapsed notch) in a hidden window, saves a screenshot and quits. It shows no
+Renders the panel on that tab (or `Pill` for the collapsed notch, or `Controls&sub=project` for the Project chooser) in a hidden window, saves a screenshot and quits. It shows no
 window, registers no hotkey or tray icon, never reads the clipboard and uses a throwaway data folder, so it is safe to run
 while Gabay is in use. Ignored in packaged builds.
 

@@ -35,7 +35,7 @@ app.on('second-instance', () => {
 })
 
 const WIN_WIDTH = 560
-const WIN_HEIGHT = 440
+const WIN_HEIGHT = 580
 
 /** The chosen display, or the primary one if it is unset or no longer attached. */
 function pickDisplay(id: number | null): Electron.Display {

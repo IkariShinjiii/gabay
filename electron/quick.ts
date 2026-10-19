@@ -10,7 +10,22 @@ export interface QuickState {
   radios: { wifi?: boolean; bluetooth?: boolean }
   /** Windows' own airplane-mode flag (not inferred from the radios); null if unavailable. */
   airplane: boolean | null
+  /** Default output device, e.g. "Speakers" (the part before the driver name in parentheses). */
+  audioName: string | null
+  /** Windows app theme is dark; null if unreadable. */
+  dark: boolean | null
+  media: MediaInfo | null
   wifi: { ssid: string | null; signal: number | null }
+}
+
+export interface MediaInfo {
+  title: string
+  artist: string
+  playing: boolean
+  position: number // seconds at `updated`
+  duration: number // seconds, 0 if unknown
+  updated: number // epoch ms when Windows last updated the position
+  art: string | null // data URL
 }
 
 export type QuickAction =
@@ -19,6 +34,8 @@ export type QuickAction =
   | { kind: 'brightness'; value: number }
   | { kind: 'radio'; radio: 'wifi' | 'bluetooth'; on: boolean }
   | { kind: 'airplane' }
+  | { kind: 'dark'; on: boolean }
+  | { kind: 'media'; command: 'toggle' | 'next' | 'prev' }
 
 /** Pages Windows Settings opens for tiles that only need a shortcut. Fixed list: the renderer sends a key, never a URI. */
 export const SETTINGS_PAGES = {
@@ -26,6 +43,7 @@ export const SETTINGS_PAGES = {
   nightlight: 'ms-settings:nightlight',
   accessibility: 'ms-settings:easeofaccess',
   display: 'ms-settings:display',
+  colors: 'ms-settings:colors',
   captions: 'ms-settings:easeofaccess-closedcaptioning',
   hotspot: 'ms-settings:network-mobilehotspot',
   nearby: 'ms-settings:crossdevice',
@@ -64,7 +82,19 @@ interface IAudioEndpointVolume {
   int GetMute(out bool pbMute);
 }
 [Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDevice { int Activate(ref Guid id, int clsCtx, int activationParams, out IAudioEndpointVolume aev); }
+interface IMMDevice {
+  int Activate(ref Guid id, int clsCtx, int activationParams, out IAudioEndpointVolume aev);
+  int OpenPropertyStore(int stgmAccess, out IPropertyStore store);
+}
+[StructLayout(LayoutKind.Sequential)] struct PROPERTYKEY { public Guid fmtid; public int pid; }
+// 24 bytes on x64: vt, reserved words, then the value union.
+[StructLayout(LayoutKind.Explicit, Size = 24)] struct PROPVARIANT { [FieldOffset(0)] public short vt; [FieldOffset(8)] public IntPtr p; }
+[Guid("886d8eeb-8cf2-4446-8d02-cdba1dbdcf99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IPropertyStore {
+  int GetCount(out int c);
+  int GetAt(int i, out PROPERTYKEY k);
+  int GetValue(ref PROPERTYKEY key, out PROPVARIANT v);
+}
 [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 interface IMMDeviceEnumerator { int f(); int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice endpoint); }
 [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumeratorComObject { }
@@ -95,6 +125,20 @@ public static class Gabay {
   public static bool GetMute() { bool m; Vol().GetMute(out m); return m; }
   public static void SetMute(bool m) { Vol().SetMute(m, Guid.Empty); }
 
+  public static string AudioName() {
+    var en = new MMDeviceEnumeratorComObject() as IMMDeviceEnumerator;
+    IMMDevice dev; en.GetDefaultAudioEndpoint(0, 1, out dev);
+    IPropertyStore ps; dev.OpenPropertyStore(0, out ps);
+    var key = new PROPERTYKEY { fmtid = new Guid("a45c254e-df1c-4efd-8020-67d146a850e0"), pid = 14 }; // FriendlyName
+    PROPVARIANT v; ps.GetValue(ref key, out v);
+    return v.vt == 31 ? Marshal.PtrToStringUni(v.p) : null; // VT_LPWSTR
+  }
+
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+  static extern IntPtr SendMessageTimeout(IntPtr h, uint msg, IntPtr w, string l, uint flags, uint timeout, out IntPtr result);
+  // Tell running apps the theme changed (what Settings does), so the switch applies without a sign-out.
+  public static void BroadcastTheme() { IntPtr r; SendMessageTimeout((IntPtr)0xffff, 0x1A, IntPtr.Zero, "ImmersiveColorSet", 2, 200, out r); }
+
   public static bool GetAirplane() {
     int enabled, p2, reason;
     Marshal.ThrowExceptionForHR(((IRadioManager)new RadioManagementAPI()).GetSystemRadioState(out enabled, out p2, out reason));
@@ -122,6 +166,50 @@ $asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
 function Await($op, $type) { $t = $asTask.MakeGenericMethod($type).Invoke($null, @($op)); $t.Wait(-1) | Out-Null; $t.Result }
 [Windows.Devices.Radios.Radio, Windows.System.Devices, ContentType = WindowsRuntime] | Out-Null
 $null = Await ([Windows.Devices.Radios.Radio]::RequestAccessAsync()) ([Windows.Devices.Radios.RadioAccessStatus])
+# Media is optional: if any of this fails, everything else in the helper still works.
+$script:media = $null
+$script:artKey = ''
+$readStream = $null
+try {
+  [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime] | Out-Null
+  [Windows.Storage.Streams.IRandomAccessStreamWithContentType, Windows.Storage.Streams, ContentType = WindowsRuntime] | Out-Null
+  $script:media = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager])
+  $readStream = [System.IO.WindowsRuntimeStreamExtensions].GetMethod('AsStreamForRead', [Type[]]@([Windows.Storage.Streams.IInputStream]))
+} catch { }
+function Media {
+  if (-not $script:media) { return $null }
+  $s = $script:media.GetCurrentSession()
+  if (-not $s) { $script:artKey = ''; return $null }
+  $p = Await ($s.TryGetMediaPropertiesAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties])
+  $tl = $s.GetTimelineProperties()
+  $m = [ordered]@{ title = [string]$p.Title; artist = [string]$p.Artist; playing = ($s.GetPlaybackInfo().PlaybackStatus.ToString() -eq 'Playing')
+    position = $tl.Position.TotalSeconds; duration = ($tl.EndTime - $tl.StartTime).TotalSeconds; updated = $tl.LastUpdatedTime.ToUnixTimeMilliseconds() }
+  # Album art only when the track changes: it is the one large field.
+  $key = $m.title + '|' + $m.artist
+  if ($key -ne $script:artKey) {
+    $script:artKey = $key
+    $m.art = ''
+    try {
+      if ($p.Thumbnail -and $readStream) {
+        $st = Await ($p.Thumbnail.OpenReadAsync()) ([Windows.Storage.Streams.IRandomAccessStreamWithContentType])
+        $mem = New-Object IO.MemoryStream
+        $readStream.Invoke($null, @($st)).CopyTo($mem)
+        if ($mem.Length -le 400000) { $m.art = [Convert]::ToBase64String($mem.ToArray()) }
+      }
+    } catch { }
+  }
+  $m
+}
+function MediaCommand($c) {
+  if (-not $script:media) { return }
+  $s = $script:media.GetCurrentSession()
+  if (-not $s) { return }
+  $op = if ($c -eq 'next') { $s.TrySkipNextAsync() } elseif ($c -eq 'prev') { $s.TrySkipPreviousAsync() } else { $s.TryTogglePlayPauseAsync() }
+  $null = Await $op ([bool])
+  Start-Sleep -Milliseconds 250 # let the player publish its new state before we read it back
+}
+$themeKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+
 function Radios { Await ([Windows.Devices.Radios.Radio]::GetRadiosAsync()) ([System.Collections.Generic.IReadOnlyList[Windows.Devices.Radios.Radio]]) }
 function SetRadio($kind, $on) {
   foreach ($r in (Radios)) {
@@ -133,7 +221,10 @@ function SetRadio($kind, $on) {
 }
 
 function Snap {
-  $o = [ordered]@{ volume = $null; muted = $false; brightness = $null; layout = ''; radios = @{}; airplane = $null }
+  $o = [ordered]@{ volume = $null; muted = $false; brightness = $null; layout = ''; radios = @{}; airplane = $null; audioName = $null; dark = $null; media = $null }
+  try { $o.audioName = [Gabay]::AudioName() } catch { }
+  try { $o.dark = ((Get-ItemPropertyValue -Path $themeKey -Name AppsUseLightTheme) -eq 0) } catch { }
+  try { $o.media = Media } catch { }
   try { $o.airplane = [Gabay]::GetAirplane() } catch { }
   try { $o.volume = [math]::Round([Gabay]::GetVolume(), 3); $o.muted = [Gabay]::GetMute() } catch { }
   try { $o.layout = [Gabay]::Layout() } catch { }
@@ -155,6 +246,13 @@ while ($true) {
     }
     elseif ($line -match '^radio (wifi|bluetooth) (on|off)$') { SetRadio $Matches[1] ($Matches[2] -eq 'on') }
     elseif ($line -eq 'airplane') { [Gabay]::SetAirplane(-not [Gabay]::GetAirplane()) }
+    elseif ($line -match '^dark (on|off)$') {
+      $light = if ($Matches[1] -eq 'on') { 0 } else { 1 }
+      Set-ItemProperty -Path $themeKey -Name AppsUseLightTheme -Value $light -Type DWord
+      Set-ItemProperty -Path $themeKey -Name SystemUsesLightTheme -Value $light -Type DWord
+      [Gabay]::BroadcastTheme()
+    }
+    elseif ($line -match '^media (toggle|next|prev)$') { MediaCommand $Matches[1] }
     elseif ($line -ne 'get') { continue }
     [Console]::Out.WriteLine((Snap))
   } catch { [Console]::Out.WriteLine('{"error":true}') }
@@ -267,6 +365,35 @@ function wifiInfo(): Promise<QuickState['wifi']> {
   })
 }
 
+// The helper sends album art only when the track changes; keep the last one for the polls in between.
+let lastArt: { key: string; url: string | null } = { key: '', url: null }
+
+function toMedia(raw: unknown): MediaInfo | null {
+  if (typeof raw !== 'object' || raw === null) return null
+  const m = raw as Record<string, unknown>
+  const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+  const title = typeof m.title === 'string' ? m.title : ''
+  const artist = typeof m.artist === 'string' ? m.artist : ''
+  if (!title && !artist) return null
+  const key = title + '|' + artist
+  if (typeof m.art === 'string') {
+    // Sniff the image type from its first bytes; Windows often leaves the content type empty.
+    const mime = m.art.startsWith('/9j/') ? 'image/jpeg' : m.art.startsWith('iVBOR') ? 'image/png' : 'image/jpeg'
+    lastArt = { key, url: m.art ? `data:${mime};base64,${m.art}` : null }
+  } else if (lastArt.key !== key) {
+    lastArt = { key, url: null }
+  }
+  return {
+    title,
+    artist,
+    playing: m.playing === true,
+    position: num(m.position),
+    duration: num(m.duration),
+    updated: num(m.updated),
+    art: lastArt.url
+  }
+}
+
 async function snapshotWith(reply: Reply | null): Promise<QuickState> {
   const wifi = await wifiInfo()
   const r = reply ?? {}
@@ -281,6 +408,9 @@ async function snapshotWith(reply: Reply | null): Promise<QuickState> {
       ...(typeof radios.bluetooth === 'boolean' ? { bluetooth: radios.bluetooth } : {})
     },
     airplane: typeof r.airplane === 'boolean' ? r.airplane : null,
+    audioName: typeof r.audioName === 'string' ? r.audioName.replace(/\s*\(.*\)\s*$/, '') || r.audioName : null,
+    dark: typeof r.dark === 'boolean' ? r.dark : null,
+    media: toMedia(r.media),
     wifi
   }
 }
@@ -300,6 +430,9 @@ export async function quickSet(action: unknown): Promise<QuickState> {
       cmd = `bright ${Math.round(Math.min(100, Math.max(0, a.value)))}`
     else if (a.kind === 'mute') cmd = 'mute'
     else if (a.kind === 'airplane') cmd = 'airplane'
+    else if (a.kind === 'dark' && typeof a.on === 'boolean') cmd = `dark ${a.on ? 'on' : 'off'}`
+    else if (a.kind === 'media' && (a.command === 'toggle' || a.command === 'next' || a.command === 'prev'))
+      cmd = `media ${a.command}`
     else if (a.kind === 'radio' && (a.radio === 'wifi' || a.radio === 'bluetooth') && typeof a.on === 'boolean')
       cmd = `radio ${a.radio} ${a.on ? 'on' : 'off'}`
   }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.24.0 Controls tab
+
+The Quick tab is now Controls (first tab), redesigned after the reference: split tiles for Wi-Fi, Bluetooth, Audio (output name, mute), Night light and Dark mode (switches the Windows theme live), iOS-style volume and brightness bars, and a now-playing card from the Windows media session with artwork and previous, play/pause, next and progress. Airplane mode, Project and the Settings shortcuts move to a second page. The open notch can grow to 540 px for it.
+
 ## 0.23.0 Teal palette
 
 Orange replaced by a deep-teal surface palette and a mint accent matching the editor theme and the Windows accent, defined once as tokens in index.css. Filled accent controls use dark text; selection and caret use the palette.
