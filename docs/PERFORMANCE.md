@@ -35,6 +35,12 @@ Per process, GPU off, after use: main 66 MB, GPU 17 MB, utility 12 MB, renderer 
 Dev launch (`electron .` on the built output), 4 processes, pointer parked: collapsed 126 MB private / 281 MB working set,
 0.03% CPU; with the Settings tab open 128 MB private, 0.00% CPU. Still under the 150 MB and 1% budgets.
 
+## Full-screen watcher (0.21.0)
+
+The only always-running addition: a 6 KB .NET Framework watcher that checks the foreground window every 400 ms. Measured
+at 9 MB private / 14 MB working set and no measurable CPU, so the collapsed total is about 135 MB private, still under 150 MB.
+The Quick tab's PowerShell helper runs only while that tab is used and exits 30 s after.
+
 ## The "memory rose after first expand" worry
 
 Earlier baseline showed about +20 MB after the first expand and no return. Checked with 10 and 30 cycles: memory

@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import Icon from './Icon'
 import type { IconName } from './icons'
-import type { QuickAction, QuickState, SettingsKey } from './global'
+import type { ProjectMode, QuickAction, QuickState, SettingsKey } from './global'
 import type { BatteryInfo } from './useBattery'
 import { batteryIcon } from './NotchStatus'
 
 const POLL_MS = 3000
 
 type Tile =
+  | { kind: 'view'; view: 'project'; label: string; icon: IconName }
   | { kind: 'toggle'; id: 'wifi' | 'bluetooth' | 'airplane'; label: string; icon: IconName; settings: SettingsKey }
   | { kind: 'link'; label: string; icon: IconName; settings: SettingsKey }
 
@@ -21,7 +22,7 @@ const PAGES: Tile[][] = [
     { kind: 'toggle', id: 'airplane', label: 'Airplane mode', icon: 'plane', settings: 'network' },
     { kind: 'link', label: 'Energy saver', icon: 'leaf', settings: 'energy' },
     { kind: 'link', label: 'Accessibility', icon: 'accessibility', settings: 'accessibility' },
-    { kind: 'link', label: 'Project', icon: 'presentation', settings: 'project' }
+    { kind: 'view', view: 'project', label: 'Project', icon: 'presentation' }
   ],
   [
     { kind: 'link', label: 'Live captions', icon: 'captions', settings: 'captions' },
@@ -37,6 +38,10 @@ const PAGES: Tile[][] = [
 export default function QuickPanel({ battery }: { battery: BatteryInfo | null }): React.JSX.Element {
   const [state, setState] = useState<QuickState | null>(null)
   const [page, setPage] = useState(0)
+  // Dev preview can open a sub-view directly (#preview=Quick&sub=project); normal use always starts on the main view.
+  const [view, setView] = useState<'main' | 'project'>(() =>
+    new URLSearchParams(location.hash.slice(1)).get('sub') === 'project' ? 'project' : 'main'
+  )
   const [dir, setDir] = useState(1)
   // While a slider is being dragged its local value wins over polled values, so the thumb doesn't jump back.
   const [dragVol, setDragVol] = useState<number | null>(null)
@@ -83,9 +88,12 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
 
   if (!state) return <div className="body body-center">Loading…</div>
 
+  if (view === 'project') return <ProjectView onBack={() => setView('main')} />
+
   const wifiOn = state.radios.wifi
   const btOn = state.radios.bluetooth
-  const airplaneOn = wifiOn === false && (btOn === false || btOn === undefined)
+  // Windows' real airplane-mode flag. Turning Wi-Fi off with Bluetooth already off is not airplane mode.
+  const airplaneOn = state.airplane ?? undefined
   const toggleState = (id: 'wifi' | 'bluetooth' | 'airplane'): boolean | undefined =>
     id === 'wifi' ? wifiOn : id === 'bluetooth' ? btOn : airplaneOn
 
@@ -116,7 +124,7 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
       >
         {PAGES[page].map((t) => {
           const on = t.kind === 'toggle' ? toggleState(t.id) : undefined
-          const disabled = t.kind === 'toggle' && t.id !== 'airplane' && on === undefined
+          const disabled = t.kind === 'toggle' && on === undefined
           return (
             <motion.button
               key={t.label}
@@ -125,20 +133,22 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
               className={on ? 'q-tile on' : 'q-tile'}
               aria-pressed={t.kind === 'toggle' ? !!on : undefined}
               disabled={disabled}
-              title={t.kind === 'link' ? `Open ${t.label} settings` : `${t.label}: right-click for settings`}
+              title={t.kind === 'link' ? `Open ${t.label} settings` : t.kind === 'view' ? t.label : `${t.label}: right-click for settings`}
               onClick={() => {
-                if (t.kind === 'link') void window.overlay.quickOpen(t.settings)
+                if (t.kind === 'view') setView(t.view)
+                else if (t.kind === 'link') void window.overlay.quickOpen(t.settings)
                 else if (t.id === 'airplane') void act({ kind: 'airplane' })
                 else void act({ kind: 'radio', radio: t.id, on: !on })
               }}
               onContextMenu={(e) => {
                 e.preventDefault()
-                void window.overlay.quickOpen(t.settings)
+                if (t.kind !== 'view') void window.overlay.quickOpen(t.settings)
               }}
             >
               <Icon name={t.kind === 'toggle' && t.id === 'wifi' && !on ? 'wifi-off' : t.icon} size={18} />
               <span className="q-label">{t.label}</span>
               {sub(t) && <span className="q-sub">{sub(t)}</span>}
+              {t.kind === 'view' && <span className="q-chev"><Icon name="chevron-right" size={14} /></span>}
             </motion.button>
           )
         })}
@@ -217,5 +227,69 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
         </button>
       </div>
     </div>
+  )
+}
+
+const PROJECT_MODES: { mode: ProjectMode; label: string; icon: IconName }[] = [
+  { mode: 'internal', label: 'PC screen only', icon: 'laptop' },
+  { mode: 'clone', label: 'Duplicate', icon: 'copy' },
+  { mode: 'extend', label: 'Extend', icon: 'columns-2' },
+  { mode: 'external', label: 'Second screen only', icon: 'monitor' }
+]
+
+/** The Win+P chooser, inside the Quick tab. The current mode carries the accent bar, as in Windows. */
+function ProjectView({ onBack }: { onBack: () => void }): React.JSX.Element {
+  const [mode, setMode] = useState<ProjectMode | null>(null)
+  const [busy, setBusy] = useState<ProjectMode | null>(null)
+
+  useEffect(() => {
+    void window.overlay.projectGet().then(setMode, () => undefined)
+  }, [])
+
+  const pick = async (m: ProjectMode): Promise<void> => {
+    if (busy) return
+    setBusy(m)
+    await window.overlay.projectSet(m).catch(() => false)
+    // Windows takes a moment to rearrange the displays; read the result once it has settled.
+    window.setTimeout(() => {
+      void window.overlay.projectGet().then(setMode, () => undefined)
+      setBusy(null)
+    }, 1500)
+  }
+
+  return (
+    <motion.div
+      className="body quick-sub"
+      initial={{ x: 40, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 420, damping: 38 }}
+    >
+      <div className="sub-head">
+        <button className="q-icon-btn" aria-label="Back" title="Back" onClick={onBack}>
+          <Icon name="arrow-left" size={16} />
+        </button>
+        <span>Project</span>
+      </div>
+      <div className="proj-list" role="radiogroup" aria-label="Display mode">
+        {PROJECT_MODES.map((p) => (
+          <motion.button
+            key={p.mode}
+            role="radio"
+            aria-checked={mode === p.mode}
+            whileTap={{ scale: 0.98 }}
+            className={mode === p.mode ? 'proj-row on' : 'proj-row'}
+            disabled={busy !== null}
+            onClick={() => void pick(p.mode)}
+          >
+            {mode === p.mode && <motion.span layoutId="proj-marker" className="proj-marker" />}
+            <Icon name={p.icon} size={18} />
+            <span>{busy === p.mode ? `${p.label}…` : p.label}</span>
+          </motion.button>
+        ))}
+      </div>
+      <button className="sub-link" onClick={() => void window.overlay.quickOpen('display')}>
+        More display settings
+      </button>
+    </motion.div>
   )
 }

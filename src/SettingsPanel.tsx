@@ -90,17 +90,18 @@ export default function SettingsPanel({ onSettings }: Props): React.JSX.Element 
         <div className="set-label">Notch visibility</div>
         <div className="set-opts">
           <button
+            className={settings.visibility === 'always' ? 'chip on' : 'chip'}
+            title="Steps aside while a video, game or other window is full screen"
+            onClick={() => void save({ visibility: 'always' })}
+          >
+            Always shown
+          </button>
+          <button
             className={settings.visibility === 'auto' ? 'chip on' : 'chip'}
             title="Hidden until you rest the pointer on the top edge, so it never covers a tab or button"
             onClick={() => void save({ visibility: 'auto' })}
           >
             Auto-hide
-          </button>
-          <button
-            className={settings.visibility === 'always' ? 'chip on' : 'chip'}
-            onClick={() => void save({ visibility: 'always' })}
-          >
-            Always shown
           </button>
         </div>
       </div>

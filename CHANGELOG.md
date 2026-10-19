@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.0 Full-screen aware, real airplane mode, Project chooser
+
+The notch is Always shown again by default and steps aside only while something is full screen on its display (a 9 MB watcher compiled once with the C# compiler built into Windows). Reveal from hidden is faster (90 ms rest on the top edge, was 350). Airplane mode now reads and sets Windows' own airplane switch, so turning Wi-Fi off with Bluetooth already off no longer shows as airplane mode. Project opens a Win+P chooser (PC screen only, Duplicate, Extend, Second screen only) with the current mode marked.
+
 ## 0.20.0 Quick tab and status
 
 The taskbar's tray features in the notch: the collapsed pill shows network, clock and battery; a new Quick tab has Wi-Fi, Bluetooth and Airplane mode toggles, shortcuts to Windows Settings pages, brightness and volume sliders, mute, battery and keyboard layout. One hidden helper process runs only while the Quick tab is used. Motion polish: sliding tab marker, tab crossfade, spring press on tiles, sliding quick-settings pages, iOS-style page dots and custom sliders. Dev-only hidden preview mode for screenshots.

@@ -8,6 +8,8 @@ export interface QuickState {
   brightness: number | null // 0-100
   layout: string // e.g. "ENG US"
   radios: { wifi?: boolean; bluetooth?: boolean }
+  /** Windows' own airplane-mode flag (not inferred from the radios); null if unavailable. */
+  airplane: boolean | null
   wifi: { ssid: string | null; signal: number | null }
 }
 
@@ -23,7 +25,7 @@ export const SETTINGS_PAGES = {
   energy: 'ms-settings:batterysaver',
   nightlight: 'ms-settings:nightlight',
   accessibility: 'ms-settings:easeofaccess',
-  project: 'ms-settings:project',
+  display: 'ms-settings:display',
   captions: 'ms-settings:easeofaccess-closedcaptioning',
   hotspot: 'ms-settings:network-mobilehotspot',
   nearby: 'ms-settings:crossdevice',
@@ -67,6 +69,19 @@ interface IMMDevice { int Activate(ref Guid id, int clsCtx, int activationParams
 interface IMMDeviceEnumerator { int f(); int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice endpoint); }
 [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumeratorComObject { }
 
+// Radio Management API: the same airplane-mode switch Windows quick settings uses. 'Enabled' means radios allowed,
+// so airplane mode is on when it is 0.
+[ComImport, Guid("db3afbfb-08e6-46c6-aa70-bf9a34c30ab7"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IRadioManager {
+  int IsRMSupported(out uint pdwState);
+  int GetUIRadioInstances([MarshalAs(UnmanagedType.IUnknown)] out object ppCollection);
+  int GetSystemRadioState(out int pbEnabled, out int param2, out int pChangeReason);
+  int SetSystemRadioState(int bEnabled);
+  int Refresh();
+  int OnHardwareSliderChange(int param1, int param2);
+}
+[ComImport, Guid("581333f6-28db-41be-bc7a-ff201f12f3f6")] class RadioManagementAPI { }
+
 public static class Gabay {
   static IAudioEndpointVolume Vol() {
     var en = new MMDeviceEnumeratorComObject() as IMMDeviceEnumerator;
@@ -79,6 +94,15 @@ public static class Gabay {
   public static void SetVolume(float l) { Vol().SetMasterVolumeLevelScalar(Math.Max(0f, Math.Min(1f, l)), Guid.Empty); }
   public static bool GetMute() { bool m; Vol().GetMute(out m); return m; }
   public static void SetMute(bool m) { Vol().SetMute(m, Guid.Empty); }
+
+  public static bool GetAirplane() {
+    int enabled, p2, reason;
+    Marshal.ThrowExceptionForHR(((IRadioManager)new RadioManagementAPI()).GetSystemRadioState(out enabled, out p2, out reason));
+    return enabled == 0;
+  }
+  public static void SetAirplane(bool on) {
+    Marshal.ThrowExceptionForHR(((IRadioManager)new RadioManagementAPI()).SetSystemRadioState(on ? 0 : 1));
+  }
 
   [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, IntPtr pid);
@@ -107,10 +131,10 @@ function SetRadio($kind, $on) {
     }
   }
 }
-$script:before = @('wifi')
 
 function Snap {
-  $o = [ordered]@{ volume = $null; muted = $false; brightness = $null; layout = ''; radios = @{} }
+  $o = [ordered]@{ volume = $null; muted = $false; brightness = $null; layout = ''; radios = @{}; airplane = $null }
+  try { $o.airplane = [Gabay]::GetAirplane() } catch { }
   try { $o.volume = [math]::Round([Gabay]::GetVolume(), 3); $o.muted = [Gabay]::GetMute() } catch { }
   try { $o.layout = [Gabay]::Layout() } catch { }
   try { $o.brightness = [int](Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightness -ErrorAction Stop | Select-Object -First 1).CurrentBrightness } catch { }
@@ -130,15 +154,7 @@ while ($true) {
       Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightnessMethods | ForEach-Object { $null = Invoke-CimMethod -InputObject $_ -MethodName WmiSetBrightness -Arguments @{ Timeout = 1; Brightness = [byte]$level } }
     }
     elseif ($line -match '^radio (wifi|bluetooth) (on|off)$') { SetRadio $Matches[1] ($Matches[2] -eq 'on') }
-    elseif ($line -eq 'airplane') {
-      $on = @(Radios | Where-Object { $_.State.ToString() -eq 'On' } | ForEach-Object { $_.Kind.ToString().ToLower() })
-      if ($on.Count -gt 0) {
-        $script:before = $on
-        foreach ($k in $on) { SetRadio $k $false }
-      } else {
-        foreach ($k in $script:before) { SetRadio $k $true }
-      }
-    }
+    elseif ($line -eq 'airplane') { [Gabay]::SetAirplane(-not [Gabay]::GetAirplane()) }
     elseif ($line -ne 'get') { continue }
     [Console]::Out.WriteLine((Snap))
   } catch { [Console]::Out.WriteLine('{"error":true}') }
@@ -264,6 +280,7 @@ async function snapshotWith(reply: Reply | null): Promise<QuickState> {
       ...(typeof radios.wifi === 'boolean' ? { wifi: radios.wifi } : {}),
       ...(typeof radios.bluetooth === 'boolean' ? { bluetooth: radios.bluetooth } : {})
     },
+    airplane: typeof r.airplane === 'boolean' ? r.airplane : null,
     wifi
   }
 }

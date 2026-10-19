@@ -8,7 +8,7 @@ export interface Settings {
   collapseMs: number
   /** Electron display id, or null for the primary display. */
   displayId: number | null
-  /** 'auto': the notch stays off-screen until the pointer rests on the top edge. 'always': it is always shown. */
+  /** 'always': shown, except while something is full screen. 'auto': off-screen until the pointer rests on the top edge. */
   visibility: 'always' | 'auto'
 }
 
@@ -17,7 +17,7 @@ export const HOTKEYS = ['Control+Alt+G', 'Control+Shift+G', 'Control+Alt+Space',
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, visibility: 'auto' }
+const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, visibility: 'always' }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 

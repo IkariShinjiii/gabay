@@ -762,7 +762,7 @@ body,
   text-overflow: ellipsis;
 }
 
-.q-tile > .q-label:last-child {
+.q-tile:not(:has(.q-sub)) > .q-label {
   grid-row: 1 / span 2; /* no subtitle: centre the label against the icon */
   align-self: center;
 }
@@ -915,4 +915,99 @@ body,
 .q-dot.on {
   width: 16px;
   background: #d6d6dc;
+}
+
+/* ---------- Quick tab: sub-views (Project) ---------- */
+.q-tile {
+  position: relative;
+}
+
+.q-chev {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  display: inline-flex;
+}
+
+.quick-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sub-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #eee;
+}
+
+.proj-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.proj-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: #e6e6ea;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 180ms var(--ease-out);
+}
+
+.proj-row:hover {
+  background: #17171a;
+}
+
+.proj-row.on {
+  background: #1b1b1f;
+}
+
+.proj-row:disabled {
+  cursor: progress;
+}
+
+.proj-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* The accent bar on the left of the current mode slides between rows. */
+.proj-marker {
+  position: absolute;
+  left: 4px;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.sub-link {
+  align-self: flex-start;
+  margin-top: auto;
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sub-link:hover {
+  color: #eee;
 }

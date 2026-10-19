@@ -11,8 +11,8 @@ export const NOTCH = {
 
 // Auto-hide: how long the pointer must rest on the top edge to reveal the notch, and how long after it leaves
 // before the notch slides away again. Resting (not passing through) keeps ordinary tab clicks from triggering it.
-export const REVEAL_DWELL_MS = 350
-export const HIDE_DELAY_MS = 900
+export const REVEAL_DWELL_MS = 90
+export const HIDE_DELAY_MS = 700
 
 // How long the pointer must stay outside the notch before it collapses. The saved setting wins.
 export const COLLAPSE_DELAY_MS = 400

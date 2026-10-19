@@ -44,9 +44,12 @@ export default function App(): React.JSX.Element {
   const timer = useRef<number | undefined>(undefined)
 
   // Auto-hide: off-screen until the pointer rests on the top edge. `visibility` mirrors the saved setting.
-  const [visibility, setVisibility] = useState<'always' | 'auto'>('auto')
+  const [visibility, setVisibility] = useState<'always' | 'auto'>('always')
+  // A full-screen window on the notch's display hides the notch the same way auto-hide does.
+  const [fullscreen, setFullscreen] = useState(false)
+  const fullscreenRef = useRef(false)
   const [revealed, setRevealed] = useState(false)
-  const visibilityRef = useRef<'always' | 'auto'>('auto')
+  const visibilityRef = useRef<'always' | 'auto'>('always')
   const revealedRef = useRef(false)
   const edgeTimer = useRef<number | undefined>(undefined)
   const hideTimer = useRef<number | undefined>(undefined)
@@ -116,10 +119,10 @@ export default function App(): React.JSX.Element {
         e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom
       evaluate()
 
-      if (visibilityRef.current !== 'auto') return
+      if (visibilityRef.current !== 'auto' && !fullscreenRef.current) return
       if (!revealedRef.current) {
         // Reveal only on a rest at the very top edge within the notch's width, never on a pass through to a tab.
-        const atEdge = e.clientY <= 2 && Math.abs(e.clientX - window.innerWidth / 2) <= NOTCH.collapsed.width / 2 + 24
+        const atEdge = e.clientY <= 3 && Math.abs(e.clientX - window.innerWidth / 2) <= NOTCH.collapsed.width / 2 + 24
         if (!atEdge) {
           window.clearTimeout(edgeTimer.current)
           edgeTimer.current = undefined
@@ -147,6 +150,11 @@ export default function App(): React.JSX.Element {
       if (revealedRef.current) scheduleHide()
     }
     // Global hotkey: open and put the caret in the search field, even with the pointer elsewhere.
+    const offFullscreen = window.overlay.onFullscreen((fs) => {
+      fullscreenRef.current = fs
+      setFullscreen(fs)
+      if (fs && revealedRef.current) scheduleHide()
+    })
     const offSummon = window.overlay.onSummon(() => {
       inputRef.current?.focus()
       evaluate()
@@ -159,6 +167,7 @@ export default function App(): React.JSX.Element {
       window.clearTimeout(edgeTimer.current)
       window.clearTimeout(hideTimer.current)
       offSummon()
+      offFullscreen()
       document.removeEventListener('mousemove', onMove)
       document.documentElement.removeEventListener('mouseleave', onLeave)
     }
@@ -385,7 +394,7 @@ export default function App(): React.JSX.Element {
         width: size.width,
         height: size.height,
         // Auto-hide parks the collapsed notch just above the screen; it slides in when revealed or expanded.
-        y: expanded || revealed || visibility === 'always' ? 0 : -(NOTCH.collapsed.height + 4),
+        y: expanded || revealed || (visibility === 'always' && !fullscreen) ? 0 : -(NOTCH.collapsed.height + 4),
         // Always flush with the top edge (the concave shoulders are drawn in CSS); only the bottom corners animate.
         borderBottomLeftRadius: expanded ? 28 : NOTCH.collapsedBottomRadius,
         borderBottomRightRadius: expanded ? 28 : NOTCH.collapsedBottomRadius

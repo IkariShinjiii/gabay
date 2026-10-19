@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('overlay', {
   quickSet: (action: unknown) => ipcRenderer.invoke('quick:set', action),
   quickOpen: (key: string) => ipcRenderer.invoke('quick:open', key),
   networkKind: () => ipcRenderer.invoke('network:kind'),
+  projectGet: () => ipcRenderer.invoke('project:get'),
+  projectSet: (mode: string) => ipcRenderer.invoke('project:set', mode),
   getStats: () => ipcRenderer.invoke('stats:get'),
   searchApps: (query: string) => ipcRenderer.invoke('launcher:search', query),
   appIcon: (id: string) => ipcRenderer.invoke('launcher:icon', id),
@@ -25,6 +27,12 @@ contextBridge.exposeInMainWorld('overlay', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (patch: unknown) => ipcRenderer.invoke('settings:set', patch),
   runPower: (action: string) => ipcRenderer.invoke('power:run', action),
+  // Subscribe to full-screen changes on the notch's display. Returns an unsubscribe function.
+  onFullscreen: (cb: (fullscreen: boolean) => void): (() => void) => {
+    const handler = (_e: unknown, fs: unknown): void => cb(fs === true)
+    ipcRenderer.on('overlay:fullscreen', handler)
+    return () => ipcRenderer.removeListener('overlay:fullscreen', handler)
+  },
   // Subscribe to the global-hotkey summon. Returns an unsubscribe function.
   onSummon: (cb: () => void): (() => void) => {
     const handler = (): void => cb()

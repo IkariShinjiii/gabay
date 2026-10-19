@@ -9,6 +9,9 @@ export interface OverlayApi {
   /** Opens a fixed Windows Settings page by key. */
   quickOpen(key: SettingsKey): Promise<boolean>
   networkKind(): Promise<'wifi' | 'ethernet' | 'offline'>
+  /** Win+P display mode: read the current one, or switch with Windows' DisplaySwitch. */
+  projectGet(): Promise<ProjectMode>
+  projectSet(mode: ProjectMode): Promise<boolean>
   /** Fuzzy-search Start Menu apps. Empty query returns starred, then recent. */
   searchApps(query: string): Promise<LauncherItem[]>
   /** Small PNG data URL for an app's icon, or null. Resolved in main; the renderer never sees a path. */
@@ -36,6 +39,8 @@ export interface OverlayApi {
   setSettings(patch: Partial<Settings>): Promise<SettingsSnapshot>
   /** Fires when the global hotkey is pressed. Returns an unsubscribe function. */
   onSummon(cb: () => void): () => void
+  /** Fires when a full-screen window appears on or leaves the notch's display. Returns an unsubscribe function. */
+  onFullscreen(cb: (fullscreen: boolean) => void): () => void
 }
 
 export interface Settings {
@@ -80,6 +85,7 @@ export interface QuickState {
   brightness: number | null
   layout: string
   radios: { wifi?: boolean; bluetooth?: boolean }
+  airplane: boolean | null
   wifi: { ssid: string | null; signal: number | null }
 }
 
@@ -90,11 +96,13 @@ export type QuickAction =
   | { kind: 'radio'; radio: 'wifi' | 'bluetooth'; on: boolean }
   | { kind: 'airplane' }
 
+export type ProjectMode = 'internal' | 'clone' | 'extend' | 'external'
+
 export type SettingsKey =
   | 'energy'
   | 'nightlight'
   | 'accessibility'
-  | 'project'
+  | 'display'
   | 'captions'
   | 'hotspot'
   | 'nearby'
