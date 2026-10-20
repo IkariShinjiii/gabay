@@ -2350,3 +2350,157 @@ button.big-icon {
 .wl-foot .q-dots {
   margin-left: 0;
 }
+
+/* ---------- Notes ---------- */
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.notes-field {
+  width: 100%;
+  height: 300px;
+  box-sizing: border-box;
+  resize: none;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font: 14px/1.55 var(--font);
+  outline: none;
+}
+
+.notes-field:focus-visible {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 0 2px var(--accent);
+}
+
+.notes-field::placeholder {
+  color: var(--muted);
+}
+
+.notes-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 28px;
+}
+
+.notes-state {
+  font-size: 11.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.notes-state.err {
+  color: #ff7a66;
+}
+
+.notes-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notes-actions .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.notes-ask,
+.set-ask {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.chip.danger {
+  background: #4a1712;
+  color: #ffd2cb;
+}
+
+.chip.danger:hover {
+  background: #5a1d17;
+}
+
+/* ---------- Settings: collapsible rows ---------- */
+.set-details > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.set-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.set-details > summary::after {
+  content: '+';
+  margin-left: auto;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.set-details[open] > summary::after {
+  content: '−';
+}
+
+.set-details > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  border-radius: 6px;
+}
+
+.news {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+.keys {
+  display: grid;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.keys-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--accent-text);
+  margin-bottom: 4px;
+}
+
+.keys-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 12px;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+.keys-row kbd {
+  justify-self: start;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: inset 0 -1px 0 var(--line), 0 0 0 1px var(--line);
+  font: 600 11.5px/1.4 var(--font);
+  color: var(--text);
+}
+
+.set-opts .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}

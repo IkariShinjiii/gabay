@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.32.0
+
+- **Notes tab:** a quick scratchpad that saves as you type (notes.json in userData), with copy and clear.
+- **What's new:** after an update, the notch says once what changed; Settings › What's new lists it.
+- **Shortcuts and commands** listed in Settings: the hotkey, tabs, gestures and every typed command.
+- **Reset settings** to defaults, with an on-screen confirmation. To-dos, notes, pinned clips and the calendar stay.
+- **Performance:** the camera and microphone check now waits for Windows to report a change instead of reading the
+  registry every second; the helper's idle CPU dropped from 0.035% to 0.003% of the PC. See docs/PERFORMANCE.md.
+
 ## 0.31.0
 
 - **Welcome tour** on first run: four short steps in the open notch (hover to open, the search hotkey, full-screen

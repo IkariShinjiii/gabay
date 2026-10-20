@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { SettingsSnapshot, UpdateInfo } from './global'
 import { ACCENT_PRESETS } from './accent'
+import Icon from './Icon'
+import { notesFor } from './whatsNew'
 import { COLLAPSE_STEP_MS } from './constants'
 
 interface Props {
@@ -9,6 +11,131 @@ interface Props {
   /** A focused text field keeps the panel open. */
   onHold: (held: boolean) => void
   onShowWelcome: () => void
+  /** The hotkey App knows is registered (the snapshot's copy can be older). */
+  liveHotkey: string | null
+}
+
+// Dev preview only: &open expands the collapsible rows, &bottom scrolls to the end (for screenshots).
+const previewFlags = new URLSearchParams(location.hash.slice(1))
+const PREVIEW_OPEN = previewFlags.has('open')
+
+const keysOf = (hotkey: string | null): string => (hotkey ? hotkey.replace('Control', 'Ctrl').split('+').join(' + ') : 'No hotkey')
+
+/** Every hotkey, gesture and typed command in one place. */
+function ShortcutsRow({ hotkey }: { hotkey: string | null }): React.JSX.Element {
+  const groups: [string, [string, string][]][] = [
+    ['Anywhere', [[keysOf(hotkey), 'Open Gabay and search your apps'], ['Rest on the top edge', 'Bring back a hidden notch']]],
+    [
+      'In the open notch',
+      [
+        ['Ctrl + 1 to 8', 'Switch tabs'],
+        ['Scroll over the tabs', 'Change the volume'],
+        ['Middle-click', 'Play or pause'],
+        ['Esc', 'Clear the search, then let the notch close']
+      ]
+    ],
+    [
+      'Controls',
+      [
+        ['Scroll on a slider', 'Fine-tune it'],
+        ['Arrow keys on a slider', '5% a step (Shift: 10%)'],
+        ['Scroll elsewhere', 'Next or previous page']
+      ]
+    ],
+    [
+      'Type in Launch',
+      [
+        ['lock · sleep', 'Right away'],
+        ['restart · shut down', 'Asks first'],
+        ['focus 25 · pause · reset', 'The focus timer'],
+        ['todo buy milk', 'Add a to-do'],
+        ['open spotify', 'Open an app'],
+        ['clear clips', 'Clear clipboard history'],
+        ['tab notes', 'Go to a tab']
+      ]
+    ]
+  ]
+  return (
+    <details className="set-row set-details" open={PREVIEW_OPEN || undefined}>
+      <summary className="set-label">
+        <Icon name="keyboard" size={14} />
+        Shortcuts and commands
+      </summary>
+      <div className="keys">
+        {groups.map(([title, rows]) => (
+          <div key={title} className="keys-group">
+            <div className="keys-title">{title}</div>
+            {rows.map(([k, what]) => (
+              <div key={k} className="keys-row">
+                <kbd>{k}</kbd>
+                <span>{what}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </details>
+  )
+}
+
+function WhatsNewRow({ version }: { version: string }): React.JSX.Element {
+  return (
+    <details className="set-row set-details" open={PREVIEW_OPEN || undefined}>
+      <summary className="set-label">
+        <Icon name="sparkles" size={14} />
+        What's new in {version}
+      </summary>
+      <ul className="news">
+        {notesFor(version).map((n) => (
+          <li key={n}>{n}</li>
+        ))}
+      </ul>
+    </details>
+  )
+}
+
+/** Settings back to defaults, after an on-screen confirmation (no browser dialogs in Gabay). */
+function ResetRow({ onReset }: { onReset: () => Promise<void> }): React.JSX.Element {
+  const [asking, setAsking] = useState(false)
+  const [done, setDone] = useState(false)
+  return (
+    <div className="set-row">
+      <div className="set-label">Reset settings</div>
+      {asking ? (
+        <div className="set-opts">
+          <span className="set-ask">Reset every setting to its default? To-dos, notes, pinned clips and your calendar stay.</span>
+          <button
+            className="chip danger"
+            onClick={() =>
+              void onReset().then(() => {
+                setAsking(false)
+                setDone(true)
+              })
+            }
+          >
+            Reset
+          </button>
+          <button className="chip" onClick={() => setAsking(false)}>
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <div className="set-opts">
+          <button
+            className="chip"
+            onClick={() => {
+              setDone(false)
+              setAsking(true)
+            }}
+          >
+            <Icon name="rotate-ccw" size={13} />
+            Reset to defaults
+          </button>
+          {done && <span className="set-note muted">Done. Everything is back to how it started.</span>}
+        </div>
+      )}
+    </div>
+  )
 }
 
 /** Private iCal address: typed here, sent once to main (which encrypts it), never shown back. */
@@ -211,7 +338,7 @@ function UpdateRow(): React.JSX.Element {
  * Buttons and a slider rather than <select>: a native dropdown opens its own popup window, which would take
  * the pointer off the notch and collapse the panel under the user.
  */
-export default function SettingsPanel({ onSettings, onHold, onShowWelcome }: Props): React.JSX.Element {
+export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveHotkey }: Props): React.JSX.Element {
   const [snap, setSnap] = useState<SettingsSnapshot | null>(null)
   const [delay, setDelay] = useState<number | null>(null)
   const saveTimer = useRef<number | undefined>(undefined)
@@ -249,7 +376,12 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome }: Pro
   const shownDisplay = displays.some((d) => d.id === settings.displayId) ? settings.displayId : null
 
   return (
-    <div className="body settings">
+    <div
+      className="body settings"
+      ref={(el) => {
+        if (el && previewFlags.has('bottom')) el.scrollTop = el.scrollHeight
+      }}
+    >
       <div className="set-row">
         <div className="set-label">Hotkey</div>
         <div className="set-opts">
@@ -394,6 +526,8 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome }: Pro
 
       <CalendarRow onHold={onHold} />
       <UpdateRow />
+      <WhatsNewRow version={snap.version} />
+      <ShortcutsRow hotkey={liveHotkey ?? activeHotkey} />
       <div className="set-row">
         <div className="set-label">Welcome tour</div>
         <div className="set-opts">
@@ -403,6 +537,14 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome }: Pro
         </div>
       </div>
       <ReportRow onHold={onHold} />
+      <ResetRow
+        onReset={async () => {
+          const r = await window.overlay.resetSettings()
+          setSnap(r)
+          setDelay(r.settings.collapseMs)
+          onSettings(r.settings)
+        }}
+      />
 
       <div className="set-section">Experiments</div>
       <div className="set-row">

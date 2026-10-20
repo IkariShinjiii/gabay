@@ -18,9 +18,11 @@ import { chime, leftOf, useTimers } from './useTimers'
 import { useRecorder } from './useRecorder'
 import { applyAccent, resolveAccent } from './accent'
 import Welcome from './Welcome'
+import NotesPanel from './NotesPanel'
+import { notesFor } from './whatsNew'
 import { useFocusTimer } from './useFocusTimer'
 
-const TABS = ['Controls', 'Today', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
+const TABS = ['Controls', 'Today', 'Notes', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
 type Tab = (typeof TABS)[number]
 
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
@@ -119,10 +121,13 @@ export default function App(): React.JSX.Element {
   const finishWelcome = useCallback((): void => {
     setWelcome(false)
     hold('welcome', false)
-    void window.overlay.setSettings({ welcomed: true, accent: accentRef.current })
+    void window.overlay.setSettings({ welcomed: true, accent: accentRef.current, seenVersion: versionRef.current })
     evaluate()
   }, [hold, evaluate])
   const accentRef = useRef('mint')
+  const versionRef = useRef('')
+  // Set once pushToast exists (further down); called from the settings load above.
+  const announceUpdate = useRef<(version: string) => void>(() => undefined)
   accentRef.current = accentName
   const [place, setPlace] = useState<string | null>(null)
   const applySettings = useCallback((s: Settings): void => {
@@ -141,6 +146,12 @@ export default function App(): React.JSX.Element {
       applySettings(r.settings)
       setActiveHotkey(r.activeHotkey)
       setAccentName(r.settings.accent)
+      versionRef.current = r.version
+      // After an update (not on a first run, which gets the tour): say once what's new.
+      if (r.settings.welcomed && r.settings.seenVersion !== r.version && !previewParam) {
+        window.setTimeout(() => announceUpdate.current(r.version), 2500)
+        void window.overlay.setSettings({ seenVersion: r.version })
+      }
       // First run: open straight into the tour (never in screenshot previews, except the tour's own).
       if (previewWelcome || (!r.settings.welcomed && !previewParam)) startWelcome()
     })
@@ -294,6 +305,18 @@ export default function App(): React.JSX.Element {
   }, [expanded, showNext])
   useEffect(() => () => window.clearTimeout(toastTimer.current), [])
 
+  announceUpdate.current = (version: string): void => {
+    const items = notesFor(version)
+    pushToast({
+      icon: 'sparkles',
+      label: `Updated to Gabay ${version}`,
+      title: items[0],
+      sub: items.length > 1 ? `And ${items.length - 1} more in Settings › What's new` : undefined,
+      tone: 'accent',
+      ms: 7000
+    })
+  }
+
   // --- now playing (live activity in the pill; a toast when the track changes) ---
   const [media, setMedia] = useState<LiveMedia | null>(null)
   const lastTrack = useRef<string | null>(null)
@@ -308,6 +331,8 @@ export default function App(): React.JSX.Element {
     // Dev preview of the grown pill: sample data, never real events.
     if (previewParam === 'Toast')
       setToast({ id: 0, icon: 'zap', title: 'Charging', sub: '76%', ring: 0.76, tone: 'accent', ms: 60_000 })
+    if (previewParam === 'WhatsNew')
+      setToast({ id: 0, icon: 'sparkles', label: 'Updated to Gabay 0.32.0', title: notesFor('0.32.0')[0], sub: "And 3 more in Settings › What's new", tone: 'accent', ms: 60_000 })
     if (previewParam === 'Note')
       setToast({ id: 0, icon: 'message-square', label: 'Messenger', title: 'Kevin', sub: 'are you coming tonight? we are at the usual place', ms: 60_000 })
     if (previewParam === 'Live')
@@ -685,6 +710,8 @@ export default function App(): React.JSX.Element {
     body = <ClipboardPanel query={query} onCopied={onClipCopied} />
   } else if (expanded && tab === 'Today') {
     body = <TodayPanel timer={focusTimer} timers={timers} weather={weather} todoVersion={todoVersion} onHold={onTodoHold} />
+  } else if (expanded && tab === 'Notes') {
+    body = <NotesPanel onHold={onTodoHold} />
   } else if (expanded && tab === 'Power') {
     body = (
       <PowerPanel
@@ -695,7 +722,7 @@ export default function App(): React.JSX.Element {
       />
     )
   } else if (expanded && tab === 'Settings') {
-    body = <SettingsPanel onSettings={applySettings} onHold={onTodoHold} onShowWelcome={startWelcome} />
+    body = <SettingsPanel onSettings={applySettings} onHold={onTodoHold} onShowWelcome={startWelcome} liveHotkey={activeHotkey} />
   } else if (expanded && tab === 'System') {
     // StatsPanel exists only while visible, so its polling stops when the notch collapses or the tab changes.
     body = <StatsPanel />

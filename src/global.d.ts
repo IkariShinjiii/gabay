@@ -39,6 +39,11 @@ export interface OverlayApi {
   getSettings(): Promise<SettingsSnapshot>
   /** Partial patch; main validates it and returns the settings now in effect. */
   setSettings(patch: Partial<Settings>): Promise<SettingsSnapshot>
+  /** Settings back to defaults (to-dos, notes, pinned clips and calendar are kept). */
+  resetSettings(): Promise<SettingsSnapshot>
+  getNotes(): Promise<string>
+  /** Saves the whole scratchpad; false if it is too long. */
+  setNotes(text: string): Promise<boolean>
   /** Fires when the global hotkey is pressed. Returns an unsubscribe function. */
   onSummon(cb: () => void): () => void
   /** Now playing, from the native helper (art is a data URL). */
@@ -97,6 +102,7 @@ export interface Settings {
   lyrics: boolean
   dndUntil: number
   welcomed: boolean
+  seenVersion: string
   visibility: 'always' | 'auto'
 }
 
@@ -105,6 +111,8 @@ export interface SettingsSnapshot {
   /** The hotkey actually registered, which differs from settings.hotkey when another app owns it. */
   activeHotkey: string | null
   hotkeys: string[]
+  /** Gabay's version, e.g. 0.32.0. */
+  version: string
   collapseRange: { min: number; max: number }
   displays: { id: number; label: string; detail: string }[]
 }
