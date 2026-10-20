@@ -1,7 +1,11 @@
 # Gabay
 
-Personal Windows 11 top-edge shell: a center notch that expands into a panel. All nine planned milestones are done (see CHANGELOG.md); the overlay kill test passed (see below).
-Windows 11 only. Electron + React + TypeScript + electron-vite.
+Your Windows taskbar, folded into an iPhone-style notch: a strip at the top of the screen that expands into quick settings,
+your day and your tools. Built and tested on Windows 11; Windows 10 version 1809 or later should work.
+Electron + React + TypeScript + electron-vite, with a small C# helper for the Windows parts (see CHANGELOG.md for history).
+
+**Website and download:** https://ikarishinjiii.github.io/gabay/ (source in `site/`, deployed by `.github/workflows/pages.yml`).
+The showcase video there is made with Remotion in a separate `gabay-video` project.
 
 ## Setup
 
