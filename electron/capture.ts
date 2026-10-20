@@ -1,5 +1,6 @@
 import { app, desktopCapturer, type Display } from 'electron'
 import { writeImage } from './clipboardHistory'
+import { logError } from './diagnostics'
 import { createWriteStream, type WriteStream } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -42,7 +43,12 @@ export async function recordingStart(): Promise<boolean> {
   const dir = join(app.getPath('videos'), 'Gabay')
   await mkdir(dir, { recursive: true })
   outFile = join(dir, `Recording ${stamp()}.webm`)
-  out = createWriteStream(outFile)
+  const stream = createWriteStream(outFile)
+  stream.on('error', (e) => {
+    logError('recording', e) // disk full or the folder went away: stop writing, keep Gabay running
+    if (out === stream) out = null
+  })
+  out = stream
   return true
 }
 

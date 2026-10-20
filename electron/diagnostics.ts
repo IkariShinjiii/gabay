@@ -23,6 +23,7 @@ function scrub(text: string): string {
 }
 
 export function logError(where: string, err: unknown): void {
+  console.error(`[gabay] ${where}:`, err) // visible in dev; the scrubbed copy below is for bug reports
   const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
   log.unshift(`${new Date().toISOString().slice(11, 19)} ${where}: ${scrub(msg).slice(0, 300)}`)
   log.length = Math.min(log.length, MAX_LOG)

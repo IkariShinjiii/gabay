@@ -10,15 +10,13 @@ import { join } from 'node:path'
 export interface DownloadState {
   name: string
   bytes: number
-  speed: number // bytes per second
-  count: number // active downloads
 }
 
 const TEMP = /\.(crdownload|part|partial|download)$/i
 
 let watcher: FSWatcher | null = null
 let poll: NodeJS.Timeout | undefined
-const active = new Map<string, { bytes: number; at: number; speed: number }>()
+const active = new Map<string, number>() // temp file -> bytes so far
 
 export function startDownloads(onProgress: (d: DownloadState | null) => void, onDone: (name: string) => void): void {
   const dir = app.getPath('downloads')
@@ -26,13 +24,9 @@ export function startDownloads(onProgress: (d: DownloadState | null) => void, on
     temp.replace(TEMP, '').replace(/^Unconfirmed \d+$/, '') // Chromium's placeholder before the real name is known
 
   const tick = async (): Promise<void> => {
-    for (const [f, s] of active) {
+    for (const f of [...active.keys()]) {
       try {
-        const st = await stat(join(dir, f))
-        const now = Date.now()
-        const dt = (now - s.at) / 1000
-        const speed = dt > 0 ? Math.max(0, (st.size - s.bytes) / dt) : s.speed
-        active.set(f, { bytes: st.size, at: now, speed: s.speed * 0.6 + speed * 0.4 })
+        active.set(f, (await stat(join(dir, f))).size)
       } catch {
         // Gone: renamed to its final name (done) or cancelled.
         active.delete(f)
@@ -53,14 +47,15 @@ export function startDownloads(onProgress: (d: DownloadState | null) => void, on
       onProgress(null)
       return
     }
-    const [f, s] = [...active.entries()].sort((a, b) => b[1].bytes - a[1].bytes)[0]
-    onProgress({ name: finalName(f) || 'Download', bytes: s.bytes, speed: s.speed, count: active.size })
+    // The biggest download in progress is the one shown.
+    const [f, bytes] = [...active.entries()].sort((a, b) => b[1] - a[1])[0]
+    onProgress({ name: finalName(f) || 'Download', bytes })
   }
 
   try {
     watcher = watch(dir, (_event, file) => {
       if (!file || !TEMP.test(file) || active.has(file)) return
-      active.set(file, { bytes: 0, at: Date.now(), speed: 0 })
+      active.set(file, 0)
       poll ??= setInterval(() => void tick(), 1000)
     })
   } catch {

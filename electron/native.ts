@@ -114,6 +114,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
     pending.clear()
     if (fsOn) on.fullscreen(null) // never leave the notch hidden because the helper went away
     on.media(null)
+    on.privacy({ mic: [], cam: [] }) // never leave a camera or mic dot lit for a helper that's gone
     // Restart after a crash, at most 5 times in 10 minutes so a broken helper can't loop.
     const now = Date.now()
     restarts = restarts.filter((t) => now - t < 600_000)

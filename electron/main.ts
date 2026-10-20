@@ -320,13 +320,11 @@ app.whenReady().then(async () => {
   })
 
   // Screenshots and recording. Gabay hides itself from the capture (content protection), so the notch isn't in it.
-  let lastCapture: string | null = null
   ipcMain.handle('capture:shot', async (e) => {
     fromUi(e)
     win.setContentProtection(true)
     try {
       const r = await screenshot(targetDisplay(settings))
-      if (r) lastCapture = r.file
       return r ? { thumb: r.thumb } : null
     } finally {
       if (!isRecording()) win.setContentProtection(false)
@@ -335,10 +333,6 @@ app.whenReady().then(async () => {
   ipcMain.handle('capture:snip', (e) => {
     fromUi(e)
     return shell.openExternal('ms-screenclip:').then(() => true, () => false)
-  })
-  ipcMain.handle('capture:reveal', (e) => {
-    fromUi(e)
-    if (lastCapture) shell.showItemInFolder(lastCapture)
   })
   // getDisplayMedia from the renderer is answered only while a recording was started from Gabay's own UI.
   session.defaultSession.setDisplayMediaRequestHandler((req, cb) => {
@@ -360,7 +354,6 @@ app.whenReady().then(async () => {
     fromUi(e)
     const file = await recordingStop()
     win.setContentProtection(false)
-    if (file) lastCapture = file
     return !!file
   })
 
@@ -391,6 +384,8 @@ app.whenReady().then(async () => {
   let reloads: number[] = []
   win.webContents.on('render-process-gone', (_e, details) => {
     logError('notch page', `gone: ${details.reason}`)
+    // A recording from the old page can't continue: finish its file and give the capture state back.
+    if (isRecording()) void recordingStop().then(() => !win.isDestroyed() && win.setContentProtection(false))
     const now = Date.now()
     reloads = reloads.filter((t) => now - t < 60_000)
     if (details.reason === 'clean-exit' || win.isDestroyed() || reloads.length >= 3) return
@@ -659,5 +654,6 @@ app.on('will-quit', () => {
   stopQuick()
   stopNative()
   stopDownloads()
+  void recordingStop() // flush whatever a recording in progress has buffered
 })
 app.on('window-all-closed', () => app.quit())

@@ -17,10 +17,12 @@ interface Item {
   id: string
   text: string
   pinned: boolean
-  // Images are memory-only (never written to disk, can't be pinned) and capped at MAX_IMAGES.
-  image?: { img: NativeImage; thumb: string; hash: string }
+  // Images are memory-only (never written to disk, can't be pinned), kept as compressed PNG bytes, and capped by count
+  // and total size.
+  image?: { png: Buffer; width: number; height: number; thumb: string; hash: string }
 }
 const MAX_IMAGES = 10
+const MAX_IMAGE_BYTES = 60 * 1024 * 1024 // all images together
 const MAX_IMAGE_PIXELS = 40_000_000
 
 const POLL_MS = 1000 // Electron has no clipboard change event, so a slow poll
@@ -67,6 +69,7 @@ let guard: () => Promise<boolean> = async () => true
 // Windows' clipboard sequence number: a cheap "did anything change?" so the clipboard itself is only read after a copy.
 let sequence: () => Promise<number | null> = async () => null
 let lastSeq: number | null = null
+let seeded = false // the first sequence number seen is a baseline, not a copy
 export function setClipboardGuard(fn: () => Promise<boolean>, seq: () => Promise<number | null>): void {
   guard = fn
   sequence = seq
@@ -76,19 +79,27 @@ export async function writeImage(img: NativeImage): Promise<void> {
   await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(img.toPNG())], { type: 'image/png' }) })])
 }
 
-function recordImage(img: NativeImage): void {
+function recordImage(png: Buffer): void {
+  if (png.length > MAX_IMAGE_BYTES) return
+  const img = nativeImage.createFromBuffer(png)
   const { width, height } = img.getSize()
   if (!width || !height || width * height > MAX_IMAGE_PIXELS) return
-  const small = img.resize({ width: Math.min(160, width) })
-  const hash = createHash('sha1').update(small.toBitmap()).digest('hex')
+  const hash = createHash('sha1').update(png).digest('hex')
   const existing = items.find((i) => i.image?.hash === hash)
-  const entry = existing ?? { id: randomUUID(), text: '', pinned: false, image: { img, thumb: small.toDataURL(), hash } }
+  const thumb = existing?.image?.thumb ?? img.resize({ width: Math.min(160, width) }).toDataURL()
+  const entry = existing ?? { id: randomUUID(), text: '', pinned: false, image: { png, width, height, thumb, hash } }
   items = [entry, ...items.filter((i) => i !== entry)]
-  const images = items.filter((i) => i.image)
-  if (images.length > MAX_IMAGES) {
-    const drop = new Set(images.slice(MAX_IMAGES))
-    items = items.filter((i) => !drop.has(i))
+  // Newest images win: drop the oldest past the count or total-size cap.
+  let bytes = 0
+  let count = 0
+  const drop = new Set<Item>()
+  for (const i of items) {
+    if (!i.image) continue
+    count++
+    bytes += i.image.png.length
+    if (count > MAX_IMAGES || bytes > MAX_IMAGE_BYTES) drop.add(i)
   }
+  if (drop.size) items = items.filter((i) => !drop.has(i))
 }
 
 async function poll(): Promise<void> {
@@ -97,28 +108,39 @@ async function poll(): Promise<void> {
   try {
     const seq = await sequence()
     if (seq !== null) {
+      if (!seeded) {
+        // First number after start (the helper may come up after us): whatever is there now is not a new copy.
+        seeded = true
+        lastSeq = seq
+        return
+      }
       if (seq === lastSeq) return
-      lastSeq = seq
     }
-    const text = (await clipboard.has('text/plain')) ? await clipboard.readText() : ''
-    if (!text && (await clipboard.has('image/png'))) {
-      if (seq === null) return // no change signal: don't re-read big images every second
-      if (!(await guard())) return
-      const item = (await clipboard.read()).find((i) => i.types.includes('image/png'))
-      const blob = item ? await item.getType('image/png') : null
-      if (blob instanceof Blob) recordImage(nativeImage.createFromBuffer(Buffer.from(await blob.arrayBuffer())))
-      return
-    }
-    if (!text || text === lastSeen) return
-    lastSeen = text
-    if (!text.trim() || text.length > MAX_CHARS) return
-    if (!(await guard())) return // a password manager or private window asked not to be remembered
-    record(text)
+    await readNewCopy(seq)
+    // Only now is this copy handled; if reading threw (another app held the clipboard), the next tick retries it.
+    if (seq !== null) lastSeq = seq
   } catch {
     // clipboard busy (another app holds it); try again next tick
   } finally {
     polling = false
   }
+}
+
+async function readNewCopy(seq: number | null): Promise<void> {
+  const text = (await clipboard.has('text/plain')) ? await clipboard.readText() : ''
+  if (!text && (await clipboard.has('image/png'))) {
+    if (seq === null) return // no change signal: don't re-read big images every second
+    if (!(await guard())) return
+    const item = (await clipboard.read()).find((i) => i.types.includes('image/png'))
+    const blob = item ? await item.getType('image/png') : null
+    if (blob instanceof Blob) recordImage(Buffer.from(await blob.arrayBuffer()))
+    return
+  }
+  if (!text || text === lastSeen) return
+  lastSeen = text
+  if (!text.trim() || text.length > MAX_CHARS) return
+  if (!(await guard())) return // a password manager or private window asked not to be remembered
+  record(text)
 }
 
 function record(text: string): void {
@@ -140,9 +162,6 @@ export function startClipboardHistory(): void {
   void clipboard.readText().then((t) => {
     lastSeen = t
   })
-  void sequence().then((n) => {
-    lastSeq = n // what's on the clipboard at start is not a new copy
-  })
   timer = setInterval(() => void poll(), POLL_MS)
 }
 
@@ -161,7 +180,7 @@ export function listClipboard(query: string): ClipItem[] {
     .slice(0, RESULT_LIMIT)
     .map((i) =>
       i.image
-        ? { id: i.id, preview: `Image · ${i.image.img.getSize().width}×${i.image.img.getSize().height}`, pinned: false, image: i.image.thumb }
+        ? { id: i.id, preview: `Image · ${i.image.width}×${i.image.height}`, pinned: false, image: i.image.thumb }
         : { id: i.id, preview: preview(i.text), pinned: i.pinned }
     )
 }
@@ -169,7 +188,7 @@ export function listClipboard(query: string): ClipItem[] {
 export async function copyBack(id: string): Promise<boolean> {
   const item = items.find((i) => i.id === id)
   if (!item) return false
-  if (item.image) await writeImage(item.image.img)
+  if (item.image) await writeImage(nativeImage.createFromBuffer(item.image.png))
   else {
     await clipboard.writeText(item.text)
     lastSeen = item.text // our own write is not a new copy

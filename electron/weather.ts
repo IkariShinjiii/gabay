@@ -41,18 +41,19 @@ export async function findPlace(query: unknown): Promise<Place | null> {
 export async function getWeather(place: Place | null): Promise<Weather | null> {
   if (!place) return null
   const key = `${place.lat},${place.lon}`
-  if (cache && cache.key === key && Date.now() - cache.w.at < REFRESH_MS) return cache.w
+  const same = cache && cache.key === key ? cache.w : null // never show another place's weather
+  if (same && Date.now() - same.at < REFRESH_MS) return same
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${place.lat}&longitude=${place.lon}` +
     '&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1'
   try {
     const res = await net.fetch(url, { signal: AbortSignal.timeout(10_000) })
-    if (!res.ok) return cache?.w ?? null
+    if (!res.ok) return same
     const r = (await res.json()) as {
       current?: { temperature_2m?: number; weather_code?: number; is_day?: number }
       daily?: { temperature_2m_max?: number[]; temperature_2m_min?: number[] }
     }
-    if (typeof r.current?.temperature_2m !== 'number') return cache?.w ?? null
+    if (typeof r.current?.temperature_2m !== 'number') return same
     const w: Weather = {
       place: place.name,
       temp: Math.round(r.current.temperature_2m),
@@ -65,6 +66,6 @@ export async function getWeather(place: Place | null): Promise<Weather | null> {
     cache = { key, w }
     return w
   } catch {
-    return cache?.w ?? null
+    return same
   }
 }

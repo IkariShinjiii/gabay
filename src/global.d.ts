@@ -55,8 +55,6 @@ export interface OverlayApi {
   screenshot(): Promise<{ thumb: string } | null>
   /** Opens Windows' own region snip. */
   snip(): Promise<boolean>
-  /** Shows the last screenshot or recording in File Explorer. */
-  revealCapture(): Promise<void>
   recStart(): Promise<boolean>
   recChunk(data: Uint8Array): void
   recStop(): Promise<boolean>
@@ -252,6 +250,4 @@ export interface Weather {
 export interface DownloadState {
   name: string
   bytes: number
-  speed: number
-  count: number
 }

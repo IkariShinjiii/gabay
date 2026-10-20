@@ -289,7 +289,7 @@ export default function App(): React.JSX.Element {
       setWeather({ place: 'Iloilo', temp: 31, code: 2, day: true, high: 33, low: 26, at: 0 })
       setDndUntil(-1)
       setPrivacy({ mic: false, cam: true })
-      setDownload({ name: 'setup.exe', bytes: 48_000_000, speed: 2_000_000, count: 1 })
+      setDownload({ name: 'setup.exe', bytes: 48_000_000 })
     }
     if (previewParam) return
     void window.overlay.mediaGet().then((m) => {
@@ -525,6 +525,14 @@ export default function App(): React.JSX.Element {
   // App results show on every tab except Clipboard, but only for text that is not a command.
   // The bar lives on Launch (apps and commands) and Clipboard (filter) only; other tabs show just their content.
   const hasBar = tab === 'Launch' || tab === 'Clipboard'
+  // React doesn't fire onBlur for an input that unmounts while focused, so release its hold here, or the panel
+  // could never collapse after switching from Launch to a tab without the bar.
+  useEffect(() => {
+    if (hasBar || !holds.current.has('input')) return
+    hold('input', false)
+    setBarFocused(false)
+    evaluate()
+  }, [hasBar, hold, evaluate])
   const showResults = expanded && tab === 'Launch' && !parsed
   // Stale responses are dropped so a slow reply can't overwrite a newer query.
   useEffect(() => {

@@ -39,7 +39,6 @@ contextBridge.exposeInMainWorld('overlay', {
   mixerSet: (pid: number, volume: number) => ipcRenderer.invoke('mixer:set', pid, volume),
   screenshot: () => ipcRenderer.invoke('capture:shot'),
   snip: () => ipcRenderer.invoke('capture:snip'),
-  revealCapture: () => ipcRenderer.invoke('capture:reveal'),
   recStart: () => ipcRenderer.invoke('rec:start'),
   recChunk: (data: Uint8Array): void => ipcRenderer.send('rec:chunk', data),
   recStop: () => ipcRenderer.invoke('rec:stop'),

@@ -275,6 +275,8 @@ function MediaCard({
     return r && media.duration ? Math.max(0, Math.min(1, (clientX - r.left) / r.width)) * media.duration : 0
   }
   const sentSeek = useRef<number | null>(null)
+  const seekTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(seekTimer.current), [])
   useEffect(() => {
     if (sentSeek.current !== null && Math.abs(media.position - sentSeek.current) < 3) {
       sentSeek.current = null
@@ -361,7 +363,8 @@ function MediaCard({
               setSeekTo(to)
               sentSeek.current = to
               void window.overlay.mediaSeek(to)
-              window.setTimeout(() => {
+              window.clearTimeout(seekTimer.current)
+              seekTimer.current = window.setTimeout(() => {
                 sentSeek.current = null
                 setSeekTo(null)
               }, 4000)
