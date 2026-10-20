@@ -7,9 +7,13 @@
 //            media <json|null>          now playing, on change (art only when the track changes)
 //            note <json>                a new Windows notification (only while notes are on)
 //   requests <id> <command> [args]  ->  r <id> <json>
-//            windows | focus <hwnd> | close <hwnd> | vol <0-100> | volget | media toggle|next|prev | bt | notes on|off
+//            vol <0-100> | volget | media toggle|next|prev | bt | notes on|off
 //            appbar L T R B H | appbar off   (reserve a band at the top of a monitor, physical pixels)
 //            clipok                          (false when the copying app asked to keep it out of clipboard history)
+//            clipseq                         (clipboard sequence number: changes on every copy)
+//            mixer | appvol <pid> <0-100>    (per-app volume)
+//            seek <seconds>                  (now playing)
+//   pushes   priv <json>                     camera / microphone in use, and by which apps
 export const NATIVE_SOURCE = String.raw`
 using System;
 using System.Collections.Generic;
@@ -18,6 +22,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using Microsoft.Win32;
 using Windows.Foundation;
 using Windows.Media.Control;
 using Windows.Storage.Streams;
@@ -41,6 +46,34 @@ interface IMMDevice { int Activate(ref Guid id, int clsCtx, int activationParams
 [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 interface IMMDeviceEnumerator { int f(); int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice endpoint); }
 [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumeratorComObject { }
+
+// Per-app volume: the same audio sessions the Windows volume mixer lists.
+[ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMMDeviceAny { void Activate(ref Guid id, int clsCtx, IntPtr activationParams, [MarshalAs(UnmanagedType.IUnknown)] out object o); }
+[ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMMDeviceEnumeratorAny { void f(); void GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDeviceAny endpoint); }
+[ComImport, Guid("77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IAudioSessionManager2 { void a(); void b(); void GetSessionEnumerator(out IAudioSessionEnumerator e); }
+[ComImport, Guid("E2F5BB11-0570-40CA-ACDD-3AA01277DEE8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IAudioSessionEnumerator { void GetCount(out int n); void GetSession(int i, out IAudioSessionControl2 s); }
+[ComImport, Guid("bfb7ff88-7239-4fc9-8fa2-07c950be9c6d"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IAudioSessionControl2 {
+  void GetState(out int state);
+  void GetDisplayName([MarshalAs(UnmanagedType.LPWStr)] out string name);
+  void c(); void d(); void e(); void f(); void g(); void h(); void i();
+  void GetSessionIdentifier([MarshalAs(UnmanagedType.LPWStr)] out string id);
+  void GetSessionInstanceIdentifier([MarshalAs(UnmanagedType.LPWStr)] out string id);
+  void GetProcessId(out uint pid);
+  [PreserveSig] int IsSystemSoundsSession();
+}
+// Sessions here refuse ISimpleAudioVolume (E_NOINTERFACE on this Windows build) but take the per-channel one, so the
+// app's level is set on every channel and read as the loudest.
+[ComImport, Guid("1C158861-B533-4B30-B1CF-E853E51C59B8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IChannelAudioVolume {
+  void GetChannelCount(out uint n);
+  void SetChannelVolume(uint i, float level, ref Guid ctx);
+  void GetChannelVolume(uint i, out float level);
+}
 
 // The reserved band: a black, never-activated strip registered as an app bar, so Windows fits maximized and snapped
 // windows below it (the same mechanism the taskbar uses). It steps aside while an app is full screen.
@@ -109,33 +142,17 @@ class Band : Form {
 static class Native {
   [StructLayout(LayoutKind.Sequential)] struct RECT { public int L, T, R, B; }
   [StructLayout(LayoutKind.Sequential)] struct MONITORINFO { public int cbSize; public RECT rcMonitor; public RECT rcWork; public uint dwFlags; }
-  delegate bool EnumProc(IntPtr h, IntPtr l);
   [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
   [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] static extern IntPtr GetShellWindow();
   [DllImport("user32.dll")] static extern IntPtr GetDesktopWindow();
   [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
-  [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
-  [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
   [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr h, int i);
-  [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr h, uint cmd);
   [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
   [DllImport("user32.dll")] static extern IntPtr MonitorFromWindow(IntPtr h, uint flags);
   [DllImport("user32.dll")] static extern bool GetMonitorInfo(IntPtr m, ref MONITORINFO mi);
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, StringBuilder s, int n);
-  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
-  [DllImport("user32.dll")] static extern int GetWindowTextLength(IntPtr h);
-  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc f, IntPtr l);
-  [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr p, EnumProc f, IntPtr l);
-  [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int cmd);
-  [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
-  [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr h);
-  [DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool attach);
-  [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
-  [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
-  [DllImport("user32.dll")] static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
-  [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out int value, int size);
   [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
   [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
   [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern bool QueryFullProcessImageName(IntPtr h, int flags, StringBuilder s, ref int size);
@@ -188,6 +205,7 @@ static class Native {
     new Thread(ReadCommands) { IsBackground = true }.Start();
     new Thread(MediaLoop) { IsBackground = true }.Start();
     new Thread(NotesLoop) { IsBackground = true }.Start();
+    new Thread(PrivacyLoop) { IsBackground = true }.Start();
     string last = null;
     while (true) {
       try {
@@ -240,12 +258,6 @@ static class Native {
 
   static string Run(string cmd, string arg) {
     switch (cmd) {
-      case "windows": return Windows();
-      case "focus": return Focus(new IntPtr(long.Parse(arg))) ? "true" : "false";
-      case "close": {
-        var h = new IntPtr(long.Parse(arg));
-        return IsWindow(h) && PostMessage(h, 0x0010, IntPtr.Zero, IntPtr.Zero) ? "true" : "false"; // WM_CLOSE
-      }
       case "vol": {
         int v = Math.Max(0, Math.Min(100, int.Parse(arg)));
         var ep = Vol(); ep.SetMasterVolumeLevelScalar(v / 100f, Guid.Empty);
@@ -258,8 +270,131 @@ static class Native {
       case "notes": notesOn = arg == "on"; return "true";
       case "appbar": return AppBar(arg);
       case "clipok": return ClipOk() ? "true" : "false";
+      case "clipseq": return GetClipboardSequenceNumber().ToString();
+      case "mixer": return Mixer();
+      case "appvol": { var a = arg.Split(' '); return AppVolume(uint.Parse(a[0]), Math.Max(0, Math.Min(100, int.Parse(a[1]))) / 100f) ? "true" : "false"; }
+      case "seek": return Seek(double.Parse(arg, System.Globalization.CultureInfo.InvariantCulture)) ? "true" : "false";
     }
     return "null";
+  }
+
+  [DllImport("user32.dll")] static extern uint GetClipboardSequenceNumber();
+
+  // ---------- per-app volume ----------
+  static List<KeyValuePair<IAudioSessionControl2, uint>> Sessions() {
+    var list = new List<KeyValuePair<IAudioSessionControl2, uint>>();
+    var en = new MMDeviceEnumeratorComObject() as IMMDeviceEnumeratorAny;
+    IMMDeviceAny dev; en.GetDefaultAudioEndpoint(0, 1, out dev);
+    var iid = typeof(IAudioSessionManager2).GUID;
+    object o; dev.Activate(ref iid, 23, IntPtr.Zero, out o);
+    IAudioSessionEnumerator se; ((IAudioSessionManager2)o).GetSessionEnumerator(out se);
+    int n; se.GetCount(out n);
+    for (int i = 0; i < n; i++) {
+      try {
+        IAudioSessionControl2 s; se.GetSession(i, out s);
+        int state; s.GetState(out state);
+        if (state == 2) continue; // expired
+        uint pid = 0;
+        if (s.IsSystemSoundsSession() != 0) s.GetProcessId(out pid); // system sounds: pid 0
+        list.Add(new KeyValuePair<IAudioSessionControl2, uint>(s, pid));
+      } catch { } // one odd session must not hide the rest
+    }
+    return list;
+  }
+
+  static string AppName(uint pid, string path) {
+    if (pid == 0) return "System sounds";
+    if (path == null) return "App " + pid;
+    try {
+      var d = FileVersionInfo.GetVersionInfo(path).FileDescription;
+      if (!string.IsNullOrWhiteSpace(d)) return d.Trim();
+    } catch { }
+    return System.IO.Path.GetFileNameWithoutExtension(path);
+  }
+
+  static string Mixer() {
+    var seen = new Dictionary<uint, bool>();
+    var sb = new StringBuilder("[");
+    bool first = true;
+    foreach (var kv in Sessions()) {
+      uint pid = kv.Value;
+      if (seen.ContainsKey(pid)) continue; // one row per app; setting it sets all its sessions
+      seen[pid] = true;
+      float l = ChannelLevel((IChannelAudioVolume)kv.Key);
+      string path = pid == 0 ? null : ProcPath(pid);
+      if (!first) sb.Append(',');
+      first = false;
+      sb.Append("{\"pid\":").Append(pid).Append(",\"name\":").Append(J(AppName(pid, path)))
+        .Append(",\"path\":").Append(J(path)).Append(",\"volume\":").Append(Math.Round(l * 100)).Append('}');
+    }
+    return sb.Append(']').ToString();
+  }
+
+  static float ChannelLevel(IChannelAudioVolume v) {
+    uint n; v.GetChannelCount(out n);
+    float max = 0;
+    for (uint i = 0; i < n; i++) { float c; v.GetChannelVolume(i, out c); if (c > max) max = c; }
+    return max;
+  }
+
+  static bool AppVolume(uint pid, float level) {
+    bool any = false;
+    var ctx = Guid.Empty;
+    foreach (var kv in Sessions()) {
+      if (kv.Value != pid) continue;
+      var v = (IChannelAudioVolume)kv.Key;
+      uint n; v.GetChannelCount(out n);
+      for (uint i = 0; i < n; i++) v.SetChannelVolume(i, level, ref ctx);
+      any = true;
+    }
+    return any;
+  }
+
+  // ---------- camera and microphone in use ----------
+  // Windows records each app's use under CapabilityAccessManager; LastUsedTimeStop = 0 means "in use right now".
+  static void PrivacyLoop() {
+    string last = null;
+    while (true) {
+      try {
+        var mic = InUse("microphone");
+        var cam = InUse("webcam");
+        string now = "{\"mic\":" + Names(mic) + ",\"cam\":" + Names(cam) + "}";
+        if (now != last) { Send("priv " + now); last = now; }
+      } catch { }
+      Thread.Sleep(1000);
+    }
+  }
+  static string Names(List<string> l) {
+    var sb = new StringBuilder("[");
+    for (int i = 0; i < l.Count; i++) { if (i > 0) sb.Append(','); sb.Append(J(l[i])); }
+    return sb.Append(']').ToString();
+  }
+  static List<string> InUse(string cap) {
+    var found = new List<string>();
+    string root = @"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\" + cap;
+    using (var k = Registry.CurrentUser.OpenSubKey(root)) {
+      if (k == null) return found;
+      foreach (var name in k.GetSubKeyNames()) {
+        using (var sub = k.OpenSubKey(name)) {
+          if (sub == null) continue;
+          if (name == "NonPackaged") {
+            foreach (var app in sub.GetSubKeyNames()) {
+              using (var a = sub.OpenSubKey(app)) {
+                if (a != null && Active(a)) found.Add(System.IO.Path.GetFileNameWithoutExtension(app.Replace('#', '\\')));
+              }
+            }
+          } else if (Active(sub)) {
+            int u = name.IndexOf('_');
+            found.Add(u > 0 ? name.Substring(0, u) : name);
+          }
+        }
+      }
+    }
+    return found;
+  }
+  static bool Active(RegistryKey k) {
+    object start = k.GetValue("LastUsedTimeStart"), stop = k.GetValue("LastUsedTimeStop");
+    return start is long && (long)start != 0 && stop is long && (long)stop == 0;
   }
 
   // ---------- clipboard privacy ----------
@@ -305,60 +440,6 @@ static class Native {
     if (p == IntPtr.Zero) return null;
     try { var s = new StringBuilder(1024); int n = s.Capacity; return QueryFullProcessImageName(p, 0, s, ref n) ? s.ToString() : null; }
     finally { CloseHandle(p); }
-  }
-
-  static bool Listable(IntPtr h) {
-    if (!IsWindowVisible(h) || GetWindow(h, 4) != IntPtr.Zero) return false; // owned popups belong to their owner
-    if ((GetWindowLong(h, -20) & 0x80) != 0) return false; // WS_EX_TOOLWINDOW
-    int cloaked; if (DwmGetWindowAttribute(h, 14, out cloaked, 4) == 0 && cloaked != 0) return false; // other desktops, suspended apps
-    if (GetWindowTextLength(h) == 0) return false;
-    string c = ClassOf(h);
-    return c != "Progman" && c != "Shell_TrayWnd" && c != "Shell_SecondaryTrayWnd" && c != "Windows.UI.Core.CoreWindow";
-  }
-
-  static string Windows() {
-    var sb = new StringBuilder("[");
-    bool first = true;
-    IntPtr fg = GetForegroundWindow();
-    EnumWindows((h, l) => {
-      if (!Listable(h)) return true;
-      uint pid; GetWindowThreadProcessId(h, out pid);
-      if (pid == self) return true;
-      // Store apps run inside ApplicationFrameHost; the real app is the child window from another process.
-      if (ClassOf(h) == "ApplicationFrameWindow") {
-        uint inner = 0, host = pid;
-        EnumChildWindows(h, (c, x) => { uint cp; GetWindowThreadProcessId(c, out cp); if (cp != host) { inner = cp; return false; } return true; }, IntPtr.Zero);
-        if (inner == 0) return true; // a suspended Store app with no content
-        pid = inner;
-      }
-      var t = new StringBuilder(GetWindowTextLength(h) + 1); GetWindowText(h, t, t.Capacity);
-      if (!first) sb.Append(',');
-      first = false;
-      sb.Append("{\"h\":\"").Append(h.ToInt64()).Append("\",\"t\":").Append(J(t.ToString()))
-        .Append(",\"p\":").Append(J(ProcPath(pid))).Append(",\"min\":").Append(IsIconic(h) ? "true" : "false")
-        .Append(",\"fg\":").Append(h == fg ? "true" : "false").Append('}');
-      return true;
-    }, IntPtr.Zero);
-    return sb.Append(']').ToString();
-  }
-
-  // Windows only lets the foreground app hand focus over. Gabay is in front when this runs (it was just clicked), so
-  // join its input queue for the call; if that is refused, a synthetic Alt tap lifts the lock.
-  static bool Focus(IntPtr h) {
-    if (!IsWindow(h) || !Listable(h)) return false;
-    if (IsIconic(h)) ShowWindow(h, 9); // SW_RESTORE
-    uint dummy;
-    uint fgThread = GetWindowThreadProcessId(GetForegroundWindow(), out dummy);
-    uint me = GetCurrentThreadId();
-    bool attached = fgThread != 0 && fgThread != me && AttachThreadInput(me, fgThread, true);
-    bool ok = SetForegroundWindow(h);
-    BringWindowToTop(h);
-    if (attached) AttachThreadInput(me, fgThread, false);
-    if (!ok || GetForegroundWindow() != h) {
-      keybd_event(0x12, 0, 0, UIntPtr.Zero); keybd_event(0x12, 0, 2, UIntPtr.Zero);
-      ok = SetForegroundWindow(h);
-    }
-    return ok;
   }
 
   // ---------- now playing ----------
@@ -407,6 +488,15 @@ static class Native {
       sb.Append(",\"art\":").Append(J(art));
     }
     return sb.Append('}').ToString();
+  }
+
+  static bool Seek(double seconds) {
+    if (media == null) return false;
+    var s = media.GetCurrentSession();
+    if (s == null) return false;
+    var tl = s.GetTimelineProperties();
+    long ticks = tl.StartTime.Ticks + (long)(Math.Max(0, seconds) * TimeSpan.TicksPerSecond);
+    return W(s.TryChangePlaybackPositionAsync(ticks));
   }
 
   static bool MediaCommand(string c) {

@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react'
 import Icon from './Icon'
-import type { CalEvent, Todo } from './global'
+import type { CalEvent, Todo, Weather } from './global'
+import { formatClock, leftOf, MAX_TIMERS, type Timers } from './useTimers'
+import { weatherLook } from './weatherIcon'
 import { formatMs, type FocusTimer } from './useFocusTimer'
 
 interface Props {
   timer: FocusTimer
+  /** Stopwatch and countdowns (they live in App so they keep running when the panel closes). */
+  timers: Timers
+  weather: Weather | null
   /** Bumped when a to-do is added from elsewhere (the command bar) so the list re-reads. */
   todoVersion: number
   /** Input focus keeps the panel open (same rule as the search field). */
@@ -61,7 +66,7 @@ function Agenda({ now }: { now: number }): React.JSX.Element | null {
 }
 
 /** Mounted only while the Today tab is visible, so its 1 s clock stops when the panel closes. */
-export default function TodayPanel({ timer, todoVersion, onHold }: Props): React.JSX.Element {
+export default function TodayPanel({ timer, timers, weather, todoVersion, onHold }: Props): React.JSX.Element {
   const [now, setNow] = useState(() => new Date())
   const [todos, setTodos] = useState<Todo[]>([])
   const [draft, setDraft] = useState('')
@@ -86,10 +91,20 @@ export default function TodayPanel({ timer, todoVersion, onHold }: Props): React
 
   const running = timer.status === 'running'
   return (
-    <div className="body today">
+    <div className="body today-wrap">
+    <div className="today">
       <div className="today-left">
         <div className="clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
         <div className="date">{now.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}</div>
+        {weather && (
+          <div className="wx" title={weather.place}>
+            <Icon name={weatherLook(weather.code, weather.day).icon} size={14} />
+            <span className="wx-temp">{weather.temp}°</span>
+            <span className="wx-desc">
+              {weatherLook(weather.code, weather.day).label} · H {weather.high}° L {weather.low}°
+            </span>
+          </div>
+        )}
 
         <div className="timer">
           <div className={`timer-time ${timer.status}`}>
@@ -153,6 +168,73 @@ export default function TodayPanel({ timer, todoVersion, onHold }: Props): React
               </button>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+      <div className="today-row">
+        <div className="card sw">
+          <div className="card-head">
+            <Icon name="timer" size={13} />
+            Stopwatch
+          </div>
+          <div className={timers.stopwatch.running ? 'sw-time running' : 'sw-time'}>{formatClock(timers.elapsedMs, true)}</div>
+          <div className="timer-buttons">
+            <button className="btn small" onClick={timers.swToggle}>
+              {timers.stopwatch.running ? 'Stop' : timers.elapsedMs > 0 ? 'Resume' : 'Start'}
+            </button>
+            {timers.stopwatch.running ? (
+              <button className="btn small" onClick={timers.swLap}>
+                Lap
+              </button>
+            ) : (
+              timers.elapsedMs > 0 && (
+                <button className="btn small" onClick={timers.swReset}>
+                  Reset
+                </button>
+              )
+            )}
+          </div>
+          {timers.stopwatch.laps.length > 0 && (
+            <div className="laps">
+              {timers.stopwatch.laps.slice(0, 2).map((l, i) => (
+                <span key={timers.stopwatch.laps.length - i}>
+                  Lap {timers.stopwatch.laps.length - i} · {formatClock(l, true)}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="card tm">
+          <div className="card-head">
+            <Icon name="timer" size={13} />
+            Timers
+            <span className="tm-add">
+              {[1, 5, 10, 30].map((m) => (
+                <button key={m} className="chip" disabled={timers.countdowns.length >= MAX_TIMERS} onClick={() => timers.add(m)} title={`New ${m}-minute timer`}>
+                  +{m}m
+                </button>
+              ))}
+            </span>
+          </div>
+          {timers.countdowns.length === 0 ? (
+            <div className="tm-empty">Tap +5m to start one. It keeps running when the notch closes.</div>
+          ) : (
+            <div className="tm-list">
+              {timers.countdowns.slice(0, 3).map((c) => (
+                <div key={c.id} className={c.endAt === null ? 'tm-row paused' : 'tm-row'}>
+                  <span className="tm-left">{formatClock(leftOf(c, timers.now) + 999)}</span>
+                  <span className="tm-label">{c.label}</span>
+                  <button className="tm-btn" onClick={() => timers.toggle(c.id)} title={c.endAt === null ? 'Resume' : 'Pause'} aria-label={c.endAt === null ? 'Resume' : 'Pause'}>
+                    <Icon name={c.endAt === null ? 'play' : 'pause'} size={11} />
+                  </button>
+                  <button className="tm-btn" onClick={() => timers.remove(c.id)} title="Cancel" aria-label="Cancel timer">
+                    <Icon name="x" size={11} />
+                  </button>
+                </div>
+              ))}
+              {timers.countdowns.length > 3 && <div className="tm-empty">+{timers.countdowns.length - 3} more</div>}
+            </div>
+          )}
         </div>
       </div>
     </div>

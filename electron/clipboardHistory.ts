@@ -1,4 +1,5 @@
-import { app, clipboard } from 'electron'
+import { app, clipboard, ClipboardItem, nativeImage, type NativeImage } from 'electron'
+import { createHash } from 'node:crypto'
 import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { writeJsonAtomic } from './atomicWrite'
@@ -8,13 +9,19 @@ export interface ClipItem {
   id: string
   preview: string // single-line, truncated: the renderer never receives the full text
   pinned: boolean
+  /** Small thumbnail (data URL) for copied images. */
+  image?: string
 }
 
 interface Item {
   id: string
   text: string
   pinned: boolean
+  // Images are memory-only (never written to disk, can't be pinned) and capped at MAX_IMAGES.
+  image?: { img: NativeImage; thumb: string; hash: string }
 }
+const MAX_IMAGES = 10
+const MAX_IMAGE_PIXELS = 40_000_000
 
 const POLL_MS = 1000 // Electron has no clipboard change event, so a slow poll
 const MAX_UNPINNED = 50
@@ -50,22 +57,58 @@ async function loadPinned(): Promise<void> {
 }
 
 async function savePinned(): Promise<void> {
-  const pinned = items.filter((i) => i.pinned).map(({ id, text }) => ({ id, text }))
+  const pinned = items.filter((i) => i.pinned && !i.image).map(({ id, text }) => ({ id, text }))
   await writeJsonAtomic(storePath(), pinned)
 }
 
 let polling = false
 // Asks whether the current clipboard may be kept (see the native helper's clipok). Unset or unanswered means yes.
 let guard: () => Promise<boolean> = async () => true
-export function setClipboardGuard(fn: () => Promise<boolean>): void {
+// Windows' clipboard sequence number: a cheap "did anything change?" so the clipboard itself is only read after a copy.
+let sequence: () => Promise<number | null> = async () => null
+let lastSeq: number | null = null
+export function setClipboardGuard(fn: () => Promise<boolean>, seq: () => Promise<number | null>): void {
   guard = fn
+  sequence = seq
+}
+
+export async function writeImage(img: NativeImage): Promise<void> {
+  await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(img.toPNG())], { type: 'image/png' }) })])
+}
+
+function recordImage(img: NativeImage): void {
+  const { width, height } = img.getSize()
+  if (!width || !height || width * height > MAX_IMAGE_PIXELS) return
+  const small = img.resize({ width: Math.min(160, width) })
+  const hash = createHash('sha1').update(small.toBitmap()).digest('hex')
+  const existing = items.find((i) => i.image?.hash === hash)
+  const entry = existing ?? { id: randomUUID(), text: '', pinned: false, image: { img, thumb: small.toDataURL(), hash } }
+  items = [entry, ...items.filter((i) => i !== entry)]
+  const images = items.filter((i) => i.image)
+  if (images.length > MAX_IMAGES) {
+    const drop = new Set(images.slice(MAX_IMAGES))
+    items = items.filter((i) => !drop.has(i))
+  }
 }
 
 async function poll(): Promise<void> {
   if (polling) return // a slow read must not stack up
   polling = true
   try {
-    const text = await clipboard.readText()
+    const seq = await sequence()
+    if (seq !== null) {
+      if (seq === lastSeq) return
+      lastSeq = seq
+    }
+    const text = (await clipboard.has('text/plain')) ? await clipboard.readText() : ''
+    if (!text && (await clipboard.has('image/png'))) {
+      if (seq === null) return // no change signal: don't re-read big images every second
+      if (!(await guard())) return
+      const item = (await clipboard.read()).find((i) => i.types.includes('image/png'))
+      const blob = item ? await item.getType('image/png') : null
+      if (blob instanceof Blob) recordImage(nativeImage.createFromBuffer(Buffer.from(await blob.arrayBuffer())))
+      return
+    }
     if (!text || text === lastSeen) return
     lastSeen = text
     if (!text.trim() || text.length > MAX_CHARS) return
@@ -97,6 +140,9 @@ export function startClipboardHistory(): void {
   void clipboard.readText().then((t) => {
     lastSeen = t
   })
+  void sequence().then((n) => {
+    lastSeq = n // what's on the clipboard at start is not a new copy
+  })
   timer = setInterval(() => void poll(), POLL_MS)
 }
 
@@ -111,23 +157,30 @@ export function listClipboard(query: string): ClipItem[] {
   const q = query.trim().toLowerCase().slice(0, 100)
   const ordered = [...items.filter((i) => i.pinned), ...items.filter((i) => !i.pinned)]
   return ordered
-    .filter((i) => !q || i.text.toLowerCase().includes(q))
+    .filter((i) => !q || (!i.image && i.text.toLowerCase().includes(q)) || (!!i.image && 'image'.includes(q)))
     .slice(0, RESULT_LIMIT)
-    .map((i) => ({ id: i.id, preview: preview(i.text), pinned: i.pinned }))
+    .map((i) =>
+      i.image
+        ? { id: i.id, preview: `Image · ${i.image.img.getSize().width}×${i.image.img.getSize().height}`, pinned: false, image: i.image.thumb }
+        : { id: i.id, preview: preview(i.text), pinned: i.pinned }
+    )
 }
 
 export async function copyBack(id: string): Promise<boolean> {
   const item = items.find((i) => i.id === id)
   if (!item) return false
-  await clipboard.writeText(item.text)
-  lastSeen = item.text // our own write is not a new copy
+  if (item.image) await writeImage(item.image.img)
+  else {
+    await clipboard.writeText(item.text)
+    lastSeen = item.text // our own write is not a new copy
+  }
   items = [item, ...items.filter((i) => i !== item)]
   return true
 }
 
 export async function togglePin(id: string): Promise<boolean> {
   const item = items.find((i) => i.id === id)
-  if (!item) return false
+  if (!item || item.image) return false
   if (!item.pinned && items.filter((i) => i.pinned).length >= MAX_PINNED) return false
   item.pinned = !item.pinned
   await savePinned()

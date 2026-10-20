@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.30.0
+
+- **Removed** the Windows tab (Alt+Tab does it better). The search bar shows only on Launch and Clipboard.
+- **Screenshot and Record** in Controls: full-screen PNG (copied and saved) or region snip; screen recording with sound.
+- **Weather** in the pill and on Today (Open-Meteo, city set in Settings).
+- **Downloads** in progress as a live activity, and a toast when one finishes.
+- **Focus** (do not disturb) for an hour, until 6 PM, until 7 AM, or until turned off.
+- **Stopwatch** with laps and **multiple timers** on Today, shown in the pill while running, with a chime.
+- **Camera and microphone dots** in the pill while an app uses them.
+- **Volume per app** (Controls > Audio).
+- **Accent colours:** mint, Windows accent, blue, purple, pink, orange, red, green.
+- **Clipboard images:** the last 10 copied images (memory only).
+- **Seek** in Now playing, and optional **synced lyrics** (lrclib.net).
+- **Report a bug** in Settings (GitHub issue or copied text; personal details removed).
+- Fixes: two toasts at once no longer skip the first; toasts wait while the panel is open; the notch page reloads itself
+  if it crashes (at most 3 times a minute); errors are logged for bug reports; the clipboard is only read after a copy.
+
 ## 0.29.1
 
 Bug fixes:

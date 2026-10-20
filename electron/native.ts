@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { NATIVE_SOURCE } from './nativeSource'
+import { logError } from './diagnostics'
 
 // Gabay's native helper: one small resident process (about 15 MB) for what Electron can't see: full screen, now
 // playing, Windows notifications, open windows, focus, volume and Bluetooth. It is compiled once on this PC with the
@@ -52,6 +53,7 @@ export interface NativeEvents {
   fullscreen: (rect: { l: number; t: number; r: number; b: number } | null) => void
   media: (raw: unknown) => void
   note: (raw: unknown) => void
+  privacy: (raw: unknown) => void
 }
 
 let child: ChildProcess | null = null
@@ -86,6 +88,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
           on.fullscreen(m ? { l: +m[1], t: +m[2], r: +m[3], b: +m[4] } : null)
         } else if (kind === 'media') on.media(JSON.parse(rest))
         else if (kind === 'note') on.note(JSON.parse(rest))
+        else if (kind === 'priv') on.privacy(JSON.parse(rest))
         else if (kind === 'r') {
           const s2 = rest.indexOf(' ')
           const id = Number(rest.slice(0, s2))
@@ -101,7 +104,8 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
       }
     }
   })
-  p.on('exit', () => {
+  p.on('exit', (code) => {
+    if (!stopped) logError('helper', `exited with code ${String(code)}`)
     if (child === p) child = null
     for (const [, w] of pending) {
       clearTimeout(w.timer)
@@ -122,7 +126,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
 }
 
 /** One request. `arg` must already be validated by the caller: it is passed on as part of a single line. */
-export function nativeCall(cmd: 'windows' | 'focus' | 'close' | 'vol' | 'volget' | 'media' | 'bt' | 'notes' | 'appbar' | 'clipok', arg = ''): Promise<unknown> {
+export function nativeCall(cmd: 'vol' | 'volget' | 'media' | 'bt' | 'notes' | 'appbar' | 'clipok' | 'clipseq' | 'mixer' | 'appvol' | 'seek', arg = ''): Promise<unknown> {
   const p = child
   if (!p?.stdin || /[\r\n]/.test(arg)) return Promise.resolve(null)
   const id = nextId++
@@ -135,6 +139,8 @@ export function nativeCall(cmd: 'windows' | 'focus' | 'close' | 'vol' | 'volget'
     p.stdin?.write(`${id} ${cmd}${arg ? ' ' + arg : ''}\n`)
   })
 }
+
+export const nativeRunning = (): boolean => child !== null
 
 export function stopNative(): void {
   stopped = true

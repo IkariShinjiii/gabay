@@ -7,7 +7,7 @@ export const NOTCH = {
   collapsed: { width: 216, height: 24 },
   collapsedBottomRadius: 13,
   // Grown states while collapsed: a live activity (media playing) and a toast (notification, charging, ...).
-  live: { width: 288, height: 24 },
+  live: { width: 264, height: 24 },
   toast: { width: 380, height: 70 },
   toastBottomRadius: 24,
   expanded: { width: 520, height: 540 } // height is the cap; the notch takes the content's height

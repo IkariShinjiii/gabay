@@ -1,12 +1,16 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, screen, shell, Tray } from 'electron'
-import { basename } from 'node:path'
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, screen, session, shell, systemPreferences, Tray } from 'electron'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { getStats } from './stats'
-import { nativeCall, startNative, stopNative } from './native'
+import { nativeCall, nativeRunning, startNative, stopNative } from './native'
+import { logError, sendReport } from './diagnostics'
 import { connectWifi, disconnectWifi, listWifi } from './wifi'
 import { getAgenda, setCalendarUrl } from './calendar'
 import { checkUpdate, installUpdate, type UpdateInfo } from './updater'
+import { isRecording, recordingChunk, recordingStart, recordingStop, screenSource, screenshot } from './capture'
+import { findPlace, getWeather } from './weather'
+import { startDownloads, stopDownloads } from './downloads'
+import { getLyrics } from './lyrics'
 import { currentProjectMode, isProjectMode, setProjectMode } from './project'
 import { isSettingsKey, networkKind, quickGet, quickPeek, quickSet, quickSlide, SETTINGS_PAGES, stopQuick } from './quick'
 import { COLLAPSE_MAX, COLLAPSE_MIN, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
@@ -122,6 +126,10 @@ function createOverlay(display: Electron.Display): BrowserWindow {
 
 let tray: Tray | null = null // module-level so it isn't garbage-collected (the icon would vanish)
 
+// Errors are kept (scrubbed, messages only) for bug reports; Gabay keeps running rather than showing a crash dialog.
+process.on('uncaughtException', (e) => logError('main', e))
+process.on('unhandledRejection', (e) => logError('main (async)', e))
+
 app.whenReady().then(async () => {
   if (!gotLock) return
   let settings = await loadSettings()
@@ -196,7 +204,13 @@ app.whenReady().then(async () => {
     fromUi(e)
     return removeTodo(typeof id === 'string' ? id : '')
   })
-  setClipboardGuard(async () => (await nativeCall('clipok')) !== false)
+  setClipboardGuard(
+    async () => (await nativeCall('clipok')) !== false,
+    async () => {
+      const n = await nativeCall('clipseq')
+      return typeof n === 'number' ? n : null
+    }
+  )
   if (!PREVIEW) startClipboardHistory()
   // Native helper: full screen on the notch's display, now playing, notifications, windows, volume, Bluetooth.
   const send = (channel: string, value: unknown): void => {
@@ -236,8 +250,14 @@ app.whenReady().then(async () => {
         }
         send('overlay:media', media)
       },
+      privacy: (raw) => {
+        const r = raw as { mic?: unknown; cam?: unknown } | null
+        const names = (v: unknown): string[] => (Array.isArray(v) ? v.flatMap((x) => (typeof x === 'string' ? [x.slice(0, 60)] : [])).slice(0, 8) : [])
+        send('overlay:privacy', { mic: names(r?.mic), cam: names(r?.cam) })
+      },
       note: (raw) => {
         if (!settings.notifications || !raw || typeof raw !== 'object') return
+        if (settings.dndUntil === -1 || Date.now() < settings.dndUntil) return // do not disturb
         const n = raw as Record<string, unknown>
         const appName = str(n.app, 80) ?? 'Notification'
         send('overlay:note', settings.notePreview ? { app: appName, title: str(n.title, 120), body: str(n.body, 240) } : { app: appName, title: null, body: null })
@@ -263,28 +283,29 @@ app.whenReady().then(async () => {
     return nativeCall('vol', String(Math.round(Math.max(0, Math.min(100, now.volume + Math.max(-20, Math.min(20, delta)))))))
   })
 
-  // Open windows. The renderer gets opaque ids (window handles as text) and titles; exe paths stay here.
-  let windowPaths = new Map<string, string>()
-  ipcMain.handle('windows:list', async (e) => {
+  ipcMain.handle('media:seek', (e, seconds: unknown) => {
     fromUi(e)
-    const raw = await nativeCall('windows')
+    return typeof seconds === 'number' && Number.isFinite(seconds) && seconds >= 0 ? nativeCall('seek', seconds.toFixed(2)) : false
+  })
+
+  // Per-app volume. Ids are process ids from the last listing; exe paths stay here (for icons).
+  let mixerPaths = new Map<number, string>()
+  ipcMain.handle('mixer:list', async (e) => {
+    fromUi(e)
+    const raw = await nativeCall('mixer')
     if (!Array.isArray(raw)) return []
-    const next = new Map<string, string>()
-    const list = raw.flatMap((w: Record<string, unknown>) => {
-      const id = typeof w.h === 'string' && /^\d{1,20}$/.test(w.h) ? w.h : null
-      const title = str(w.t, 300)
-      if (!id || !title) return []
-      const path = typeof w.p === 'string' ? w.p : ''
-      if (path) next.set(id, path)
-      const exe = path ? basename(path).replace(/\.exe$/i, '') : ''
-      return [{ id, title, app: exe, minimized: w.min === true, active: w.fg === true }]
+    const next = new Map<number, string>()
+    const list = raw.flatMap((a: Record<string, unknown>) => {
+      if (typeof a.pid !== 'number' || !Number.isInteger(a.pid) || a.pid < 0) return []
+      if (typeof a.path === 'string') next.set(a.pid, a.path)
+      return [{ pid: a.pid, name: str(a.name, 80) ?? 'App', volume: typeof a.volume === 'number' ? a.volume : 100 }]
     })
-    windowPaths = next
+    mixerPaths = next
     return list
   })
-  ipcMain.handle('windows:icon', async (e, id: unknown) => {
+  ipcMain.handle('mixer:icon', async (e, pid: unknown) => {
     fromUi(e)
-    const path = typeof id === 'string' ? windowPaths.get(id) : undefined
+    const path = typeof pid === 'number' ? mixerPaths.get(pid) : undefined
     if (!path) return null
     try {
       return (await app.getFileIcon(path, { size: 'normal' })).toDataURL()
@@ -292,14 +313,108 @@ app.whenReady().then(async () => {
       return null
     }
   })
-  ipcMain.handle('windows:focus', (e, id: unknown) => {
+  ipcMain.handle('mixer:set', (e, pid: unknown, volume: unknown) => {
     fromUi(e)
-    return typeof id === 'string' && windowPaths.has(id) ? nativeCall('focus', id) : false
+    if (typeof pid !== 'number' || !Number.isInteger(pid) || pid < 0 || typeof volume !== 'number' || !Number.isFinite(volume)) return false
+    return nativeCall('appvol', `${pid} ${Math.round(Math.max(0, Math.min(100, volume)))}`)
   })
-  ipcMain.handle('windows:close', (e, id: unknown) => {
+
+  // Screenshots and recording. Gabay hides itself from the capture (content protection), so the notch isn't in it.
+  let lastCapture: string | null = null
+  ipcMain.handle('capture:shot', async (e) => {
     fromUi(e)
-    return typeof id === 'string' && windowPaths.has(id) ? nativeCall('close', id) : false
+    win.setContentProtection(true)
+    try {
+      const r = await screenshot(targetDisplay(settings))
+      if (r) lastCapture = r.file
+      return r ? { thumb: r.thumb } : null
+    } finally {
+      if (!isRecording()) win.setContentProtection(false)
+    }
   })
+  ipcMain.handle('capture:snip', (e) => {
+    fromUi(e)
+    return shell.openExternal('ms-screenclip:').then(() => true, () => false)
+  })
+  ipcMain.handle('capture:reveal', (e) => {
+    fromUi(e)
+    if (lastCapture) shell.showItemInFolder(lastCapture)
+  })
+  // getDisplayMedia from the renderer is answered only while a recording was started from Gabay's own UI.
+  session.defaultSession.setDisplayMediaRequestHandler((req, cb) => {
+    const own = win.webContents.mainFrame
+    if (!isRecording() || req.frame?.processId !== own.processId || req.frame?.routingId !== own.routingId) return cb({})
+    void screenSource(targetDisplay(settings)).then((video) => (video ? cb({ video, audio: 'loopback' }) : cb({})))
+  })
+  ipcMain.handle('rec:start', async (e) => {
+    fromUi(e)
+    const ok = await recordingStart()
+    if (ok) win.setContentProtection(true)
+    return ok
+  })
+  ipcMain.on('rec:chunk', (e, data: unknown) => {
+    if (e.sender !== win.webContents) return
+    recordingChunk(data)
+  })
+  ipcMain.handle('rec:stop', async (e) => {
+    fromUi(e)
+    const file = await recordingStop()
+    win.setContentProtection(false)
+    if (file) lastCapture = file
+    return !!file
+  })
+
+  // Weather, downloads, lyrics, accent.
+  ipcMain.handle('weather:get', (e) => {
+    fromUi(e)
+    return getWeather(settings.place)
+  })
+  ipcMain.handle('weather:find', async (e, city: unknown) => {
+    fromUi(e)
+    const place = await findPlace(city)
+    if (!place) return null
+    settings = sanitize({ place }, settings)
+    await saveSettings(settings)
+    return place
+  })
+  if (!PREVIEW)
+    startDownloads(
+      (d) => send('overlay:download', d),
+      (name) => send('overlay:download-done', name.slice(0, 200))
+    )
+  ipcMain.handle('lyrics:get', (e, title: unknown, artist: unknown, duration: unknown) => {
+    fromUi(e)
+    return settings.lyrics ? getLyrics(title, artist, duration) : null
+  })
+  // If the notch's page crashes or is killed, bring it back instead of leaving an empty overlay.
+  // At most 3 reloads a minute, so a page that crashes on start can't spin forever.
+  let reloads: number[] = []
+  win.webContents.on('render-process-gone', (_e, details) => {
+    logError('notch page', `gone: ${details.reason}`)
+    const now = Date.now()
+    reloads = reloads.filter((t) => now - t < 60_000)
+    if (details.reason === 'clean-exit' || win.isDestroyed() || reloads.length >= 3) return
+    reloads.push(now)
+    setTimeout(() => !win.isDestroyed() && win.reload(), 1000)
+  })
+  ipcMain.on('log:error', (e, msg: unknown) => {
+    if (e.sender !== win.webContents || typeof msg !== 'string') return
+    logError('notch page', msg.slice(0, 300))
+  })
+  ipcMain.handle('bug:report', (e, description: unknown, how: unknown) => {
+    fromUi(e)
+    return sendReport(description, how, { settings: settings as unknown as Record<string, unknown>, helperRunning: nativeRunning() })
+  })
+
+  ipcMain.handle('theme:accent', (e) => {
+    fromUi(e)
+    try {
+      return `#${systemPreferences.getAccentColor().slice(0, 6)}`
+    } catch {
+      return null
+    }
+  })
+
   ipcMain.handle('bt:list', async (e) => {
     fromUi(e)
     const raw = await nativeCall('bt')
@@ -543,5 +658,6 @@ app.on('will-quit', () => {
   stopClipboardHistory()
   stopQuick()
   stopNative()
+  stopDownloads()
 })
 app.on('window-all-closed', () => app.quit())

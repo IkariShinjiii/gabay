@@ -46,12 +46,31 @@ export interface OverlayApi {
   mediaCommand(c: 'toggle' | 'next' | 'prev'): Promise<boolean>
   /** Changes volume by delta percent; returns the new level. */
   volumeNudge(delta: number): Promise<{ volume: number; muted: boolean } | null>
-  /** Open windows, most recently used first. Ids are opaque. */
-  listWindows(): Promise<OpenWindow[]>
-  windowIcon(id: string): Promise<string | null>
-  focusWindow(id: string): Promise<boolean>
-  closeWindow(id: string): Promise<boolean>
   listBluetooth(): Promise<{ name: string; connected: boolean }[]>
+  mediaSeek(seconds: number): Promise<boolean>
+  mixerList(): Promise<MixerApp[]>
+  mixerIcon(pid: number): Promise<string | null>
+  mixerSet(pid: number, volume: number): Promise<boolean>
+  /** Saves a PNG of the notch's screen to Pictures\Screenshots and copies it. Returns a thumbnail. */
+  screenshot(): Promise<{ thumb: string } | null>
+  /** Opens Windows' own region snip. */
+  snip(): Promise<boolean>
+  /** Shows the last screenshot or recording in File Explorer. */
+  revealCapture(): Promise<void>
+  recStart(): Promise<boolean>
+  recChunk(data: Uint8Array): void
+  recStop(): Promise<boolean>
+  weatherGet(): Promise<Weather | null>
+  weatherFind(city: string): Promise<{ name: string; lat: number; lon: number } | null>
+  lyricsGet(title: string, artist: string, duration: number): Promise<{ t: number; text: string }[] | null>
+  /** The Windows accent colour as #rrggbb. */
+  accentColor(): Promise<string | null>
+  /** Opens a prefilled GitHub issue ('github') or copies the report ('copy'). Personal paths are scrubbed. */
+  reportBug(description: string, how: 'github' | 'copy'): Promise<boolean>
+  logError(msg: string): void
+  onPrivacy(cb: (p: { mic: string[]; cam: string[] }) => void): () => void
+  onDownload(cb: (d: DownloadState | null) => void): () => void
+  onDownloadDone(cb: (name: string) => void): () => void
   listWifi(): Promise<{ networks: WifiNetwork[]; error: 'off' | 'location' | null }>
   connectWifi(ssid: string): Promise<boolean>
   disconnectWifi(): Promise<boolean>
@@ -75,6 +94,10 @@ export interface Settings {
   notifications: boolean
   notePreview: boolean
   reserveTop: boolean
+  accent: string
+  place: { name: string; lat: number; lon: number } | null
+  lyrics: boolean
+  dndUntil: number
   visibility: 'always' | 'auto'
 }
 
@@ -97,6 +120,7 @@ export interface ClipItem {
   id: string
   preview: string
   pinned: boolean
+  image?: string
 }
 
 export type PowerAction = 'lock' | 'sleep' | 'restart' | 'shutdown'
@@ -188,14 +212,6 @@ export interface NoteInfo {
   body: string | null
 }
 
-export interface OpenWindow {
-  id: string
-  title: string
-  app: string
-  minimized: boolean
-  active: boolean
-}
-
 export interface WifiNetwork {
   ssid: string
   signal: number
@@ -215,4 +231,27 @@ export interface CalEvent {
 export interface UpdateInfo {
   version: string
   notes: string
+}
+
+export interface MixerApp {
+  pid: number
+  name: string
+  volume: number
+}
+
+export interface Weather {
+  place: string
+  temp: number
+  code: number
+  day: boolean
+  high: number
+  low: number
+  at: number
+}
+
+export interface DownloadState {
+  name: string
+  bytes: number
+  speed: number
+  count: number
 }
