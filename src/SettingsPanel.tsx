@@ -488,6 +488,20 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
             </>
           )}
         </div>
+        {settings.notifications && snap.notificationAccess && snap.notificationAccess !== 'Allowed' && (
+          <div className="set-warn">
+            <span>
+              {snap.notificationAccess === 'Unavailable'
+                ? "This version of Windows doesn't let apps read notifications, so they won't show in the notch."
+                : 'Windows is blocking Gabay from reading notifications. Turn on "Notification access" for apps, then come back: Gabay notices by itself.'}
+            </span>
+            {snap.notificationAccess !== 'Unavailable' && (
+              <button className="chip on" onClick={() => void window.overlay.quickOpen('notifyaccess')}>
+                Open privacy settings
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="set-row">

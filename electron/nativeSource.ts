@@ -6,6 +6,7 @@
 //   pushes   fs 0 | fs 1 L T R B        full screen on some monitor (physical pixels)
 //            media <json|null>          now playing, on change (art only when the track changes)
 //            note <json>                a new Windows notification (only while notes are on)
+//            noteaccess <status>        whether Windows lets Gabay read notifications (Allowed, Denied, ...)
 //   requests <id> <command> [args]  ->  r <id> <json>
 //            vol <0-100> | volget | media toggle|next|prev | bt | notes on|off
 //            appbar L T R B H | appbar off   (reserve a band at the top of a monitor, physical pixels)
@@ -158,6 +159,14 @@ static class Native {
   [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern bool QueryFullProcessImageName(IntPtr h, int flags, StringBuilder s, ref int size);
 
   static readonly object outLock = new object();
+  static volatile bool fsActive; // a full-screen app is in front (set by the main loop)
+  [StructLayout(LayoutKind.Sequential)] struct LASTINPUTINFO { public uint cbSize; public uint dwTime; }
+  [DllImport("user32.dll")] static extern bool GetLastInputInfo(ref LASTINPUTINFO info);
+  /** Milliseconds since the last key press or mouse move anywhere. */
+  static uint IdleMs() {
+    var li = new LASTINPUTINFO(); li.cbSize = (uint)Marshal.SizeOf(typeof(LASTINPUTINFO));
+    return GetLastInputInfo(ref li) ? (uint)Environment.TickCount - li.dwTime : 0;
+  }
   static uint self;
   static volatile bool notesOn;
 
@@ -210,6 +219,7 @@ static class Native {
     while (true) {
       try {
         string now = FullScreen();
+        if (now != null) fsActive = now.StartsWith("fs 1");
         if (now != null && now != last) { Send(now); last = now; }
       } catch { }
       Thread.Sleep(400);
@@ -521,13 +531,24 @@ static class Native {
   }
 
   // ---------- notifications: new toasts only, text is never kept ----------
+  // Access depends on Windows' privacy settings (Settings > Privacy > Notifications), which differ between PCs. It is
+  // reported to Gabay and re-checked (every 10 s while blocked, every 30 s while allowed), so turning access on later
+  // works without restarting Gabay.
   static void NotesLoop() {
     UserNotificationListener l;
-    try { l = UserNotificationListener.Current; if (l.GetAccessStatus() != UserNotificationListenerAccessStatus.Allowed) return; } catch { return; }
+    try { l = UserNotificationListener.Current; } catch { Send("noteaccess Unavailable"); return; }
     var seen = new HashSet<uint>();
     bool primed = false;
+    string access = null;
+    int tick = 0;
     while (true) {
       try {
+        if (access != "Allowed" || tick++ % 25 == 0) {
+          string status;
+          try { status = l.GetAccessStatus().ToString(); } catch { status = "Unavailable"; }
+          if (status != access) { access = status; Send("noteaccess " + status); primed = false; seen.Clear(); }
+        }
+        if (access != "Allowed") { Thread.Sleep(10000); continue; }
         if (!notesOn) { primed = false; seen.Clear(); Thread.Sleep(1000); continue; }
         var list = W(l.GetNotificationsAsync(NotificationKinds.Toast));
         var now = new HashSet<uint>();
@@ -550,7 +571,10 @@ static class Native {
         seen = now;
         primed = true;
       } catch { }
-      Thread.Sleep(1200);
+      // Windows offers no notification event to desktop apps, so this asks. Asking costs CPU in proportion to how often,
+      // so it asks every 2 s while someone is at the PC, and every 5 s when they've been away a minute or a full-screen
+      // app is in front (toasts don't show then anyway).
+      Thread.Sleep(fsActive || IdleMs() > 60000 ? 5000 : 2000);
     }
   }
 

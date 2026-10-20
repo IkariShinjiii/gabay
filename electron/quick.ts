@@ -42,6 +42,7 @@ export const SETTINGS_PAGES = {
   energy: 'ms-settings:batterysaver',
   airplane: 'ms-settings:network-airplanemode',
   wifi: 'ms-settings:network-wifi',
+  notifyaccess: 'ms-settings:privacy-notifications',
   accessibility: 'ms-settings:easeofaccess',
   display: 'ms-settings:display',
   colors: 'ms-settings:colors',

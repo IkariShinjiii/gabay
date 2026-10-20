@@ -218,3 +218,10 @@ Produces `dist/Gabay Setup <version>.exe` (unsigned, so Windows SmartScreen warn
 ## Credits
 
 Icons are from [Lucide](https://lucide.dev) (ISC license), stored as inline SVG data in `src/icons.ts`.
+
+## License
+
+Copyright (c) 2026 IkariShinjiii. **All rights reserved.** Gabay is free to download from the official website or GitHub
+releases and to use on your own computers, but its code, design, artwork and name may not be copied, modified or
+redistributed. See [LICENSE](LICENSE). Third-party software it includes is listed in
+[resources/THIRD-PARTY-NOTICES.txt](resources/THIRD-PARTY-NOTICES.txt).

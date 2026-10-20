@@ -111,8 +111,10 @@ export interface SettingsSnapshot {
   /** The hotkey actually registered, which differs from settings.hotkey when another app owns it. */
   activeHotkey: string | null
   hotkeys: string[]
-  /** Gabay's version, e.g. 0.32.0. */
+  /** Gabay's version, e.g. 1.0.0. */
   version: string
+  /** Whether Windows lets Gabay read notifications ('Allowed', 'Denied', ...); null until known. */
+  notificationAccess: string | null
   collapseRange: { min: number; max: number }
   displays: { id: number; label: string; detail: string }[]
 }
@@ -176,6 +178,7 @@ export type SettingsKey =
   | 'energy'
   | 'airplane'
   | 'wifi'
+  | 'notifyaccess'
   | 'accessibility'
   | 'display'
   | 'colors'
