@@ -241,7 +241,10 @@ app.whenReady().then(async () => {
         const appName = str(n.app, 80) ?? 'Notification'
         send('overlay:note', settings.notePreview ? { app: appName, title: str(n.title, 120), body: str(n.body, 240) } : { app: appName, title: null, body: null })
       }
-    }).then(() => nativeCall('notes', settings.notifications && !PREVIEW ? 'on' : 'off'))
+    }).then(() => {
+      void nativeCall('notes', settings.notifications && !PREVIEW ? 'on' : 'off')
+      applyReserve()
+    })
   }
   ipcMain.handle('media:get', (e) => {
     fromUi(e)
@@ -369,12 +372,27 @@ app.whenReady().then(async () => {
   // Put the window back at top-center of the chosen display. Setting bounds twice is deliberate: moving to a
   // display with a different scale factor can rescale the window on the first call, and the second pins it.
   let placedOn = targetDisplay(settings).id
+  // Reserved band: the collapsed notch's height (NOTCH.collapsed.height, 24 px) across the notch's display, in physical
+  // pixels for the helper. Off in preview so a screenshot run never moves the person's windows.
+  const BAND_DIP = 24
+  const applyReserve = (): void => {
+    if (PREVIEW) return
+    if (!settings.reserveTop) {
+      void nativeCall('appbar', 'off')
+      return
+    }
+    const d = targetDisplay(settings)
+    const px = screen.dipToScreenRect(null, d.bounds)
+    const h = Math.round(BAND_DIP * d.scaleFactor)
+    void nativeCall('appbar', [px.x, px.y, px.x + px.width, px.y + px.height, h].map((n) => Math.round(n)).join(' '))
+  }
   const placeNotch = (): void => {
     const d = targetDisplay(settings)
     placedOn = d.id
     const b = notchBounds(d)
     win.setBounds(b)
     win.setBounds(b)
+    applyReserve()
   }
   // Follow mouse: a cheap pointer check, only with more than one display. The panel stays put while it is open
   // (the pointer is on it anyway) and the notch moves once the pointer settles on another screen.
@@ -420,6 +438,7 @@ app.whenReady().then(async () => {
     fromUi(e)
     const prevDisplay = settings.displayId
     const prevFollow = settings.followMouse
+    const prevReserve = settings.reserveTop
     const next: Settings = sanitize(patch, settings)
     // Also retry when the same hotkey is picked again: the other app that held it may have exited since.
     const pickedHotkey = typeof patch === 'object' && patch !== null && 'hotkey' in patch
@@ -428,6 +447,7 @@ app.whenReady().then(async () => {
     if (next.displayId !== prevDisplay || next.followMouse !== prevFollow) placeNotch()
     if (next.followMouse !== prevFollow) syncFollow()
     void nativeCall('notes', settings.notifications ? 'on' : 'off')
+    if (next.reserveTop !== prevReserve) applyReserve()
     await saveSettings(settings)
     return snapshot()
   })

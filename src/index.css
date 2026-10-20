@@ -1919,3 +1919,14 @@ button.big-icon {
 .today .timer .chip {
   background: var(--well);
 }
+
+.set-section {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}

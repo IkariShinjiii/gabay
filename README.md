@@ -139,6 +139,9 @@ The taskbar's system-tray features, built into the notch.
   screen on its display (a maximized window doesn't count). Rest the pointer on the very top edge, within the notch's width,
   to bring it back while hidden; it slides away again shortly after the pointer leaves.
 - **Auto-hide** (Settings): the notch is always tucked away until revealed that way, so it never covers a browser tab.
+- **Reserve space at the top** (Settings > Experiments, off by default): a 24 px black band across the top of the notch's
+  screen, registered with Windows as an app bar (the taskbar's mechanism), so maximized and snapped windows start below
+  the notch. Windows you drag up by hand can still go under it. Full-screen apps still get the whole screen.
 - Full screen, now playing, notifications, the window list, focus and volume come from one small native helper (about
   25 MB, no measurable CPU) compiled once from `electron/nativeSource.ts` with the C# compiler built into Windows, against
   the Windows Runtime metadata in `System32\WinMetadata`, and cached in `%APPDATA%\gabay\bin`. Without that compiler
