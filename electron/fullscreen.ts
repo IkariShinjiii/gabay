@@ -9,9 +9,9 @@ import { join } from 'node:path'
 // compiled once with the C# compiler that ships with Windows (.NET Framework 4.x) and cached in userData. It costs a few
 // MB, checks the foreground window every 400 ms and prints a line only when the answer changes.
 //
-// "Full screen" = the foreground window covers its whole monitor and is NOT maximized. With an auto-hidden taskbar a
-// maximized browser also covers the monitor, and that must not hide the notch; F11 video and borderless games are not
-// maximized windows. Gabay's own window never changes the answer (clicking the panel over a game keeps it "full screen").
+// "Full screen" = the foreground window covers its whole monitor and has no title bar (WS_CAPTION). With an auto-hidden
+// taskbar a maximized browser also covers the monitor but keeps its caption style, so it doesn't count. Chromium browsers
+// (Brave, Chrome, Edge) stay "maximized" in video full screen, so IsZoomed can't be used; they drop the caption instead. Gabay's own window never changes the answer (clicking the panel over a game keeps it "full screen").
 const SOURCE = String.raw`
 using System;
 using System.Runtime.InteropServices;
@@ -26,7 +26,8 @@ static class Watcher {
   [DllImport("user32.dll")] static extern IntPtr GetShellWindow();
   [DllImport("user32.dll")] static extern IntPtr GetDesktopWindow();
   [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
-  [DllImport("user32.dll")] static extern bool IsZoomed(IntPtr h);
+  [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr h, int i);
+  const int GWL_STYLE = -16, WS_CAPTION = 0x00C00000;
   [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
   [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
   [DllImport("user32.dll")] static extern IntPtr MonitorFromWindow(IntPtr h, uint flags);
@@ -54,7 +55,8 @@ static class Watcher {
     if (pid == self) return null;
     var cls = new StringBuilder(64); GetClassName(h, cls, 64);
     string c = cls.ToString();
-    if (c == "Progman" || c == "WorkerW" || c == "Shell_TrayWnd" || IsZoomed(h)) return "fs 0";
+    if (c == "Progman" || c == "WorkerW" || c == "Shell_TrayWnd") return "fs 0";
+    if ((GetWindowLong(h, GWL_STYLE) & WS_CAPTION) == WS_CAPTION) return "fs 0";
     RECT r; if (!GetWindowRect(h, out r)) return "fs 0";
     var mi = new MONITORINFO(); mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
     if (!GetMonitorInfo(MonitorFromWindow(h, 2), ref mi)) return "fs 0";

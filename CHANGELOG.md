@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.25.1
+
+- The notch now hides during browser video full screen (YouTube, Netflix in Brave/Chrome/Edge). Those windows stay "maximized" in full screen, so detection now looks for a missing title bar instead.
+
 ## 0.25.0
 
 - Smaller notch: 216x24 (was 268x32), so less of the browser tab strip is covered.
