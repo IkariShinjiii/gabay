@@ -4,8 +4,8 @@ export const APP_NAME = 'Gabay'
 // Notch geometry. The window is fixed at 560x440 (electron/main.ts); the notch animates inside it.
 export const NOTCH = {
   // Proportions follow an iPhone XS Max notch: wide and short, flush with the top edge, rounder at the bottom.
-  collapsed: { width: 268, height: 32 },
-  collapsedBottomRadius: 18,
+  collapsed: { width: 216, height: 24 },
+  collapsedBottomRadius: 13,
   expanded: { width: 520, height: 540 } // height is the cap; the notch takes the content's height
 } as const
 

@@ -36,7 +36,7 @@ export default function NotchStatus({ clock, timer, battery, net }: Props): Reac
   return (
     <div className="status-row">
       <span className={net === 'offline' ? 'st-side st-left st-warn' : 'st-side st-left'} title={NET_LABEL[net]}>
-        <Icon name={NET_ICON[net]} size={14} />
+        <Icon name={NET_ICON[net]} size={12} />
       </span>
 
       {timer.status === 'idle' ? (
@@ -62,7 +62,7 @@ export default function NotchStatus({ clock, timer, battery, net }: Props): Reac
       <span className={low ? 'st-side st-right st-warn' : 'st-side st-right'}>
         {battery && (
           <>
-            <Icon name={batteryIcon(battery)} size={15} />
+            <Icon name={batteryIcon(battery)} size={13} />
             <span className="st-pct">{Math.round(battery.level * 100)}</span>
           </>
         )}

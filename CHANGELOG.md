@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.25.0
+
+- Smaller notch: 216x24 (was 268x32), so less of the browser tab strip is covered.
+- Black surfaces; the mint accent stays.
+
 ## 0.24.0 Controls tab
 
 The Quick tab is now Controls (first tab), redesigned after the reference: split tiles for Wi-Fi, Bluetooth, Audio (output name, mute), Night light and Dark mode (switches the Windows theme live), iOS-style volume and brightness bars, and a now-playing card from the Windows media session with artwork and previous, play/pause, next and progress. Airplane mode, Project and the Settings shortcuts move to a second page. The open notch can grow to 540 px for it.
