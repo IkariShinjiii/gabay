@@ -284,7 +284,14 @@ export default function App(): React.JSX.Element {
     if (previewParam === 'Note')
       setToast({ id: 0, icon: 'message-square', label: 'Messenger', title: 'Kevin', sub: 'are you coming tonight? we are at the usual place', ms: 60_000 })
     if (previewParam === 'Live')
-      setMedia({ title: 'TMA', artist: 'groundZERO Records', app: 'Spotify.exe', playing: true, duration: 199, art: '' })
+      setMedia({ title: 'Weightless', artist: 'Marconi Union', app: 'Spotify.exe', playing: true, duration: 480, art: '' })
+    // &demo (dev preview only): a running timer and stopwatch and sample weather, for screenshots.
+    if (new URLSearchParams(location.hash.slice(1)).has('demo')) {
+      setWeather({ place: 'Iloilo City', temp: 31, code: 2, day: true, high: 33, low: 26, at: 0 })
+      timers.add(5)
+      timers.add(25)
+      timers.swToggle()
+    }
     if (previewParam === 'Busy') {
       setWeather({ place: 'Iloilo', temp: 31, code: 2, day: true, high: 33, low: 26, at: 0 })
       setDndUntil(-1)
