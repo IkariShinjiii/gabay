@@ -24,6 +24,8 @@ export interface Settings {
   lyrics: boolean
   /** Do not disturb until this time (ms since epoch); 0 = off, Infinity is stored as -1 (until turned off). */
   dndUntil: number
+  /** The first-run tour was shown (or skipped). */
+  welcomed: boolean
   /** 'always': shown, except while something is full screen. 'auto': off-screen until the pointer rests on the top edge. */
   visibility: 'always' | 'auto'
 }
@@ -34,7 +36,7 @@ export const ACCENTS = ['mint', 'windows', 'blue', 'purple', 'pink', 'orange', '
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, visibility: 'always' }
+const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, welcomed: false, visibility: 'always' }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -63,7 +65,8 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
         : base.place
   const lyrics = typeof r.lyrics === 'boolean' ? r.lyrics : base.lyrics
   const dndUntil = typeof r.dndUntil === 'number' && (r.dndUntil === -1 || r.dndUntil >= 0) ? r.dndUntil : base.dndUntil
-  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, reserveTop, accent, place, lyrics, dndUntil, visibility }
+  const welcomed = typeof r.welcomed === 'boolean' ? r.welcomed : base.welcomed
+  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, reserveTop, accent, place, lyrics, dndUntil, welcomed, visibility }
 }
 
 export async function loadSettings(): Promise<Settings> {
