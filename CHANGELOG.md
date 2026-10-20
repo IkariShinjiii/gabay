@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.27.0
+
+- Installed Gabay starts at login by default (turned on once on first run; the tray checkbox decides after that).
+- Scroll wheel: over a slider it nudges volume or brightness; elsewhere on the Controls tab it flips pages.
+- Branded installer: black-and-mint sidebar and header (scripts/render-installer.cjs).
+
 ## 0.26.0
 
 - Sliders rebuilt to feel like iOS: drag-driven (no jump on grab), the fill tracks the pointer every frame, values stream to Windows while dragging, rubber-band stretch past the ends, glide on tap. Dragging volume while muted unmutes.

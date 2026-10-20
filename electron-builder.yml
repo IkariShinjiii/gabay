@@ -6,6 +6,7 @@ files:
   - out/**
   - resources/**
   - "!resources/*.svg"
+  - "!resources/*.bmp"
   - package.json
 asar: true
 electronDist: node_modules/electron/dist
@@ -19,3 +20,7 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  # Black-and-mint artwork; regenerate with: npx electron scripts/render-installer.cjs
+  installerSidebar: resources/installerSidebar.bmp
+  uninstallerSidebar: resources/installerSidebar.bmp
+  installerHeader: resources/installerHeader.bmp

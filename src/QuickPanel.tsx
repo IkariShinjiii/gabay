@@ -143,6 +143,21 @@ function BigSlider(props: {
     }
     finish(value)
   }
+  // Scroll wheel: up raises, down lowers, 2% a notch (trackpads send smaller deltas and move it finer).
+  const wheelDone = useRef<number | undefined>(undefined)
+  const onWheel = (e: React.WheelEvent<HTMLDivElement>): void => {
+    e.stopPropagation() // the Controls tab flips pages on wheel; a slider keeps it
+    const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? -e.deltaY : e.deltaX
+    if (!delta) return
+    const next = clamp((local ?? pct) + Math.sign(delta) * Math.min(6, Math.max(1, Math.abs(delta) / 50)))
+    if (next === (local ?? pct)) return
+    setLocal(next)
+    props.onSlide(next, false)
+    window.clearTimeout(wheelDone.current)
+    wheelDone.current = window.setTimeout(() => finish(next), 250)
+  }
+  useEffect(() => () => window.clearTimeout(wheelDone.current), [])
+
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>): void => {
     const step = e.shiftKey ? 10 : 5
     const next =
@@ -184,6 +199,7 @@ function BigSlider(props: {
       onPointerUp={onUp}
       onPointerCancel={onUp}
       onKeyDown={onKey}
+      onWheel={onWheel}
     >
       <div className="big-fill" style={{ transform: `scaleX(${pct / 100})` }} />
       {props.onIcon ? (
@@ -311,6 +327,7 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
     new URLSearchParams(location.hash.slice(1)).get('sub') === 'project' ? 'project' : 'main'
   )
   // Slider values stream to the system one at a time: while one is in flight only the newest waiting value is kept.
+  const wheelLock = useRef(0)
   const busy = useRef({ volume: false, brightness: false })
   const pending = useRef<{ volume?: number; brightness?: number }>({})
 
@@ -379,12 +396,20 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
   const brightness = state.brightness
   const volIcon: IconName = state.muted || volume === 0 ? 'volume-x' : (volume ?? 0) < 50 ? 'volume-1' : 'volume-2'
   const goPage = (i: number): void => {
+    if (i === page || i < 0 || i > 1) return
     setDir(i > page ? 1 : -1)
     setPage(i)
   }
+  // Wheel anywhere else on the tab flips pages: down/right for the next one. One flip per gesture.
+  const onWheel = (e: React.WheelEvent<HTMLDivElement>): void => {
+    const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX
+    if (Math.abs(delta) < 4 || Date.now() < wheelLock.current) return
+    wheelLock.current = Date.now() + 450
+    goPage(page + (delta > 0 ? 1 : -1))
+  }
 
   return (
-    <div className="body controls">
+    <div className="body controls" onWheel={onWheel}>
       <AnimatePresence initial={false} custom={dir} mode="popLayout">
         {page === 0 ? (
           <motion.div
