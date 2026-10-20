@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.27.1
+
+- App and tray icons recolored to black and mint, matching the app and installer.
+
 ## 0.27.0
 
 - Installed Gabay starts at login by default (turned on once on first run; the tray checkbox decides after that).
