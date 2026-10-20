@@ -1,8 +1,12 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, screen, shell, Tray } from 'electron'
+import { basename } from 'node:path'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { getStats } from './stats'
-import { startFullscreenWatch, stopFullscreenWatch } from './fullscreen'
+import { nativeCall, startNative, stopNative } from './native'
+import { connectWifi, disconnectWifi, listWifi } from './wifi'
+import { getAgenda, setCalendarUrl } from './calendar'
+import { checkUpdate, installUpdate, type UpdateInfo } from './updater'
 import { currentProjectMode, isProjectMode, setProjectMode } from './project'
 import { isSettingsKey, networkKind, quickGet, quickPeek, quickSet, quickSlide, SETTINGS_PAGES, stopQuick } from './quick'
 import { COLLAPSE_MAX, COLLAPSE_MIN, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
@@ -15,6 +19,9 @@ import { clearHistory, copyBack, listClipboard, startClipboardHistory, stopClipb
 // overlay, with no measurable CPU difference for our animations (see docs/PERFORMANCE.md). Set GABAY_GPU=1 to
 // turn hardware acceleration back on, e.g. to compare. Must run before the app is ready.
 if (process.env['GABAY_GPU'] !== '1') app.disableHardwareAcceleration()
+// A tiny always-on overlay needs none of these: occlusion tracking polls every window on the desktop, and the spare
+// renderer is a whole idle process kept ready for navigations that never happen.
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,SpareRendererForSitePerProcess')
 
 // Dev-only preview: GABAY_PREVIEW=<tab> renders the expanded panel in a hidden window, saves a screenshot to
 // GABAY_PREVIEW_OUT and quits. It never shows a window, registers no hotkey or tray icon, never reads the clipboard
@@ -74,6 +81,7 @@ function createOverlay(display: Electron.Display): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      spellcheck: false, // no dictionaries loaded: Gabay's fields are search boxes, not prose
       // Hidden preview windows would otherwise get throttled animation frames, freezing springs mid-way.
       backgroundThrottling: !PREVIEW
     }
@@ -189,15 +197,153 @@ app.whenReady().then(async () => {
     return removeTodo(typeof id === 'string' ? id : '')
   })
   if (!PREVIEW) startClipboardHistory()
-  // Full screen on the notch's display (video, game, F11): the renderer tucks the notch away until it's revealed.
-  if (!PREVIEW) {
-    void startFullscreenWatch(
-      () => targetDisplay(settings).bounds,
-      (fs) => {
-        if (!win.isDestroyed()) win.webContents.send('overlay:fullscreen', fs)
-      }
-    )
+  // Native helper: full screen on the notch's display, now playing, notifications, windows, volume, Bluetooth.
+  const send = (channel: string, value: unknown): void => {
+    if (!win.isDestroyed()) win.webContents.send(channel, value)
   }
+  const str = (v: unknown, max: number): string | null => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null)
+  let fsNow = false
+  let media: Record<string, unknown> | null = null
+  {
+    void startNative({
+      fullscreen: (r) => {
+        let fs = false
+        if (r) {
+          // Physical pixels -> DIP, then: is the full-screen monitor the one the notch is on?
+          const dip = screen.screenToDipRect(null, { x: r.l, y: r.t, width: r.r - r.l, height: r.b - r.t })
+          const d = targetDisplay(settings).bounds
+          const cx = dip.x + dip.width / 2
+          const cy = dip.y + dip.height / 2
+          fs = cx >= d.x && cx < d.x + d.width && cy >= d.y && cy < d.y + d.height
+        }
+        if (fs !== fsNow) send('overlay:fullscreen', (fsNow = fs))
+      },
+      media: (raw) => {
+        const m = raw as Record<string, unknown> | null
+        if (!m || typeof m !== 'object') media = null
+        else {
+          // Art arrives only when the track changes; keep the last one otherwise. Only image data URLs pass.
+          const art = typeof m.art === 'string' ? (/^image\/(png|jpeg|jpg|gif|bmp|webp);base64,[A-Za-z0-9+/=]+$/.test(m.art) ? `data:${m.art}` : '') : (media?.art ?? '')
+          media = {
+            title: str(m.title, 200) ?? '',
+            artist: str(m.artist, 200) ?? '',
+            app: str(m.app, 200) ?? '',
+            playing: m.playing === true,
+            duration: typeof m.duration === 'number' ? m.duration : 0,
+            art
+          }
+        }
+        send('overlay:media', media)
+      },
+      note: (raw) => {
+        if (!settings.notifications || !raw || typeof raw !== 'object') return
+        const n = raw as Record<string, unknown>
+        const appName = str(n.app, 80) ?? 'Notification'
+        send('overlay:note', settings.notePreview ? { app: appName, title: str(n.title, 120), body: str(n.body, 240) } : { app: appName, title: null, body: null })
+      }
+    }).then(() => nativeCall('notes', settings.notifications && !PREVIEW ? 'on' : 'off'))
+  }
+  ipcMain.handle('media:get', (e) => {
+    fromUi(e)
+    return media
+  })
+  ipcMain.handle('media:command', (e, c: unknown) => {
+    fromUi(e)
+    return c === 'toggle' || c === 'next' || c === 'prev' ? nativeCall('media', c) : false
+  })
+  ipcMain.handle('volume:nudge', async (e, delta: unknown) => {
+    fromUi(e)
+    if (typeof delta !== 'number' || !Number.isFinite(delta)) return null
+    const now = (await nativeCall('volget')) as { volume?: number } | null
+    if (typeof now?.volume !== 'number') return null
+    return nativeCall('vol', String(Math.round(Math.max(0, Math.min(100, now.volume + Math.max(-20, Math.min(20, delta)))))))
+  })
+
+  // Open windows. The renderer gets opaque ids (window handles as text) and titles; exe paths stay here.
+  let windowPaths = new Map<string, string>()
+  ipcMain.handle('windows:list', async (e) => {
+    fromUi(e)
+    const raw = await nativeCall('windows')
+    if (!Array.isArray(raw)) return []
+    const next = new Map<string, string>()
+    const list = raw.flatMap((w: Record<string, unknown>) => {
+      const id = typeof w.h === 'string' && /^\d{1,20}$/.test(w.h) ? w.h : null
+      const title = str(w.t, 300)
+      if (!id || !title) return []
+      const path = typeof w.p === 'string' ? w.p : ''
+      if (path) next.set(id, path)
+      const exe = path ? basename(path).replace(/\.exe$/i, '') : ''
+      return [{ id, title, app: exe, minimized: w.min === true, active: w.fg === true }]
+    })
+    windowPaths = next
+    return list
+  })
+  ipcMain.handle('windows:icon', async (e, id: unknown) => {
+    fromUi(e)
+    const path = typeof id === 'string' ? windowPaths.get(id) : undefined
+    if (!path) return null
+    try {
+      return (await app.getFileIcon(path, { size: 'normal' })).toDataURL()
+    } catch {
+      return null
+    }
+  })
+  ipcMain.handle('windows:focus', (e, id: unknown) => {
+    fromUi(e)
+    return typeof id === 'string' && windowPaths.has(id) ? nativeCall('focus', id) : false
+  })
+  ipcMain.handle('windows:close', (e, id: unknown) => {
+    fromUi(e)
+    return typeof id === 'string' && windowPaths.has(id) ? nativeCall('close', id) : false
+  })
+  ipcMain.handle('bt:list', async (e) => {
+    fromUi(e)
+    const raw = await nativeCall('bt')
+    return Array.isArray(raw)
+      ? raw.flatMap((d: Record<string, unknown>) => (str(d.name, 120) ? [{ name: str(d.name, 120), connected: d.connected === true }] : []))
+      : []
+  })
+  ipcMain.handle('wifi:list', (e) => {
+    fromUi(e)
+    return listWifi()
+  })
+  ipcMain.handle('wifi:connect', (e, ssid: unknown) => {
+    fromUi(e)
+    return connectWifi(ssid)
+  })
+  ipcMain.handle('wifi:disconnect', (e) => {
+    fromUi(e)
+    return disconnectWifi()
+  })
+  ipcMain.handle('calendar:get', (e, force: unknown) => {
+    fromUi(e)
+    return getAgenda(force === true)
+  })
+  ipcMain.handle('calendar:set', (e, url: unknown) => {
+    fromUi(e)
+    return setCalendarUrl(url)
+  })
+
+  // Updates: checked shortly after start and every 6 hours; installing waits for the person.
+  let update: UpdateInfo | null = null
+  const lookForUpdate = async (): Promise<void> => {
+    const u = await checkUpdate()
+    if (u && u.version !== update?.version) send('overlay:update', u)
+    update = u
+  }
+  if (!PREVIEW && app.isPackaged) {
+    setTimeout(() => void lookForUpdate(), 20_000)
+    setInterval(() => void lookForUpdate(), 6 * 3_600_000)
+  }
+  ipcMain.handle('update:get', async (e, check: unknown) => {
+    fromUi(e)
+    if (check === true) await lookForUpdate()
+    return { current: app.getVersion(), available: update, packaged: app.isPackaged }
+  })
+  ipcMain.handle('update:install', (e) => {
+    fromUi(e)
+    return installUpdate()
+  })
   void ensureIndex() // warm the Start Menu index so the first search is instant
   // One snapshot shortly after start, so the first Controls tab opens with real values instead of a spinner.
   if (!PREVIEW) setTimeout(() => void quickGet().catch(() => null), 3000)
@@ -281,6 +427,7 @@ app.whenReady().then(async () => {
     settings = next
     if (next.displayId !== prevDisplay || next.followMouse !== prevFollow) placeNotch()
     if (next.followMouse !== prevFollow) syncFollow()
+    void nativeCall('notes', settings.notifications ? 'on' : 'off')
     await saveSettings(settings)
     return snapshot()
   })
@@ -374,6 +521,6 @@ app.on('will-quit', () => {
   globalShortcut.unregisterAll()
   stopClipboardHistory()
   stopQuick()
-  stopFullscreenWatch()
+  stopNative()
 })
 app.on('window-all-closed', () => app.quit())

@@ -1,3 +1,4 @@
+import Empty from './Empty'
 import { useEffect, useState } from 'react'
 import Icon from './Icon'
 import type { ClipItem } from './global'
@@ -49,7 +50,11 @@ export default function ClipboardPanel({ query, onCopied }: Props): React.JSX.El
 
   if (items.length === 0) {
     return (
-      <div className="body body-center">{query.trim() ? 'No matching clips' : 'Copy some text and it shows up here.'}</div>
+      query.trim() ? (
+        <Empty icon="search" title="No matching clips" />
+      ) : (
+        <Empty icon="copy" title="Nothing copied yet" hint="Text you copy shows up here. Pin a clip to keep it." />
+      )
     )
   }
 

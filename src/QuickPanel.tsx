@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import Icon from './Icon'
 import type { IconName } from './icons'
-import type { MediaInfo, ProjectMode, QuickAction, QuickState, SettingsKey } from './global'
+import type { MediaInfo, ProjectMode, QuickAction, QuickState, SettingsKey, WifiNetwork } from './global'
 import type { BatteryInfo } from './useBattery'
 import { batteryIcon } from './NotchStatus'
 
@@ -36,6 +36,8 @@ function SplitTile(props: {
   onMain: () => void
   settings: SettingsKey
   mainTitle?: string
+  /** Chevron opens a list inside Gabay instead of Windows Settings. */
+  onMore?: () => void
 }): React.JSX.Element {
   return (
     <div className={props.on ? 'ct on' : 'ct'}>
@@ -57,9 +59,9 @@ function SplitTile(props: {
       </motion.button>
       <button
         className="ct-chev"
-        aria-label={`${props.label} settings`}
-        title={`${props.label} settings`}
-        onClick={() => void window.overlay.quickOpen(props.settings)}
+        aria-label={props.onMore ? `${props.label} list` : `${props.label} settings`}
+        title={props.onMore ? `Show ${props.label} list` : `${props.label} settings`}
+        onClick={() => (props.onMore ? props.onMore() : void window.overlay.quickOpen(props.settings))}
       >
         <Icon name="chevron-right" size={14} />
       </button>
@@ -323,8 +325,11 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
   const [page, setPage] = useState(0)
   const [dir, setDir] = useState(1)
   // Dev preview can open a sub-view directly (#preview=Controls&sub=project); normal use always starts on the main view.
-  const [view, setView] = useState<'main' | 'project'>(() =>
-    new URLSearchParams(location.hash.slice(1)).get('sub') === 'project' ? 'project' : 'main'
+  const [view, setView] = useState<'main' | 'project' | 'wifi' | 'bt'>(() =>
+{
+    const sub = new URLSearchParams(location.hash.slice(1)).get('sub')
+    return sub === 'project' || sub === 'wifi' || sub === 'bt' ? sub : 'main'
+  }
   )
   // Slider values stream to the system one at a time: while one is in flight only the newest waiting value is kept.
   const wheelLock = useRef(0)
@@ -389,6 +394,8 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
 
   if (!state) return <div className="body body-center">Loading…</div>
   if (view === 'project') return <ProjectView onBack={() => setView('main')} />
+  if (view === 'wifi') return <WifiView onBack={() => setView('main')} />
+  if (view === 'bt') return <BluetoothView onBack={() => setView('main')} />
 
   const wifiOn = state.radios.wifi
   const btOn = state.radios.bluetooth
@@ -429,6 +436,7 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
                 disabled={wifiOn === undefined}
                 onMain={() => void act({ kind: 'radio', radio: 'wifi', on: !wifiOn })}
                 settings="network"
+                onMore={() => setView('wifi')}
               />
               <SplitTile
                 icon="bluetooth"
@@ -438,6 +446,7 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
                 disabled={btOn === undefined}
                 onMain={() => void act({ kind: 'radio', radio: 'bluetooth', on: !btOn })}
                 settings="bluetooth"
+                onMore={() => setView('bt')}
               />
               <SplitTile
                 icon={state.muted ? 'volume-x' : 'volume-2'}
@@ -621,6 +630,149 @@ function ProjectView({ onBack }: { onBack: () => void }): React.JSX.Element {
       <button className="sub-link" onClick={() => void window.overlay.quickOpen('display')}>
         More display settings
       </button>
+    </motion.div>
+  )
+}
+
+function SubHead({ title, onBack, onRefresh, busy }: { title: string; onBack: () => void; onRefresh?: () => void; busy?: boolean }): React.JSX.Element {
+  return (
+    <div className="sub-head">
+      <button className="q-icon-btn" aria-label="Back" title="Back" onClick={onBack}>
+        <Icon name="arrow-left" size={16} />
+      </button>
+      <span>{title}</span>
+      {onRefresh && (
+        <button className={busy ? 'q-icon-btn sub-refresh spin' : 'q-icon-btn sub-refresh'} aria-label="Refresh" title="Scan again" onClick={onRefresh}>
+          <Icon name="refresh-cw" size={14} />
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Signal strength as 1-4 bars. */
+function Bars({ level }: { level: number }): React.JSX.Element {
+  const n = level >= 75 ? 4 : level >= 50 ? 3 : level >= 25 ? 2 : 1
+  return (
+    <span className="sig" aria-label={`Signal ${level}%`}>
+      {[1, 2, 3, 4].map((i) => (
+        <i key={i} className={i <= n ? 'on' : ''} style={{ height: `${i * 25}%` }} />
+      ))}
+    </span>
+  )
+}
+
+/** Nearby networks. Saved ones connect in place; new ones open Windows Settings, so passwords never touch Gabay. */
+function WifiView({ onBack }: { onBack: () => void }): React.JSX.Element {
+  const [data, setData] = useState<{ networks: WifiNetwork[]; error: 'off' | 'location' | null } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [joining, setJoining] = useState<string | null>(null)
+
+  const scan = useCallback(async (): Promise<void> => {
+    setBusy(true)
+    setData(await window.overlay.listWifi().catch(() => ({ networks: [], error: 'off' as const })))
+    setBusy(false)
+  }, [])
+  useEffect(() => {
+    void scan()
+  }, [scan])
+
+  const pick = async (n: WifiNetwork): Promise<void> => {
+    if (n.connected) return
+    if (!n.known) {
+      void window.overlay.quickOpen('wifi')
+      return
+    }
+    setJoining(n.ssid)
+    await window.overlay.connectWifi(n.ssid)
+    window.setTimeout(() => {
+      setJoining(null)
+      void scan()
+    }, 2500)
+  }
+
+  return (
+    <motion.div className="body quick-sub" initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 38 }}>
+      <SubHead title="Wi-Fi" onBack={onBack} onRefresh={() => void scan()} busy={busy} />
+      {data === null ? (
+        <div className="sub-empty">Scanning…</div>
+      ) : data.networks.length === 0 ? (
+        <div className="sub-empty">
+          {data.error === 'location' ? 'Windows needs Location turned on to list networks.' : 'No networks found. Is Wi-Fi on?'}
+        </div>
+      ) : (
+        <div className="net-list">
+          {data.networks.map((n) => (
+            <motion.button
+              key={n.ssid}
+              whileTap={{ scale: 0.98 }}
+              className={n.connected ? 'net-row on' : 'net-row'}
+              title={n.connected ? 'Connected' : n.known ? 'Connect' : 'Join in Windows Settings'}
+              onClick={() => void pick(n)}
+            >
+              <Bars level={n.signal} />
+              <span className="net-name">{n.ssid}</span>
+              <span className="net-state">
+                {joining === n.ssid ? 'Connecting…' : n.connected ? 'Connected' : n.known ? 'Saved' : ''}
+                {n.secure && !n.connected && <Icon name="lock" size={11} />}
+              </span>
+            </motion.button>
+          ))}
+        </div>
+      )}
+      <div className="sub-links">
+        {data?.networks.some((n) => n.connected) && (
+          <button className="sub-link" onClick={() => void window.overlay.disconnectWifi().then(() => window.setTimeout(() => void scan(), 1200))}>
+            Disconnect
+          </button>
+        )}
+        <button className="sub-link" onClick={() => void window.overlay.quickOpen('wifi')}>
+          More Wi-Fi settings
+        </button>
+      </div>
+    </motion.div>
+  )
+}
+
+/** Paired devices and whether each is connected. Connecting is done in Windows Settings (no supported API for it). */
+function BluetoothView({ onBack }: { onBack: () => void }): React.JSX.Element {
+  const [list, setList] = useState<{ name: string; connected: boolean }[] | null>(null)
+  const [busy, setBusy] = useState(false)
+  const load = useCallback(async (): Promise<void> => {
+    setBusy(true)
+    setList(await window.overlay.listBluetooth().catch(() => []))
+    setBusy(false)
+  }, [])
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const sorted = (list ?? []).slice().sort((a, b) => Number(b.connected) - Number(a.connected) || a.name.localeCompare(b.name))
+  return (
+    <motion.div className="body quick-sub" initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 38 }}>
+      <SubHead title="Bluetooth" onBack={onBack} onRefresh={() => void load()} busy={busy} />
+      {list === null ? (
+        <div className="sub-empty">Looking for devices…</div>
+      ) : sorted.length === 0 ? (
+        <div className="sub-empty">No paired devices, or Bluetooth is off.</div>
+      ) : (
+        <div className="net-list">
+          {sorted.map((d) => (
+            <button key={d.name} className={d.connected ? 'net-row on' : 'net-row'} onClick={() => void window.overlay.quickOpen('bluetooth')} title="Manage in Windows Settings">
+              <span className="ct-well small">
+                <Icon name="bluetooth" size={13} />
+              </span>
+              <span className="net-name">{d.name}</span>
+              <span className="net-state">{d.connected ? 'Connected' : 'Paired'}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="sub-links">
+        <button className="sub-link" onClick={() => void window.overlay.quickOpen('bluetooth')}>
+          Add or connect a device
+        </button>
+      </div>
     </motion.div>
   )
 }

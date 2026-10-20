@@ -29,6 +29,36 @@ contextBridge.exposeInMainWorld('overlay', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (patch: unknown) => ipcRenderer.invoke('settings:set', patch),
   runPower: (action: string) => ipcRenderer.invoke('power:run', action),
+  mediaGet: () => ipcRenderer.invoke('media:get'),
+  mediaCommand: (c: string) => ipcRenderer.invoke('media:command', c),
+  volumeNudge: (delta: number) => ipcRenderer.invoke('volume:nudge', delta),
+  listWindows: () => ipcRenderer.invoke('windows:list'),
+  windowIcon: (id: string) => ipcRenderer.invoke('windows:icon', id),
+  focusWindow: (id: string) => ipcRenderer.invoke('windows:focus', id),
+  closeWindow: (id: string) => ipcRenderer.invoke('windows:close', id),
+  listBluetooth: () => ipcRenderer.invoke('bt:list'),
+  listWifi: () => ipcRenderer.invoke('wifi:list'),
+  connectWifi: (ssid: string) => ipcRenderer.invoke('wifi:connect', ssid),
+  disconnectWifi: () => ipcRenderer.invoke('wifi:disconnect'),
+  calendarGet: (force: boolean) => ipcRenderer.invoke('calendar:get', force),
+  calendarSet: (url: string) => ipcRenderer.invoke('calendar:set', url),
+  updateGet: (check: boolean) => ipcRenderer.invoke('update:get', check),
+  updateInstall: () => ipcRenderer.invoke('update:install'),
+  onMedia: (cb: (m: unknown) => void): (() => void) => {
+    const handler = (_e: unknown, m: unknown): void => cb(m)
+    ipcRenderer.on('overlay:media', handler)
+    return () => ipcRenderer.removeListener('overlay:media', handler)
+  },
+  onNote: (cb: (n: unknown) => void): (() => void) => {
+    const handler = (_e: unknown, n: unknown): void => cb(n)
+    ipcRenderer.on('overlay:note', handler)
+    return () => ipcRenderer.removeListener('overlay:note', handler)
+  },
+  onUpdate: (cb: (u: unknown) => void): (() => void) => {
+    const handler = (_e: unknown, u: unknown): void => cb(u)
+    ipcRenderer.on('overlay:update', handler)
+    return () => ipcRenderer.removeListener('overlay:update', handler)
+  },
   // Subscribe to full-screen changes on the notch's display. Returns an unsubscribe function.
   onFullscreen: (cb: (fullscreen: boolean) => void): (() => void) => {
     const handler = (_e: unknown, fs: unknown): void => cb(fs === true)

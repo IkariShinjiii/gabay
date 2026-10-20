@@ -24,3 +24,8 @@ nsis:
   installerSidebar: resources/installerSidebar.bmp
   uninstallerSidebar: resources/installerSidebar.bmp
   installerHeader: resources/installerHeader.bmp
+# Writes latest.yml (with the installer SHA-512) next to the installer; the in-app updater verifies against it.
+publish:
+  provider: github
+  owner: IkariShinjiii
+  repo: gabay

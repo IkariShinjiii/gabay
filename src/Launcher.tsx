@@ -1,3 +1,4 @@
+import Empty from './Empty'
 import AppIcon from './AppIcon'
 import Icon from './Icon'
 import type { LauncherItem } from './global'
@@ -12,7 +13,7 @@ interface Props {
 }
 
 export default function Launcher({ items, selected, emptyHint, onHover, onLaunch, onToggleStar }: Props): React.JSX.Element {
-  if (items.length === 0) return <div className="body body-center">{emptyHint}</div>
+  if (items.length === 0) return <Empty icon="search" title={emptyHint} hint={emptyHint.startsWith('No') ? 'Try fewer letters, or part of the name.' : undefined} />
 
   return (
     <div className="body results">

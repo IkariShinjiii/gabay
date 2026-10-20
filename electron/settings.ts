@@ -10,6 +10,10 @@ export interface Settings {
   displayId: number | null
   /** Move the notch to whichever display the pointer is on (displayId is then ignored). */
   followMouse: boolean
+  /** Show new Windows notifications in the notch. */
+  notifications: boolean
+  /** Include the sender and message text; off shows only the app name. */
+  notePreview: boolean
   /** 'always': shown, except while something is full screen. 'auto': off-screen until the pointer rests on the top edge. */
   visibility: 'always' | 'auto'
 }
@@ -19,7 +23,7 @@ export const HOTKEYS = ['Control+Alt+G', 'Control+Shift+G', 'Control+Alt+Space',
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, visibility: 'always' }
+const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, visibility: 'always' }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -35,7 +39,9 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
     r.displayId === null ? null : typeof r.displayId === 'number' && Number.isInteger(r.displayId) ? r.displayId : base.displayId
   const visibility = r.visibility === 'always' || r.visibility === 'auto' ? r.visibility : base.visibility
   const followMouse = typeof r.followMouse === 'boolean' ? r.followMouse : base.followMouse
-  return { hotkey, collapseMs, displayId, followMouse, visibility }
+  const notifications = typeof r.notifications === 'boolean' ? r.notifications : base.notifications
+  const notePreview = typeof r.notePreview === 'boolean' ? r.notePreview : base.notePreview
+  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, visibility }
 }
 
 export async function loadSettings(): Promise<Settings> {

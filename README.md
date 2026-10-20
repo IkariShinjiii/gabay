@@ -88,7 +88,7 @@ The taskbar's system-tray features, built into the notch.
 - **Collapsed pill:** network (Wi-Fi, Ethernet or offline) on the left, the clock or focus-timer ring in the middle, battery on
   the right (red at 20% or less when not charging). Battery comes from Chromium's event-based battery API and the network type
   from the network adapters, so the collapsed notch still runs no timers or processes.
-- **Controls tab** (Ctrl+1):
+- **Controls tab** (Ctrl+1; tabs are Ctrl+1 to Ctrl+8):
   - Split tiles: the main part acts, the chevron opens the matching Windows Settings page. Wi-Fi and Bluetooth switch the
     radios; Audio mutes and shows the output device; Dark mode switches Windows' app and system theme (applied live);
     Airplane mode uses Windows' own switch.
@@ -101,8 +101,35 @@ The taskbar's system-tray features, built into the notch.
   - Footer: battery, keyboard layout of the focused window, Windows Settings.
 - Volume, brightness, radios and layout go through one hidden PowerShell helper that starts when the Controls tab opens and exits
   30 seconds after it was last used. Commands are fixed strings built from validated values; the renderer never sends text.
-- **Not possible from an app:** reading Windows notifications and showing other apps' tray icons (the overflow arrow). Keep the
-  Windows taskbar on auto-hide and reach those at the bottom edge as before.
+- The Wi-Fi and Bluetooth chevrons open lists inside Gabay. Wi-Fi shows nearby networks with signal bars; saved networks
+  connect in place, new ones open Windows Settings (passwords never pass through Gabay). Bluetooth lists paired devices
+  and which are connected; connecting stays in Windows Settings, which is the only supported way.
+- **Not possible from an app:** showing other apps' tray icons (the overflow arrow). Keep the Windows taskbar on
+  auto-hide and reach those at the bottom edge as before.
+
+## Windows tab, live activities and alerts
+
+- **Windows tab** (Ctrl+2): your open windows with their icons, most recently used first. Click one to switch to it,
+  hover for the x to close it (the app can still ask to save), or type in the bar to filter. Arrow keys and Enter work too.
+- **Live activity:** while music or a video plays, the collapsed notch widens a little and shows the album art on the left
+  and a moving level meter on the right.
+- **Toasts:** the collapsed notch grows for a few seconds, like an iPhone's Dynamic Island, for:
+  - **Windows notifications** (app, sender and message). Settings can switch this off, or show only the app name.
+    The text is shown, never stored or logged.
+  - **A new track** (art, title, artist).
+  - **Charging** (a ring fills to the battery level), **fully charged**, and **low battery** at 20% and 10% (in red).
+  - **Calendar:** a heads-up 10 minutes before an event.
+  - **An available update.**
+  Nothing pops up while something is full screen.
+- **Gestures on the open notch:** scroll over the tab bar to change the volume (a small volume bar appears); middle-click
+  anywhere on the notch to play or pause.
+- **Calendar:** paste your calendar's private iCal address in Settings (Google Calendar: Settings > your calendar >
+  Integrate calendar > Secret address in iCal format). It is stored encrypted with Windows' DPAPI and only read by the main
+  process. The Today tab shows what's on now and the next few events; it refreshes every 10 minutes.
+- **Updates:** Gabay checks this repo's GitHub releases 20 seconds after start and every 6 hours. Installing waits for
+  you (Settings > Install). The installer must come from this repo's releases and match the SHA-512 in the release's
+  `latest.yml`, or it is thrown away. To publish one: `npm run dist`, then attach `dist/Gabay Setup <v>.exe` and
+  `dist/latest.yml` to a GitHub release tagged `v<version>`.
 
 ## Tray, Settings and startup
 
@@ -112,11 +139,12 @@ The taskbar's system-tray features, built into the notch.
   screen on its display (a maximized window doesn't count). Rest the pointer on the very top edge, within the notch's width,
   to bring it back while hidden; it slides away again shortly after the pointer leaves.
 - **Auto-hide** (Settings): the notch is always tucked away until revealed that way, so it never covers a browser tab.
-- Full screen is detected by a tiny watcher (about 9 MB, no measurable CPU) compiled once from source in
-  `electron/fullscreen.ts` with the C# compiler built into Windows and cached in `%APPDATA%\gabay\bin`. Without that
-  compiler the notch simply stays visible.
-- **Settings tab:** global hotkey, how long the pointer must stay away before the panel collapses (200-1500 ms), and which
-  display the notch sits on. Saved to `settings.json` in `%APPDATA%\gabay`; the main process validates every value.
+- Full screen, now playing, notifications, the window list, focus and volume come from one small native helper (about
+  25 MB, no measurable CPU) compiled once from `electron/nativeSource.ts` with the C# compiler built into Windows, against
+  the Windows Runtime metadata in `System32\WinMetadata`, and cached in `%APPDATA%\gabay\bin`. Without that compiler
+  those features quietly go away and the notch simply stays visible.
+- **Settings tab:** global hotkey, how long the pointer must stay away before the panel collapses (200-1500 ms), which
+  display the notch sits on (or Follow mouse), notifications, calendar and updates. Saved to `settings.json` in `%APPDATA%\gabay`; the main process validates every value.
 - The app and tray icons are drawn in `resources/` (a notch plus a compass, since gabay means guide); edit `resources/icon.svg` / `tray.svg` and run `npx electron scripts/render-icons.cjs` to regenerate the PNGs.
 
 ## Where the window behavior lives
@@ -144,7 +172,8 @@ Items 2 and 3 were tested before hardware acceleration was turned off (0.9.0); r
 $env:GABAY_PREVIEW='Controls'; $env:GABAY_PREVIEW_OUT="$PWD\controls.png"; npx electron .
 ```
 
-Renders the panel on that tab (or `Pill` for the collapsed notch, or `Controls&sub=project` for the Project chooser) in a hidden window, saves a screenshot and quits. It shows no
+Renders the panel on that tab (or `Pill` for the collapsed notch, `Live`, `Toast` or `Note` for the grown notch with
+sample data, or `Controls&sub=project|wifi|bt` for a Controls sub-view) in a hidden window, saves a screenshot and quits. It shows no
 window, registers no hotkey or tray icon, never reads the clipboard and uses a throwaway data folder, so it is safe to run
 while Gabay is in use. Ignored in packaged builds.
 

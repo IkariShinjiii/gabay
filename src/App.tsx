@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { COLLAPSE_DELAY_MS, HIDE_DELAY_MS, NOTCH, REVEAL_DWELL_MS } from './constants'
-import type { LauncherItem, PowerAction } from './global'
+import type { LauncherItem, LiveMedia, PowerAction } from './global'
 import ClipboardPanel from './ClipboardPanel'
 import { parseCommand, type CommandActions } from './commands'
 import Launcher from './Launcher'
@@ -13,9 +13,11 @@ import QuickPanel from './QuickPanel'
 import { useBattery } from './useBattery'
 import StatsPanel from './StatsPanel'
 import TodayPanel from './TodayPanel'
+import WindowsPanel from './WindowsPanel'
+import NotchToast, { type Toast } from './NotchToast'
 import { useFocusTimer } from './useFocusTimer'
 
-const TABS = ['Controls', 'Today', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
+const TABS = ['Controls', 'Windows', 'Today', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
 type Tab = (typeof TABS)[number]
 
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
@@ -224,6 +226,140 @@ export default function App(): React.JSX.Element {
   const focusTimer = useFocusTimer()
   const battery = useBattery()
 
+  // --- toasts: the collapsed notch grows for a moment (notification, new track, charging, meeting, update) ---
+  const [toast, setToast] = useState<Toast | null>(null)
+  const queue = useRef<Toast[]>([])
+  const toastId = useRef(1)
+  const toastTimer = useRef<number | undefined>(undefined)
+  const showNext = useCallback((): void => {
+    const next = queue.current.shift() ?? null
+    setToast(next)
+    if (next) toastTimer.current = window.setTimeout(showNext, next.ms ?? 4200)
+  }, [])
+  const pushToast = useCallback(
+    (t: Omit<Toast, 'id'>): void => {
+      // Nothing pops over a full-screen video or game; the newest few wait their turn, older ones drop.
+      if (fullscreenRef.current) return
+      queue.current = [...queue.current, { ...t, id: toastId.current++ }].slice(-3)
+      if (toastTimer.current === undefined || !toastShowing.current) {
+        window.clearTimeout(toastTimer.current)
+        showNext()
+      }
+    },
+    [showNext]
+  )
+  const toastShowing = useRef(false)
+  toastShowing.current = toast !== null
+  useEffect(() => () => window.clearTimeout(toastTimer.current), [])
+
+  // --- now playing (live activity in the pill; a toast when the track changes) ---
+  const [media, setMedia] = useState<LiveMedia | null>(null)
+  const lastTrack = useRef<string | null>(null)
+  useEffect(() => {
+    const take = (m: LiveMedia | null): void => {
+      setMedia(m)
+      const key = m ? `${m.title}|${m.artist}` : null
+      if (m?.playing && key && lastTrack.current !== null && key !== lastTrack.current && m.title)
+        pushToast({ icon: 'music', art: m.art || undefined, title: m.title, sub: m.artist, label: 'Now playing', ms: 3200 })
+      if (key) lastTrack.current = key
+    }
+    // Dev preview of the grown pill: sample data, never real events.
+    if (previewParam === 'Toast')
+      setToast({ id: 0, icon: 'zap', title: 'Charging', sub: '76%', ring: 0.76, tone: 'accent', ms: 60_000 })
+    if (previewParam === 'Note')
+      setToast({ id: 0, icon: 'message-square', label: 'Messenger', title: 'Kevin', sub: 'are you coming tonight? we are at the usual place', ms: 60_000 })
+    if (previewParam === 'Live')
+      setMedia({ title: 'TMA', artist: 'groundZERO Records', app: 'Spotify.exe', playing: true, duration: 199, art: '' })
+    if (previewParam) return
+    void window.overlay.mediaGet().then((m) => {
+      setMedia(m)
+      lastTrack.current = m ? `${m.title}|${m.artist}` : ''
+    })
+    const offMedia = window.overlay.onMedia(take)
+    const offNote = window.overlay.onNote((n) =>
+      pushToast({
+        icon: 'message-square',
+        label: n.app,
+        title: n.title ?? n.app,
+        sub: n.body ?? (n.title ? undefined : 'New notification'),
+        tone: 'plain',
+        ms: 5200
+      })
+    )
+    const offUpdate = window.overlay.onUpdate((u) =>
+      pushToast({ icon: 'download', title: `Gabay ${u.version} is available`, sub: 'Install it from Settings', tone: 'accent', ms: 6000 })
+    )
+    return () => {
+      offMedia()
+      offNote()
+      offUpdate()
+    }
+  }, [pushToast])
+
+  // --- battery: plugged in, fully charged, low ---
+  const lastBattery = useRef<{ charging: boolean; level: number } | null>(null)
+  useEffect(() => {
+    if (!battery) return
+    const prev = lastBattery.current
+    lastBattery.current = { charging: battery.charging, level: battery.level }
+    if (!prev) return
+    const pct = Math.round(battery.level * 100)
+    if (battery.charging && !prev.charging)
+      pushToast({ icon: 'zap', title: 'Charging', sub: `${pct}%`, ring: battery.level, tone: 'accent', ms: 3200 })
+    else if (battery.charging && battery.level >= 1 && prev.level < 1)
+      pushToast({ icon: 'battery-full', title: 'Fully charged', sub: 'You can unplug', tone: 'accent' })
+    else if (!battery.charging)
+      for (const at of [0.2, 0.1])
+        if (battery.level <= at && prev.level > at)
+          pushToast({ icon: 'battery-warning', title: 'Low battery', sub: `${pct}% left · plug in soon`, ring: battery.level, tone: 'warn', ms: 6000 })
+  }, [battery, pushToast])
+
+  // --- calendar heads-up: once per event, 10 minutes before it starts ---
+  const warned = useRef(new Set<string>())
+  useEffect(() => {
+    const check = async (): Promise<void> => {
+      const a = await window.overlay.calendarGet(false).catch(() => null)
+      if (!a?.connected) return
+      const now = Date.now()
+      for (const ev of a.events) {
+        const key = `${ev.title}|${ev.start}`
+        const mins = Math.round((ev.start - now) / 60_000)
+        if (ev.allDay || mins < 0 || mins > 10 || warned.current.has(key)) continue
+        warned.current.add(key)
+        pushToast({
+          icon: 'calendar',
+          label: mins <= 0 ? 'Starting now' : `In ${mins} min`,
+          title: ev.title,
+          sub: ev.location || new Date(ev.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          tone: 'accent',
+          ms: 7000
+        })
+      }
+    }
+    void check()
+    const id = window.setInterval(() => void check(), 60_000)
+    return () => window.clearInterval(id)
+  }, [pushToast])
+
+  // --- gestures on the open notch: scroll over the tab bar for volume, middle-click to play/pause ---
+  const [hud, setHud] = useState<number | null>(null)
+  const hudTimer = useRef<number | undefined>(undefined)
+  const onTabsWheel = (e: React.WheelEvent): void => {
+    const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? -e.deltaY : e.deltaX
+    if (!delta) return
+    void window.overlay.volumeNudge(Math.sign(delta) * 4).then((r) => {
+      if (!r) return
+      setHud(r.volume)
+      window.clearTimeout(hudTimer.current)
+      hudTimer.current = window.setTimeout(() => setHud(null), 1100)
+    })
+  }
+  const onMiddleClick = (e: React.MouseEvent): void => {
+    if (e.button !== 1) return
+    e.preventDefault()
+    void window.overlay.mediaCommand('toggle')
+  }
+
   // Network type for the pill: read on start, when Windows reports going on/offline, and whenever the notch opens or
   // is revealed. No timer: the collapsed notch does no work of its own.
   const [net, setNet] = useState<NetKind>('wifi')
@@ -279,7 +415,7 @@ export default function App(): React.JSX.Element {
   const query = input // the clipboard filter and app search both read the raw text
 
   // App results show on every tab except Clipboard, but only for text that is not a command.
-  const showResults = expanded && tab !== 'Clipboard' && !parsed && (input.trim() !== '' || tab === 'Launch')
+  const showResults = expanded && tab !== 'Clipboard' && tab !== 'Windows' && !parsed && (input.trim() !== '' || tab === 'Launch')
   // Stale responses are dropped so a slow reply can't overwrite a newer query.
   useEffect(() => {
     if (!showResults) return
@@ -344,7 +480,7 @@ export default function App(): React.JSX.Element {
     setInput('')
   }, [])
 
-  // Ctrl+1..7 switch tabs while the panel is open.
+  // Ctrl+1..8 switch tabs while the panel is open.
   useEffect(() => {
     if (!expanded) return
     const onKey = (e: KeyboardEvent): void => {
@@ -359,9 +495,19 @@ export default function App(): React.JSX.Element {
     return () => document.removeEventListener('keydown', onKey)
   }, [expanded, selectTab])
 
+  // Collapsed, the notch is the pill, a little wider while media plays, and grows for a toast.
+  const showToast = !expanded && toast !== null
+  // Only while the pill is on screen: no meter animating behind a full-screen video or an auto-hidden notch.
+  const onScreen = revealed || (visibility === 'always' && !fullscreen)
+  const live = !expanded && !showToast && onScreen && !!media?.playing
   const size = expanded
     ? { width: NOTCH.expanded.width, height: Math.min(panelHeight, NOTCH.expanded.height) }
-    : NOTCH.collapsed
+    : showToast
+      ? NOTCH.toast
+      : live
+        ? NOTCH.live
+        : NOTCH.collapsed
+  const bottomRadius = expanded ? 28 : showToast ? NOTCH.toastBottomRadius : NOTCH.collapsedBottomRadius
 
   let body: React.JSX.Element
   if (showResults) {
@@ -389,10 +535,12 @@ export default function App(): React.JSX.Element {
       />
     )
   } else if (expanded && tab === 'Settings') {
-    body = <SettingsPanel onSettings={applySettings} />
+    body = <SettingsPanel onSettings={applySettings} onHold={onTodoHold} />
   } else if (expanded && tab === 'System') {
     // StatsPanel exists only while visible, so its polling stops when the notch collapses or the tab changes.
     body = <StatsPanel />
+  } else if (expanded && tab === 'Windows') {
+    body = <WindowsPanel query={query} onSwitched={release} />
   } else if (expanded && tab === 'Controls') {
     body = <QuickPanel battery={battery} />
   } else {
@@ -404,14 +552,15 @@ export default function App(): React.JSX.Element {
       ref={notchRef}
       className="notch"
       initial={false}
+      onMouseDown={onMiddleClick}
       animate={{
         width: size.width,
         height: size.height,
         // Auto-hide parks the collapsed notch just above the screen; it slides in when revealed or expanded.
-        y: expanded || revealed || (visibility === 'always' && !fullscreen) ? 0 : -(NOTCH.collapsed.height + 4),
+        y: expanded || revealed || showToast || (visibility === 'always' && !fullscreen) ? 0 : -(NOTCH.collapsed.height + 4),
         // Always flush with the top edge (the concave shoulders are drawn in CSS); only the bottom corners animate.
-        borderBottomLeftRadius: expanded ? 28 : NOTCH.collapsedBottomRadius,
-        borderBottomRightRadius: expanded ? 28 : NOTCH.collapsedBottomRadius
+        borderBottomLeftRadius: bottomRadius,
+        borderBottomRightRadius: bottomRadius
       }}
       transition={SPRING}
     >
@@ -426,7 +575,7 @@ export default function App(): React.JSX.Element {
           transition={{ duration: expanded ? 0.2 : 0.1, delay: expanded ? 0.12 : 0 }}
           style={{ pointerEvents: expanded ? 'auto' : 'none' }}
         >
-          <div className="tabs" role="tablist" aria-label="Sections">
+          <div className="tabs" role="tablist" aria-label="Sections" onWheel={onTabsWheel}>
             {TABS.map((t, i) => (
               <button
                 key={t}
@@ -442,6 +591,23 @@ export default function App(): React.JSX.Element {
                 {t === tab && <motion.span layoutId="tab-marker" className="tab-marker" transition={SPRING} />}
               </button>
             ))}
+            <AnimatePresence>
+              {hud !== null && (
+                <motion.div
+                  className="vol-hud"
+                  initial={{ opacity: 0, y: -4, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -4, scale: 0.96 }}
+                  transition={{ duration: 0.16 }}
+                >
+                  <Icon name={hud === 0 ? 'volume-x' : hud < 50 ? 'volume-1' : 'volume-2'} size={14} />
+                  <span className="vol-hud-bar">
+                    <span style={{ transform: `scaleX(${hud / 100})` }} />
+                  </span>
+                  <span className="vol-hud-val">{hud}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
@@ -459,7 +625,13 @@ export default function App(): React.JSX.Element {
             <Icon name={parsed ? 'command' : 'search'} size={16} />
             <input
               ref={inputRef}
-              placeholder={tab === 'Clipboard' ? 'Search clipboard, or type a command' : 'Search apps, or type a command'}
+              placeholder={
+                tab === 'Clipboard'
+                  ? 'Search clipboard, or type a command'
+                  : tab === 'Windows'
+                    ? 'Filter windows, or type a command'
+                    : 'Search apps, or type a command'
+              }
               aria-label="Search or command"
               spellCheck={false}
               autoComplete="off"
@@ -490,11 +662,12 @@ export default function App(): React.JSX.Element {
         <motion.div
           className="status"
           initial={false}
-          animate={{ opacity: expanded ? 0 : 1 }}
+          animate={{ opacity: expanded || showToast ? 0 : 1 }}
           transition={{ duration: 0.12 }}
         >
-          <NotchStatus clock={clock} timer={focusTimer} battery={battery} net={net} />
+          <NotchStatus clock={clock} timer={focusTimer} battery={battery} net={net} media={live ? media : null} />
         </motion.div>
+        <AnimatePresence>{showToast && toast && <NotchToast key={toast.id} toast={toast} />}</AnimatePresence>
       </div>
     </motion.div>
   )

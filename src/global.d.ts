@@ -41,6 +41,28 @@ export interface OverlayApi {
   setSettings(patch: Partial<Settings>): Promise<SettingsSnapshot>
   /** Fires when the global hotkey is pressed. Returns an unsubscribe function. */
   onSummon(cb: () => void): () => void
+  /** Now playing, from the native helper (art is a data URL). */
+  mediaGet(): Promise<LiveMedia | null>
+  mediaCommand(c: 'toggle' | 'next' | 'prev'): Promise<boolean>
+  /** Changes volume by delta percent; returns the new level. */
+  volumeNudge(delta: number): Promise<{ volume: number; muted: boolean } | null>
+  /** Open windows, most recently used first. Ids are opaque. */
+  listWindows(): Promise<OpenWindow[]>
+  windowIcon(id: string): Promise<string | null>
+  focusWindow(id: string): Promise<boolean>
+  closeWindow(id: string): Promise<boolean>
+  listBluetooth(): Promise<{ name: string; connected: boolean }[]>
+  listWifi(): Promise<{ networks: WifiNetwork[]; error: 'off' | 'location' | null }>
+  connectWifi(ssid: string): Promise<boolean>
+  disconnectWifi(): Promise<boolean>
+  calendarGet(force: boolean): Promise<{ connected: boolean; events: CalEvent[]; error: boolean }>
+  /** Saves the private iCal address (empty string forgets it). */
+  calendarSet(url: string): Promise<boolean>
+  updateGet(check: boolean): Promise<{ current: string; available: UpdateInfo | null; packaged: boolean }>
+  updateInstall(): Promise<boolean>
+  onMedia(cb: (m: LiveMedia | null) => void): () => void
+  onNote(cb: (n: NoteInfo) => void): () => void
+  onUpdate(cb: (u: UpdateInfo) => void): () => void
   /** Fires when a full-screen window appears on or leaves the notch's display. Returns an unsubscribe function. */
   onFullscreen(cb: (fullscreen: boolean) => void): () => void
 }
@@ -50,6 +72,8 @@ export interface Settings {
   collapseMs: number
   displayId: number | null
   followMouse: boolean
+  notifications: boolean
+  notePreview: boolean
   visibility: 'always' | 'auto'
 }
 
@@ -119,6 +143,7 @@ export type ProjectMode = 'internal' | 'clone' | 'extend' | 'external'
 export type SettingsKey =
   | 'energy'
   | 'airplane'
+  | 'wifi'
   | 'accessibility'
   | 'display'
   | 'colors'
@@ -144,4 +169,49 @@ declare global {
   interface Window {
     overlay: OverlayApi
   }
+}
+
+export interface LiveMedia {
+  title: string
+  artist: string
+  app: string
+  playing: boolean
+  duration: number
+  /** data: URL, or '' when the player gives none */
+  art: string
+}
+
+export interface NoteInfo {
+  app: string
+  title: string | null
+  body: string | null
+}
+
+export interface OpenWindow {
+  id: string
+  title: string
+  app: string
+  minimized: boolean
+  active: boolean
+}
+
+export interface WifiNetwork {
+  ssid: string
+  signal: number
+  secure: boolean
+  known: boolean
+  connected: boolean
+}
+
+export interface CalEvent {
+  title: string
+  start: number
+  end: number
+  allDay: boolean
+  location: string
+}
+
+export interface UpdateInfo {
+  version: string
+  notes: string
 }
