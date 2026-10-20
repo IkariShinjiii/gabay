@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.0
+
+The first release for sharing.
+
+- **Notification access:** Gabay reports whether Windows lets it read notifications; when it's blocked, Settings explains
+  and opens the right privacy page, and Gabay picks up the change by itself.
+- **Lighter notifications check:** every 2 s while someone is at the PC, every 5 s when away or in full screen (it was
+  1.2 s); its idle CPU dropped from 0.052% to 0.020% of the PC. Windows offers desktop apps no notification event.
+- **Uninstall** removes the start-at-login entry and the compiled helper (not on updates). Settings, notes and to-dos stay.
+- **License:** all rights reserved (LICENSE), with third-party notices shipped in the app.
+- Scanned with Microsoft Defender before release.
+
 ## 0.32.0
 
 - **Notes tab:** a quick scratchpad that saves as you type (notes.json in userData), with copy and clear.

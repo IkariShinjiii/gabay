@@ -2,6 +2,15 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.0.0',
+    [
+      'Gabay 1.0: ready to share',
+      'Settings shows when Windows blocks notifications, with a button to fix it',
+      'Notifications use less CPU',
+      'Uninstalling also turns off start-at-login'
+    ]
+  ],
+  [
     '0.32.0',
     [
       'Quick notes in a new Notes tab',

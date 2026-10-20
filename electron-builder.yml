@@ -7,8 +7,15 @@ files:
   - resources/**
   - "!resources/*.svg"
   - "!resources/*.bmp"
+  - "!resources/THIRD-PARTY-NOTICES.txt"
   - package.json
 asar: true
+# The license and third-party notices sit next to Gabay.exe, where people can read them.
+extraFiles:
+  - from: LICENSE
+    to: LICENSE.txt
+  - from: resources/THIRD-PARTY-NOTICES.txt
+    to: THIRD-PARTY-NOTICES.txt
 electronDist: node_modules/electron/dist
 win:
   icon: resources/icon.png

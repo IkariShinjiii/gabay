@@ -219,6 +219,8 @@ app.whenReady().then(async () => {
   }
   const str = (v: unknown, max: number): string | null => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null)
   let fsNow = false
+  // Whether Windows lets Gabay read notifications; null until the helper reports.
+  let noteAccess: string | null = null
   let media: Record<string, unknown> | null = null
   {
     void startNative({
@@ -250,6 +252,9 @@ app.whenReady().then(async () => {
           }
         }
         send('overlay:media', media)
+      },
+      noteAccess: (status) => {
+        noteAccess = /^[A-Za-z]+$/.test(status) ? status : null
       },
       privacy: (raw) => {
         const r = raw as { mic?: unknown; cam?: unknown } | null
@@ -531,6 +536,7 @@ app.whenReady().then(async () => {
       activeHotkey,
       hotkeys: HOTKEYS,
       version: app.getVersion(),
+      notificationAccess: noteAccess,
       collapseRange: { min: COLLAPSE_MIN, max: COLLAPSE_MAX },
       displays: screen.getAllDisplays().map((d, i, all) => ({
         id: d.id,

@@ -2,7 +2,7 @@ import { app } from 'electron'
 import { execFile, spawn, type ChildProcess } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { NATIVE_SOURCE } from './nativeSource'
 import { logError } from './diagnostics'
@@ -30,7 +30,10 @@ async function helperExe(): Promise<string | null> {
   const hash = createHash('sha256').update(NATIVE_SOURCE).digest('hex').slice(0, 12)
   const dir = join(app.getPath('userData'), 'bin')
   const exe = join(dir, `gabay-native-${hash}.exe`)
-  if (existsSync(exe)) return exe
+  if (existsSync(exe)) {
+    void removeStale(dir, exe)
+    return exe
+  }
   await mkdir(dir, { recursive: true })
   const src = join(dir, `gabay-native-${hash}.cs`)
   await writeFile(src, NATIVE_SOURCE, 'utf8')
@@ -45,8 +48,26 @@ async function helperExe(): Promise<string | null> {
     src
   ]
   return new Promise((resolve) => {
-    execFile(join(fw, 'csc.exe'), args, { windowsHide: true, timeout: 90_000 }, (err) => resolve(err || !existsSync(exe) ? null : exe))
+    execFile(join(fw, 'csc.exe'), args, { windowsHide: true, timeout: 90_000 }, (err) => {
+      const ok = !err && existsSync(exe)
+      if (ok) void removeStale(dir, exe)
+      resolve(ok ? exe : null)
+    })
   })
+}
+
+/** Older helper builds (one per update) and the old full-screen watcher: delete all but the current one. */
+async function removeStale(dir: string, keep: string): Promise<void> {
+  try {
+    const keepBase = keep.replace(/\.exe$/i, '')
+    for (const f of await readdir(dir)) {
+      const full = join(dir, f)
+      if (!/^(gabay-native|fullscreen-watcher)-[0-9a-f]+\.(exe|cs)$/i.test(f) || full.startsWith(keepBase)) continue
+      await rm(full, { force: true }).catch(() => undefined) // in use by an old process: try again next start
+    }
+  } catch {
+    // Folder unreadable: nothing to tidy.
+  }
 }
 
 export interface NativeEvents {
@@ -54,6 +75,7 @@ export interface NativeEvents {
   media: (raw: unknown) => void
   note: (raw: unknown) => void
   privacy: (raw: unknown) => void
+  noteAccess: (status: string) => void
 }
 
 let child: ChildProcess | null = null
@@ -89,6 +111,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
         } else if (kind === 'media') on.media(JSON.parse(rest))
         else if (kind === 'note') on.note(JSON.parse(rest))
         else if (kind === 'priv') on.privacy(JSON.parse(rest))
+        else if (kind === 'noteaccess') on.noteAccess(rest.slice(0, 40))
         else if (kind === 'r') {
           const s2 = rest.indexOf(' ')
           const id = Number(rest.slice(0, s2))
