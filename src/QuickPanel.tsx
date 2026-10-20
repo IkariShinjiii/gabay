@@ -501,6 +501,11 @@ export default function QuickPanel(props: {
   if (view === 'mixer') return <MixerView onBack={() => setView('main')} />
   if (view === 'dnd') return <DndView until={props.dndUntil} on={props.dndOn} onPick={props.onDnd} onBack={() => setView('main')} />
 
+  // Dev preview with &demo: neutral sample names, so screenshots never show the real network's name.
+  const demo = new URLSearchParams(location.hash.slice(1)).has('demo')
+  const media: MediaInfo | null = demo
+    ? { title: 'Weightless', artist: 'Marconi Union', playing: true, position: 92, duration: 480, updated: Date.now(), art: null }
+    : state.media
   const wifiOn = state.radios.wifi
   const btOn = state.radios.bluetooth
   const volume = state.volume !== null ? Math.round(state.volume * 100) : null
@@ -535,7 +540,7 @@ export default function QuickPanel(props: {
               <SplitTile
                 icon={wifiOn === false ? 'wifi-off' : 'wifi'}
                 label="Wi-Fi"
-                sub={wifiOn === undefined ? 'Unavailable' : wifiOn ? (state.wifi.ssid ?? 'On') : 'Off'}
+                sub={wifiOn === undefined ? 'Unavailable' : wifiOn ? (demo ? 'Home Wi-Fi' : (state.wifi.ssid ?? 'On')) : 'Off'}
                 on={!!wifiOn}
                 disabled={wifiOn === undefined}
                 onMain={() => void act({ kind: 'radio', radio: 'wifi', on: !wifiOn })}
@@ -637,9 +642,9 @@ export default function QuickPanel(props: {
               />
             )}
 
-            {state.media && (
+            {media && (
               <MediaCard
-                media={state.media}
+                media={media}
                 device={state.audioName}
                 animateIn={!mediaAtMount.current}
                 onCommand={(c) => void act({ kind: 'media', command: c })}
