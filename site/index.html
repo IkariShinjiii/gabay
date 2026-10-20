@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#060807">
 <meta property="og:title" content="Gabay: your Windows taskbar, in a notch">
 <meta property="og:description" content="Quick settings, now playing, notifications, timers and weather, one hover away. Free for Windows.">
-<meta property="og:image" content="https://ikarishinjiii.github.io/gabay/img/controls.png">
+<meta property="og:image" content="https://ikarishinjiii.github.io/gabay/media/poster.jpg">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" href="img/icon.png">
 <style>
@@ -164,7 +164,7 @@ code { font-family: var(--mono); font-size: 0.85em; color: var(--ink-2); }
 .chip.mint { border-color: var(--mint-line); color: var(--mint); background: var(--mint-soft); }
 
 /* ---------- video ---------- */
-.video { margin-top: 44px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); background: #000; aspect-ratio: 16 / 9; max-width: 100%; }
+.video { margin: 44px 0 0; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); background: #000; aspect-ratio: 16 / 9; max-width: 100%; }
 .video video { display: block; width: 100%; height: 100%; }
 
 /* ---------- screenshots hang from a bezel ---------- */
@@ -335,7 +335,9 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
           </div>
         </div>
       </div>
-      <!-- VIDEO -->
+      <figure class="video">
+        <video id="showcase" src="media/gabay-showcase.mp4" poster="media/poster.jpg" muted loop playsinline controls preload="metadata" aria-label="Gabay showcase video: the notch, live activities, alerts, Controls, Today and the small details"></video>
+      </figure>
     </div>
   </section>
 
@@ -578,6 +580,13 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
       setTimeout(next, hold[n]);
     };
     setTimeout(next, hold[0]);
+  }
+
+  // The showcase plays muted on a loop, except for people who asked for less motion (they can press play).
+  var video = document.getElementById('showcase');
+  if (video && !reduce) {
+    var p = video.play();
+    if (p && p.catch) p.catch(function () {});
   }
 
   // The download button always points at the newest release; without the API it falls back to the releases page.
