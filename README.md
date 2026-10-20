@@ -168,6 +168,11 @@ The taskbar's system-tray features, built into the notch.
   chat. It adds the Gabay and Windows versions, screen setup, a few settings and recent error messages, with user names
   and home folders removed. Nothing from the clipboard, notifications, calendar or files.
 - **The search bar** shows only on Launch (apps and commands) and Clipboard (filter). The hotkey opens Launch.
+- **Notes tab:** one scratchpad that saves as you type (to `notes.json` in `%APPDATA%\gabay`), with copy and clear.
+- **What's new:** the first start after an update shows a short note in the notch; Settings › What's new lists it
+  (`src/whatsNew.ts`, one entry per release).
+- **Settings extras:** Shortcuts and commands (every hotkey, gesture and typed command), and Reset to defaults (settings
+  only; to-dos, notes, pinned clips and the calendar stay).
 - **Welcome tour:** the first start opens the notch into a four-step tour; Settings > Welcome tour shows it again. Preview it
   with `GABAY_PREVIEW='Welcome'`. Saved to `settings.json` in `%APPDATA%\gabay`; the main process validates every value.
 - The app and tray icons are drawn in `resources/` (a notch plus a compass, since gabay means guide); edit `resources/icon.svg` / `tray.svg` and run `npx electron scripts/render-icons.cjs` to regenerate the PNGs.

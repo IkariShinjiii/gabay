@@ -13,7 +13,8 @@ import { startDownloads, stopDownloads } from './downloads'
 import { getLyrics } from './lyrics'
 import { currentProjectMode, isProjectMode, setProjectMode } from './project'
 import { isSettingsKey, networkKind, quickGet, quickPeek, quickSet, quickSlide, SETTINGS_PAGES, stopQuick } from './quick'
-import { COLLAPSE_MAX, COLLAPSE_MIN, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
+import { COLLAPSE_MAX, COLLAPSE_MIN, DEFAULTS, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
+import { getNotes, setNotes } from './notes'
 import { ensureIndex, getIcon, launch, search, toggleStar } from './launcher'
 import { isPowerAction, runPower } from './power'
 import { addTodo, listTodos, removeTodo, toggleTodo } from './todos'
@@ -529,6 +530,7 @@ app.whenReady().then(async () => {
       settings,
       activeHotkey,
       hotkeys: HOTKEYS,
+      version: app.getVersion(),
       collapseRange: { min: COLLAPSE_MIN, max: COLLAPSE_MAX },
       displays: screen.getAllDisplays().map((d, i, all) => ({
         id: d.id,
@@ -545,8 +547,8 @@ app.whenReady().then(async () => {
     fromUi(e)
     return snapshot()
   })
-  ipcMain.handle('settings:set', async (e, patch: unknown) => {
-    fromUi(e)
+  // One place applies a settings change, for both the Settings tab and Reset.
+  const applyPatch = async (patch: unknown): Promise<unknown> => {
     const prevDisplay = settings.displayId
     const prevFollow = settings.followMouse
     const prevReserve = settings.reserveTop
@@ -561,6 +563,24 @@ app.whenReady().then(async () => {
     if (next.reserveTop !== prevReserve) applyReserve()
     await saveSettings(settings)
     return snapshot()
+  }
+  ipcMain.handle('settings:set', (e, patch: unknown) => {
+    fromUi(e)
+    return applyPatch(patch)
+  })
+  // Reset to defaults: settings only. To-dos, notes, pinned clips and the calendar address are left alone, and the
+  // welcome tour isn't shown again.
+  ipcMain.handle('settings:reset', (e) => {
+    fromUi(e)
+    return applyPatch({ ...DEFAULTS, hotkey: DEFAULTS.hotkey, welcomed: true, seenVersion: settings.seenVersion })
+  })
+  ipcMain.handle('notes:get', (e) => {
+    fromUi(e)
+    return getNotes()
+  })
+  ipcMain.handle('notes:set', (e, text: unknown) => {
+    fromUi(e)
+    return setNotes(text)
   })
 
   // A second launch summons the existing instance instead of starting another.

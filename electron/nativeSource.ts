@@ -352,16 +352,29 @@ static class Native {
 
   // ---------- camera and microphone in use ----------
   // Windows records each app's use under CapabilityAccessManager; LastUsedTimeStop = 0 means "in use right now".
+  [DllImport("advapi32.dll", CharSet = CharSet.Unicode)] static extern int RegOpenKeyEx(IntPtr root, string sub, int options, int access, out IntPtr key);
+  [DllImport("advapi32.dll")] static extern int RegNotifyChangeKeyValue(IntPtr key, bool subtree, int filter, IntPtr evt, bool async);
+
+  // Reading every app's entry each second cost more CPU than the rest of the helper together, so the loop sleeps until
+  // Windows reports a change under ConsentStore (an app starting or stopping the camera or mic), with a re-check each
+  // minute as a safety net.
   static void PrivacyLoop() {
+    IntPtr store;
+    bool watching = RegOpenKeyEx(new IntPtr(unchecked((int)0x80000001)), // HKEY_CURRENT_USER
+      @"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore", 0, 0x0010 /* KEY_NOTIFY */, out store) == 0;
+    var changed = new AutoResetEvent(false);
     string last = null;
     while (true) {
+      // Arm the notification before reading, so a change during the read still wakes the next wait.
+      if (watching && RegNotifyChangeKeyValue(store, true, 0x1 | 0x4 /* names, values */, changed.SafeWaitHandle.DangerousGetHandle(), true) != 0) watching = false;
       try {
         var mic = InUse("microphone");
         var cam = InUse("webcam");
         string now = "{\"mic\":" + Names(mic) + ",\"cam\":" + Names(cam) + "}";
         if (now != last) { Send("priv " + now); last = now; }
       } catch { }
-      Thread.Sleep(1000);
+      if (watching) changed.WaitOne(60000); else Thread.Sleep(2000);
+      Thread.Sleep(150); // let a burst of writes settle before reading
     }
   }
   static string Names(List<string> l) {

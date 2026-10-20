@@ -26,6 +26,8 @@ export interface Settings {
   dndUntil: number
   /** The first-run tour was shown (or skipped). */
   welcomed: boolean
+  /** The version whose "what's new" was last shown. */
+  seenVersion: string
   /** 'always': shown, except while something is full screen. 'auto': off-screen until the pointer rests on the top edge. */
   visibility: 'always' | 'auto'
 }
@@ -36,7 +38,7 @@ export const ACCENTS = ['mint', 'windows', 'blue', 'purple', 'pink', 'orange', '
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, welcomed: false, visibility: 'always' }
+export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, welcomed: false, seenVersion: '', visibility: 'always' }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -66,7 +68,8 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
   const lyrics = typeof r.lyrics === 'boolean' ? r.lyrics : base.lyrics
   const dndUntil = typeof r.dndUntil === 'number' && (r.dndUntil === -1 || r.dndUntil >= 0) ? r.dndUntil : base.dndUntil
   const welcomed = typeof r.welcomed === 'boolean' ? r.welcomed : base.welcomed
-  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, reserveTop, accent, place, lyrics, dndUntil, welcomed, visibility }
+  const seenVersion = typeof r.seenVersion === 'string' && /^\d+\.\d+\.\d+$/.test(r.seenVersion) ? r.seenVersion : base.seenVersion
+  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, reserveTop, accent, place, lyrics, dndUntil, welcomed, seenVersion, visibility }
 }
 
 export async function loadSettings(): Promise<Settings> {

@@ -77,3 +77,20 @@ Trims in this release:
 - The music level meter is stepped and synced (about 7 redraws a second, not every frame) and stops while the notch is
   hidden or a toast is showing. Drawing is in software, so continuous animation would cost CPU.
 - Toasts don't run during full screen.
+
+## Re-check with everything on (0.32.0)
+
+Measured on 2026-10-20, preview build, collapsed and idle, 45 s windows (Windows counts CPU in 15.6 ms steps, so the
+earlier 10 s samples were too short to trust below about 0.01%).
+
+| | Before (0.31.0) | After (0.32.0) |
+| --- | --- | --- |
+| Private memory, everything | 157 MB | 155 MB |
+| `gabay-native` helper CPU | 0.188 s per 45 s (0.035% of the PC) | 0.016 s per 45 s (0.003%) |
+| Whole app CPU | 0.05 to 0.08% | about 0.03 to 0.07%, almost all of it Electron's own main process |
+
+The helper's camera and microphone check read every app's registry entry once a second, which cost more than the rest of
+the helper together. It now sleeps until Windows reports a change under ConsentStore (`RegNotifyChangeKeyValue`), with a
+re-check each minute as a safety net. In a 15 s idle test it woke zero times.
+
+The honest public claim is **under 0.1% CPU at rest** (the website and video said 0.01%, from the short samples).
