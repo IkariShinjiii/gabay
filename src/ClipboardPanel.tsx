@@ -53,7 +53,7 @@ export default function ClipboardPanel({ query, onCopied }: Props): React.JSX.El
       query.trim() ? (
         <Empty icon="search" title="No matching clips" />
       ) : (
-        <Empty icon="copy" title="Nothing copied yet" hint="Text you copy shows up here. Pin a clip to keep it." />
+        <Empty icon="copy" title="Nothing copied yet" hint="Text and images you copy show up here. Pin text to keep it." />
       )
     )
   }
@@ -71,7 +71,9 @@ export default function ClipboardPanel({ query, onCopied }: Props): React.JSX.El
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => void copy(it)}
         >
+          {it.image && <img className="clip-thumb" src={it.image} alt="" draggable={false} />}
           <span className="row-name">{it.preview}</span>
+          {!it.image && (
           <button
             className={it.pinned ? 'star on' : 'star'}
             title={it.pinned ? 'Unpin' : 'Pin (kept across restarts)'}
@@ -83,6 +85,7 @@ export default function ClipboardPanel({ query, onCopied }: Props): React.JSX.El
           >
             <Icon name="pin" size={15} />
           </button>
+          )}
         </div>
       ))}
     </div>

@@ -32,11 +32,37 @@ contextBridge.exposeInMainWorld('overlay', {
   mediaGet: () => ipcRenderer.invoke('media:get'),
   mediaCommand: (c: string) => ipcRenderer.invoke('media:command', c),
   volumeNudge: (delta: number) => ipcRenderer.invoke('volume:nudge', delta),
-  listWindows: () => ipcRenderer.invoke('windows:list'),
-  windowIcon: (id: string) => ipcRenderer.invoke('windows:icon', id),
-  focusWindow: (id: string) => ipcRenderer.invoke('windows:focus', id),
-  closeWindow: (id: string) => ipcRenderer.invoke('windows:close', id),
   listBluetooth: () => ipcRenderer.invoke('bt:list'),
+  mediaSeek: (seconds: number) => ipcRenderer.invoke('media:seek', seconds),
+  mixerList: () => ipcRenderer.invoke('mixer:list'),
+  mixerIcon: (pid: number) => ipcRenderer.invoke('mixer:icon', pid),
+  mixerSet: (pid: number, volume: number) => ipcRenderer.invoke('mixer:set', pid, volume),
+  screenshot: () => ipcRenderer.invoke('capture:shot'),
+  snip: () => ipcRenderer.invoke('capture:snip'),
+  recStart: () => ipcRenderer.invoke('rec:start'),
+  recChunk: (data: Uint8Array): void => ipcRenderer.send('rec:chunk', data),
+  recStop: () => ipcRenderer.invoke('rec:stop'),
+  weatherGet: () => ipcRenderer.invoke('weather:get'),
+  weatherFind: (city: string) => ipcRenderer.invoke('weather:find', city),
+  lyricsGet: (title: string, artist: string, duration: number) => ipcRenderer.invoke('lyrics:get', title, artist, duration),
+  accentColor: () => ipcRenderer.invoke('theme:accent'),
+  reportBug: (description: string, how: 'github' | 'copy') => ipcRenderer.invoke('bug:report', description, how),
+  logError: (msg: string): void => ipcRenderer.send('log:error', msg),
+  onPrivacy: (cb: (p: unknown) => void): (() => void) => {
+    const handler = (_e: unknown, p: unknown): void => cb(p)
+    ipcRenderer.on('overlay:privacy', handler)
+    return () => ipcRenderer.removeListener('overlay:privacy', handler)
+  },
+  onDownload: (cb: (d: unknown) => void): (() => void) => {
+    const handler = (_e: unknown, d: unknown): void => cb(d)
+    ipcRenderer.on('overlay:download', handler)
+    return () => ipcRenderer.removeListener('overlay:download', handler)
+  },
+  onDownloadDone: (cb: (name: unknown) => void): (() => void) => {
+    const handler = (_e: unknown, n: unknown): void => cb(n)
+    ipcRenderer.on('overlay:download-done', handler)
+    return () => ipcRenderer.removeListener('overlay:download-done', handler)
+  },
   listWifi: () => ipcRenderer.invoke('wifi:list'),
   connectWifi: (ssid: string) => ipcRenderer.invoke('wifi:connect', ssid),
   disconnectWifi: () => ipcRenderer.invoke('wifi:disconnect'),

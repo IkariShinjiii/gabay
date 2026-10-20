@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import Icon from './Icon'
 import type { IconName } from './icons'
-import type { MediaInfo, ProjectMode, QuickAction, QuickState, SettingsKey, WifiNetwork } from './global'
+import type { MediaInfo, MixerApp, ProjectMode, QuickAction, QuickState, SettingsKey, WifiNetwork } from './global'
 import type { BatteryInfo } from './useBattery'
 import { batteryIcon } from './NotchStatus'
 
@@ -34,13 +34,16 @@ function SplitTile(props: {
   on: boolean
   disabled?: boolean
   onMain: () => void
-  settings: SettingsKey
+  /** Windows Settings page the chevron opens (unless onMore is given). Neither: no chevron. */
+  settings?: SettingsKey
   mainTitle?: string
+  /** Label for the chevron when it does something other than open Settings. */
+  moreTitle?: string
   /** Chevron opens a list inside Gabay instead of Windows Settings. */
   onMore?: () => void
 }): React.JSX.Element {
   return (
-    <div className={props.on ? 'ct on' : 'ct'}>
+    <div className={(props.on ? 'ct on' : 'ct') + (props.onMore || props.settings ? '' : ' solo')}>
       <motion.button
         {...PRESS}
         className="ct-main"
@@ -57,14 +60,16 @@ function SplitTile(props: {
           <span className="ct-sub">{props.sub}</span>
         </span>
       </motion.button>
-      <button
-        className="ct-chev"
-        aria-label={props.onMore ? `${props.label} list` : `${props.label} settings`}
-        title={props.onMore ? `Show ${props.label} list` : `${props.label} settings`}
-        onClick={() => (props.onMore ? props.onMore() : void window.overlay.quickOpen(props.settings))}
-      >
-        <Icon name="chevron-right" size={14} />
-      </button>
+      {(props.onMore || props.settings) && (
+        <button
+          className="ct-chev"
+          aria-label={props.moreTitle ?? (props.onMore ? `${props.label} options` : `${props.label} settings`)}
+          title={props.moreTitle ?? (props.onMore ? `${props.label} options` : `${props.label} settings`)}
+          onClick={() => (props.onMore ? props.onMore() : props.settings && void window.overlay.quickOpen(props.settings))}
+        >
+          <Icon name="chevron-right" size={14} />
+        </button>
+      )}
     </div>
   )
 }
@@ -245,9 +250,46 @@ function MediaCard({
     const id = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(id)
   }, [media.playing])
+  // Lyrics (Settings > Lyrics): synced lines for this track, if lrclib.net has them.
+  const [lyrics, setLyrics] = useState<{ t: number; text: string }[] | null>(null)
+  useEffect(() => {
+    let stale = false
+    setLyrics(null)
+    void window.overlay.lyricsGet(media.title, media.artist, media.duration).then((l) => !stale && setLyrics(l), () => undefined)
+    return () => {
+      stale = true
+    }
+  }, [media.title, media.artist, media.duration])
+  // Lines need a finer clock than the progress bar.
+  useEffect(() => {
+    if (!media.playing || !lyrics) return
+    const id = window.setInterval(() => setNow(Date.now()), 250)
+    return () => window.clearInterval(id)
+  }, [media.playing, lyrics])
+
+  // Seeking: drag or click the bar; the dragged position shows until Windows reports the new one.
+  const [seekTo, setSeekTo] = useState<number | null>(null)
+  const barRef = useRef<HTMLDivElement>(null)
+  const seekFrom = (clientX: number): number => {
+    const r = barRef.current?.getBoundingClientRect()
+    return r && media.duration ? Math.max(0, Math.min(1, (clientX - r.left) / r.width)) * media.duration : 0
+  }
+  const sentSeek = useRef<number | null>(null)
+  const seekTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(seekTimer.current), [])
+  useEffect(() => {
+    if (sentSeek.current !== null && Math.abs(media.position - sentSeek.current) < 3) {
+      sentSeek.current = null
+      setSeekTo(null)
+    }
+  }, [media.position])
+
   const elapsed = media.playing && media.updated ? (now - media.updated) / 1000 : 0
-  const pos = media.duration ? Math.min(media.duration, media.position + elapsed) : media.position + elapsed
+  const livePos = media.duration ? Math.min(media.duration, media.position + elapsed) : media.position + elapsed
+  const pos = seekTo ?? livePos
   const pct = media.duration ? (pos / media.duration) * 100 : 0
+  let line = -1
+  if (lyrics) for (let i = 0; i < lyrics.length && lyrics[i].t <= pos + 0.3; i++) line = i
 
   return (
     <motion.div
@@ -300,10 +342,61 @@ function MediaCard({
       {media.duration > 0 && (
         <div className="media-time">
           <span>{fmt(pos)}</span>
-          <div className="media-bar">
+          <div
+            ref={barRef}
+            className={seekTo !== null ? 'media-bar seeking' : 'media-bar'}
+            role="slider"
+            aria-label="Position"
+            aria-valuemin={0}
+            aria-valuemax={Math.round(media.duration)}
+            aria-valuenow={Math.round(pos)}
+            tabIndex={0}
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId)
+              setSeekTo(seekFrom(e.clientX))
+            }}
+            onPointerMove={(e) => {
+              if (e.currentTarget.hasPointerCapture(e.pointerId)) setSeekTo(seekFrom(e.clientX))
+            }}
+            onPointerUp={(e) => {
+              const to = seekFrom(e.clientX)
+              setSeekTo(to)
+              sentSeek.current = to
+              void window.overlay.mediaSeek(to)
+              window.clearTimeout(seekTimer.current)
+              seekTimer.current = window.setTimeout(() => {
+                sentSeek.current = null
+                setSeekTo(null)
+              }, 4000)
+            }}
+            onKeyDown={(e) => {
+              const step = e.key === 'ArrowRight' ? 5 : e.key === 'ArrowLeft' ? -5 : 0
+              if (!step) return
+              e.preventDefault()
+              void window.overlay.mediaSeek(Math.max(0, Math.min(media.duration, livePos + step)))
+            }}
+          >
             <div className="media-fill" style={{ width: `${pct}%` }} />
+            <div className="media-knob" style={{ left: `${pct}%` }} />
           </div>
           <span>{fmt(media.duration)}</span>
+        </div>
+      )}
+      {lyrics && line >= 0 && (
+        <div className="lyrics" aria-live="off">
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.div
+              key={line}
+              className="lyric-now"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {lyrics[line].text || '♪'}
+            </motion.div>
+          </AnimatePresence>
+          {lyrics[line + 1]?.text && <div className="lyric-next">{lyrics[line + 1].text}</div>}
         </div>
       )}
     </motion.div>
@@ -314,7 +407,16 @@ function MediaCard({
 let cache: QuickState | null = null
 
 /** Mounted only while the Controls tab is visible; its polling (and the helper process behind it) stops when it unmounts. */
-export default function QuickPanel({ battery }: { battery: BatteryInfo | null }): React.JSX.Element {
+export default function QuickPanel(props: {
+  battery: BatteryInfo | null
+  dndOn: boolean
+  dndUntil: number
+  onDnd: (until: number) => void
+  recording: boolean
+  onRecord: () => void
+  onShot: () => void
+}): React.JSX.Element {
+  const { battery } = props
   const [state, setStateRaw] = useState<QuickState | null>(cache)
   const setState = (s: QuickState): void => {
     cache = s
@@ -325,10 +427,10 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
   const [page, setPage] = useState(0)
   const [dir, setDir] = useState(1)
   // Dev preview can open a sub-view directly (#preview=Controls&sub=project); normal use always starts on the main view.
-  const [view, setView] = useState<'main' | 'project' | 'wifi' | 'bt'>(() =>
+  const [view, setView] = useState<'main' | 'project' | 'wifi' | 'bt' | 'mixer' | 'dnd'>(() =>
 {
     const sub = new URLSearchParams(location.hash.slice(1)).get('sub')
-    return sub === 'project' || sub === 'wifi' || sub === 'bt' ? sub : 'main'
+    return sub === 'project' || sub === 'wifi' || sub === 'bt' || sub === 'mixer' || sub === 'dnd' ? sub : 'main'
   }
   )
   // Slider values stream to the system one at a time: while one is in flight only the newest waiting value is kept.
@@ -396,6 +498,8 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
   if (view === 'project') return <ProjectView onBack={() => setView('main')} />
   if (view === 'wifi') return <WifiView onBack={() => setView('main')} />
   if (view === 'bt') return <BluetoothView onBack={() => setView('main')} />
+  if (view === 'mixer') return <MixerView onBack={() => setView('main')} />
+  if (view === 'dnd') return <DndView until={props.dndUntil} on={props.dndOn} onPick={props.onDnd} onBack={() => setView('main')} />
 
   const wifiOn = state.radios.wifi
   const btOn = state.radios.bluetooth
@@ -457,6 +561,8 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
                 mainTitle={state.muted ? 'Unmute' : 'Mute'}
                 onMain={() => void act({ kind: 'mute' })}
                 settings="sound"
+                onMore={() => setView('mixer')}
+                moreTitle="Volume per app"
               />
             </div>
             <div className="ct-row two">
@@ -477,6 +583,36 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
                 disabled={state.dark === null}
                 onMain={() => void act({ kind: 'dark', on: !state.dark })}
                 settings="colors"
+              />
+            </div>
+            <div className="ct-row three">
+              <SplitTile
+                icon="moon-star"
+                label="Focus"
+                sub={props.dndOn ? (props.dndUntil === -1 ? 'Silenced' : `Until ${new Date(props.dndUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`) : 'Off'}
+                on={props.dndOn}
+                mainTitle={props.dndOn ? 'Turn off' : 'Silence notifications until you turn it off'}
+                onMain={() => props.onDnd(props.dndOn ? 0 : -1)}
+                onMore={() => setView('dnd')}
+                moreTitle="Silence notifications for a while"
+              />
+              <SplitTile
+                icon="camera"
+                label="Screenshot"
+                sub="Whole screen"
+                on={false}
+                mainTitle="Save a screenshot and copy it"
+                onMain={props.onShot}
+                onMore={() => void window.overlay.snip()}
+                moreTitle="Snip part of the screen"
+              />
+              <SplitTile
+                icon={props.recording ? 'square' : 'video'}
+                label={props.recording ? 'Stop' : 'Record'}
+                sub={props.recording ? 'Recording…' : 'Screen + sound'}
+                on={props.recording}
+                mainTitle={props.recording ? 'Stop and save the recording' : 'Record the screen to Videos › Gabay'}
+                onMain={props.onRecord}
               />
             </div>
 
@@ -772,6 +908,144 @@ function BluetoothView({ onBack }: { onBack: () => void }): React.JSX.Element {
         <button className="sub-link" onClick={() => void window.overlay.quickOpen('bluetooth')}>
           Add or connect a device
         </button>
+      </div>
+    </motion.div>
+  )
+}
+
+/** Volume per app, like Windows' volume mixer: every app that is playing (or has played) sound. */
+const mixerIcons = new Map<number, string | null>()
+function MixerView({ onBack }: { onBack: () => void }): React.JSX.Element {
+  const [apps, setApps] = useState<MixerApp[] | null>(null)
+  const [icons, setIcons] = useState<Record<number, string | null>>({})
+  const busy = useRef(new Map<number, boolean>())
+  const pending = useRef(new Map<number, number>())
+
+  useEffect(() => {
+    let stale = false
+    const load = async (): Promise<void> => {
+      const list = await window.overlay.mixerList().catch(() => [])
+      if (stale) return
+      setApps(list)
+      for (const a of list) {
+        if (mixerIcons.has(a.pid)) continue
+        mixerIcons.set(a.pid, null)
+        void window.overlay.mixerIcon(a.pid).then((u) => {
+          mixerIcons.set(a.pid, u)
+          if (!stale) setIcons((m) => ({ ...m, [a.pid]: u }))
+        })
+      }
+    }
+    void load()
+    const id = window.setInterval(() => void load(), 3000)
+    return () => {
+      stale = true
+      window.clearInterval(id)
+    }
+  }, [])
+
+  // One request per app in flight; the newest value waits (same as the main sliders).
+  const pump = (pid: number): void => {
+    const v = pending.current.get(pid)
+    if (busy.current.get(pid) || v === undefined) return
+    pending.current.delete(pid)
+    busy.current.set(pid, true)
+    void window.overlay
+      .mixerSet(pid, v)
+      .catch(() => false)
+      .finally(() => {
+        busy.current.set(pid, false)
+        pump(pid)
+      })
+  }
+
+  return (
+    <motion.div className="body quick-sub" initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 38 }}>
+      <SubHead title="Volume per app" onBack={onBack} />
+      {apps === null ? (
+        <div className="sub-empty">Looking for apps…</div>
+      ) : apps.length === 0 ? (
+        <div className="sub-empty">No apps are playing sound.</div>
+      ) : (
+        <div className="mixer">
+          {apps.map((a) => (
+            <div key={a.pid} className="mix-row">
+              <div className="mix-head">
+                {(icons[a.pid] ?? mixerIcons.get(a.pid)) ? (
+                  <img src={(icons[a.pid] ?? mixerIcons.get(a.pid)) as string} alt="" width={18} height={18} draggable={false} />
+                ) : (
+                  <Icon name={a.pid === 0 ? 'bell' : 'app-window'} size={16} />
+                )}
+                <span>{a.name}</span>
+              </div>
+              <BigSlider
+                icon={a.volume === 0 ? 'volume-x' : a.volume < 50 ? 'volume-1' : 'volume-2'}
+                label={`${a.name} volume`}
+                value={a.volume}
+                format={(v) => `${v}%`}
+                onSlide={(v) => {
+                  pending.current.set(a.pid, Math.round(v))
+                  pump(a.pid)
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="sub-links">
+        <button className="sub-link" onClick={() => void window.overlay.quickOpen('sound')}>
+          Sound settings
+        </button>
+      </div>
+    </motion.div>
+  )
+}
+
+/** Do not disturb for a while: notification toasts stay quiet; everything else still shows. */
+function DndView({ on, until, onPick, onBack }: { on: boolean; until: number; onPick: (until: number) => void; onBack: () => void }): React.JSX.Element {
+  const at = (h: number): number => {
+    const d = new Date()
+    d.setHours(h, 0, 0, 0)
+    if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1)
+    return d.getTime()
+  }
+  const options: { label: string; until: number }[] = [
+    { label: 'For 1 hour', until: Date.now() + 3_600_000 },
+    { label: 'Until this evening (6 PM)', until: at(18) },
+    { label: 'Until tomorrow morning (7 AM)', until: at(7) },
+    { label: 'Until I turn it off', until: -1 }
+  ].filter((o) => o.until === -1 || o.until - Date.now() < 24 * 3_600_000)
+  const pick = (u: number): void => {
+    onPick(u)
+    onBack()
+  }
+  return (
+    <motion.div className="body quick-sub" initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 38 }}>
+      <SubHead title="Focus · do not disturb" onBack={onBack} />
+      <div className="sub-note">
+        {on
+          ? until === -1
+            ? 'On until you turn it off.'
+            : `On until ${new Date(until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`
+          : 'Notifications stay out of the notch. Charging, timers and calendar alerts still show.'}
+      </div>
+      <div className="net-list">
+        {options.map((o) => (
+          <motion.button key={o.label} whileTap={{ scale: 0.98 }} className="net-row" onClick={() => pick(o.until)}>
+            <span className="ct-well small">
+              <Icon name="moon" size={13} />
+            </span>
+            <span className="net-name">{o.label}</span>
+          </motion.button>
+        ))}
+        {on && (
+          <motion.button whileTap={{ scale: 0.98 }} className="net-row" onClick={() => pick(0)}>
+            <span className="ct-well small">
+              <Icon name="x" size={13} />
+            </span>
+            <span className="net-name">Turn off</span>
+          </motion.button>
+        )}
       </div>
     </motion.div>
   )

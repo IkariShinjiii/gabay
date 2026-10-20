@@ -16,16 +16,25 @@ export interface Settings {
   notePreview: boolean
   /** Reserve a band at the top of the screen so maximized windows sit below the notch. */
   reserveTop: boolean
+  /** Accent colour: a preset name, or 'windows' for the Windows accent. */
+  accent: string
+  /** Weather location (found from a typed city), or null for no weather. */
+  place: { name: string; lat: number; lon: number } | null
+  /** Look up synced lyrics on lrclib.net (sends the song title and artist). */
+  lyrics: boolean
+  /** Do not disturb until this time (ms since epoch); 0 = off, Infinity is stored as -1 (until turned off). */
+  dndUntil: number
   /** 'always': shown, except while something is full screen. 'auto': off-screen until the pointer rests on the top edge. */
   visibility: 'always' | 'auto'
 }
 
 /** Never a Win-key combo (Windows reserves those). The first free one is used when the saved one is taken. */
 export const HOTKEYS = ['Control+Alt+G', 'Control+Shift+G', 'Control+Alt+Space', 'Control+Alt+J']
+export const ACCENTS = ['mint', 'windows', 'blue', 'purple', 'pink', 'orange', 'red', 'green']
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, reserveTop: false, visibility: 'always' }
+const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, visibility: 'always' }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -44,7 +53,17 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
   const notifications = typeof r.notifications === 'boolean' ? r.notifications : base.notifications
   const notePreview = typeof r.notePreview === 'boolean' ? r.notePreview : base.notePreview
   const reserveTop = typeof r.reserveTop === 'boolean' ? r.reserveTop : base.reserveTop
-  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, reserveTop, visibility }
+  const accent = typeof r.accent === 'string' && ACCENTS.includes(r.accent) ? r.accent : base.accent
+  const p = r.place as Record<string, unknown> | null | undefined
+  const place =
+    p === null
+      ? null
+      : p && typeof p.name === 'string' && typeof p.lat === 'number' && typeof p.lon === 'number' && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180
+        ? { name: p.name.slice(0, 80), lat: p.lat, lon: p.lon }
+        : base.place
+  const lyrics = typeof r.lyrics === 'boolean' ? r.lyrics : base.lyrics
+  const dndUntil = typeof r.dndUntil === 'number' && (r.dndUntil === -1 || r.dndUntil >= 0) ? r.dndUntil : base.dndUntil
+  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, reserveTop, accent, place, lyrics, dndUntil, visibility }
 }
 
 export async function loadSettings(): Promise<Settings> {

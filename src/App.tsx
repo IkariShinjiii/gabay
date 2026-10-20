@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { COLLAPSE_DELAY_MS, HIDE_DELAY_MS, NOTCH, REVEAL_DWELL_MS } from './constants'
-import type { LauncherItem, LiveMedia, PowerAction } from './global'
+import type { DownloadState, LauncherItem, LiveMedia, PowerAction, Settings, Weather } from './global'
 import ClipboardPanel from './ClipboardPanel'
 import { parseCommand, type CommandActions } from './commands'
 import Launcher from './Launcher'
@@ -13,11 +13,13 @@ import QuickPanel from './QuickPanel'
 import { useBattery } from './useBattery'
 import StatsPanel from './StatsPanel'
 import TodayPanel from './TodayPanel'
-import WindowsPanel from './WindowsPanel'
 import NotchToast, { type Toast } from './NotchToast'
+import { chime, leftOf, useTimers } from './useTimers'
+import { useRecorder } from './useRecorder'
+import { applyAccent, resolveAccent } from './accent'
 import { useFocusTimer } from './useFocusTimer'
 
-const TABS = ['Controls', 'Windows', 'Today', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
+const TABS = ['Controls', 'Today', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
 type Tab = (typeof TABS)[number]
 
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
@@ -100,8 +102,13 @@ export default function App(): React.JSX.Element {
     }, collapseMs.current)
   }, [setInteractive])
 
-  const applySettings = useCallback((s: { collapseMs: number; visibility: 'always' | 'auto' }): void => {
+  const [dndUntil, setDndUntil] = useState(0)
+  const [place, setPlace] = useState<string | null>(null)
+  const applySettings = useCallback((s: Settings): void => {
     collapseMs.current = s.collapseMs
+    void resolveAccent(s.accent).then(applyAccent)
+    setDndUntil(s.dndUntil)
+    setPlace(s.place ? `${s.place.lat},${s.place.lon}` : null)
     // A preview of the collapsed pill must show it, whatever the saved visibility is.
     const v = previewParam ? 'always' : s.visibility
     visibilityRef.current = v
@@ -169,8 +176,10 @@ export default function App(): React.JSX.Element {
       setFullscreen(fs)
       if (fs && revealedRef.current) scheduleHide()
     })
+    // The hotkey opens Launch with the caret in its search field.
     const offSummon = window.overlay.onSummon(() => {
-      inputRef.current?.focus()
+      setTab('Launch')
+      window.setTimeout(() => inputRef.current?.focus(), 0)
       evaluate()
     })
 
@@ -231,8 +240,16 @@ export default function App(): React.JSX.Element {
   const queue = useRef<Toast[]>([])
   const toastId = useRef(1)
   const toastTimer = useRef<number | undefined>(undefined)
+  // Whether a toast is on screen right now. A ref, not the state: two toasts pushed in the same tick must not both
+  // think the notch is free (the second would replace the first before it was ever seen).
+  const showing = useRef(false)
+  const expandedRef = useRef(expanded)
+  expandedRef.current = expanded
   const showNext = useCallback((): void => {
-    const next = queue.current.shift() ?? null
+    window.clearTimeout(toastTimer.current)
+    // While the panel is open a toast would be hidden; keep the queue until it closes.
+    const next = expandedRef.current ? null : (queue.current.shift() ?? null)
+    showing.current = next !== null
     setToast(next)
     if (next) toastTimer.current = window.setTimeout(showNext, next.ms ?? 4200)
   }, [])
@@ -241,15 +258,13 @@ export default function App(): React.JSX.Element {
       // Nothing pops over a full-screen video or game; the newest few wait their turn, older ones drop.
       if (fullscreenRef.current) return
       queue.current = [...queue.current, { ...t, id: toastId.current++ }].slice(-3)
-      if (toastTimer.current === undefined || !toastShowing.current) {
-        window.clearTimeout(toastTimer.current)
-        showNext()
-      }
+      if (!showing.current) showNext()
     },
     [showNext]
   )
-  const toastShowing = useRef(false)
-  toastShowing.current = toast !== null
+  useEffect(() => {
+    if (!expanded && !showing.current && queue.current.length) showNext()
+  }, [expanded, showNext])
   useEffect(() => () => window.clearTimeout(toastTimer.current), [])
 
   // --- now playing (live activity in the pill; a toast when the track changes) ---
@@ -270,6 +285,12 @@ export default function App(): React.JSX.Element {
       setToast({ id: 0, icon: 'message-square', label: 'Messenger', title: 'Kevin', sub: 'are you coming tonight? we are at the usual place', ms: 60_000 })
     if (previewParam === 'Live')
       setMedia({ title: 'TMA', artist: 'groundZERO Records', app: 'Spotify.exe', playing: true, duration: 199, art: '' })
+    if (previewParam === 'Busy') {
+      setWeather({ place: 'Iloilo', temp: 31, code: 2, day: true, high: 33, low: 26, at: 0 })
+      setDndUntil(-1)
+      setPrivacy({ mic: false, cam: true })
+      setDownload({ name: 'setup.exe', bytes: 48_000_000 })
+    }
     if (previewParam) return
     void window.overlay.mediaGet().then((m) => {
       setMedia(m)
@@ -277,6 +298,7 @@ export default function App(): React.JSX.Element {
     })
     const offMedia = window.overlay.onMedia(take)
     const offNote = window.overlay.onNote((n) =>
+      !dndRef.current &&
       pushToast({
         icon: 'message-square',
         label: n.app,
@@ -294,6 +316,92 @@ export default function App(): React.JSX.Element {
       offNote()
       offUpdate()
     }
+  }, [pushToast])
+
+  // --- do not disturb: silences notification toasts until a time, or until turned off (-1) ---
+  const [dndTick, setDndTick] = useState(0)
+  const dndOn = dndUntil === -1 || Date.now() < dndUntil
+  const dndRef = useRef(dndOn)
+  dndRef.current = dndOn
+  useEffect(() => {
+    if (dndUntil <= 0) return
+    const ms = dndUntil - Date.now()
+    if (ms <= 0) return
+    const id = window.setTimeout(() => setDndTick((t) => t + 1), Math.min(ms + 50, 2 ** 31 - 1))
+    return () => window.clearTimeout(id)
+  }, [dndUntil, dndTick])
+  const setDnd = useCallback((until: number): void => {
+    setDndUntil(until)
+    void window.overlay.setSettings({ dndUntil: until })
+  }, [])
+
+  // --- weather (Settings > Weather): every 20 minutes and whenever the place changes ---
+  const [weather, setWeather] = useState<Weather | null>(null)
+  useEffect(() => {
+    if (previewParam) return
+    if (!place) {
+      setWeather(null)
+      return
+    }
+    const load = (): void => void window.overlay.weatherGet().then(setWeather, () => undefined)
+    load()
+    const id = window.setInterval(load, 20 * 60_000)
+    return () => window.clearInterval(id)
+  }, [place])
+
+  // --- camera / microphone dot, downloads ---
+  const [privacy, setPrivacy] = useState({ mic: false, cam: false })
+  const [download, setDownload] = useState<DownloadState | null>(null)
+  useEffect(() => {
+    if (previewParam) return
+    const offPriv = window.overlay.onPrivacy((p) => setPrivacy({ mic: p.mic.length > 0, cam: p.cam.length > 0 }))
+    const offDl = window.overlay.onDownload(setDownload)
+    const offDone = window.overlay.onDownloadDone((name) =>
+      pushToast({ icon: 'download', label: 'Download complete', title: name, sub: 'In your Downloads folder', tone: 'accent' })
+    )
+    return () => {
+      offPriv()
+      offDl()
+      offDone()
+    }
+  }, [pushToast])
+
+  // --- timers, stopwatch, focus timer: a chime and a toast when one ends ---
+  const timers = useTimers((c) => {
+    chime()
+    pushToast({ icon: 'timer', label: 'Timer done', title: c.label, tone: 'accent', ms: 8000 })
+  })
+  const focusDone = useRef(false)
+  useEffect(() => {
+    if (focusTimer.status === 'done' && !focusDone.current) {
+      chime()
+      pushToast({ icon: 'timer', label: 'Focus timer', title: 'Time is up', sub: 'Take a short break', tone: 'accent', ms: 8000 })
+    }
+    focusDone.current = focusTimer.status === 'done'
+  }, [focusTimer.status, pushToast])
+
+  // --- screen recording and screenshots ---
+  const recorder = useRecorder((ok) =>
+    pushToast(
+      ok
+        ? { icon: 'video', label: 'Recording saved', title: 'Videos › Gabay', tone: 'accent' }
+        : { icon: 'video', title: "Couldn't record the screen", sub: 'Try again in a moment', tone: 'warn' }
+    )
+  )
+  const [recTick, setRecTick] = useState(0)
+  useEffect(() => {
+    if (recorder.startedAt === null) return
+    const id = window.setInterval(() => setRecTick((t) => t + 1), 1000)
+    return () => window.clearInterval(id)
+  }, [recorder.startedAt])
+  void recTick
+  const takeShot = useCallback(async (): Promise<void> => {
+    const r = await window.overlay.screenshot().catch(() => null)
+    pushToast(
+      r
+        ? { icon: 'image', art: r.thumb, label: 'Screenshot saved', title: 'Copied to the clipboard', sub: 'Pictures › Screenshots', tone: 'accent' }
+        : { icon: 'image', title: "Couldn't take a screenshot", tone: 'warn' }
+    )
   }, [pushToast])
 
   // --- battery: plugged in, fully charged, low ---
@@ -411,11 +519,21 @@ export default function App(): React.JSX.Element {
       return !!t
     }
   }
-  const parsed = parseCommand(input, commandActions)
+  const parsed = tab === 'Launch' ? parseCommand(input, commandActions) : null
   const query = input // the clipboard filter and app search both read the raw text
 
   // App results show on every tab except Clipboard, but only for text that is not a command.
-  const showResults = expanded && tab !== 'Clipboard' && tab !== 'Windows' && !parsed && (input.trim() !== '' || tab === 'Launch')
+  // The bar lives on Launch (apps and commands) and Clipboard (filter) only; other tabs show just their content.
+  const hasBar = tab === 'Launch' || tab === 'Clipboard'
+  // React doesn't fire onBlur for an input that unmounts while focused, so release its hold here, or the panel
+  // could never collapse after switching from Launch to a tab without the bar.
+  useEffect(() => {
+    if (hasBar || !holds.current.has('input')) return
+    hold('input', false)
+    setBarFocused(false)
+    evaluate()
+  }, [hasBar, hold, evaluate])
+  const showResults = expanded && tab === 'Launch' && !parsed
   // Stale responses are dropped so a slow reply can't overwrite a newer query.
   useEffect(() => {
     if (!showResults) return
@@ -499,15 +617,21 @@ export default function App(): React.JSX.Element {
   const showToast = !expanded && toast !== null
   // Only while the pill is on screen: no meter animating behind a full-screen video or an auto-hidden notch.
   const onScreen = revealed || (visibility === 'always' && !fullscreen)
-  const live = !expanded && !showToast && onScreen && !!media?.playing
+  const recording = recorder.startedAt !== null
+  const live = !expanded && !showToast && onScreen && (!!media?.playing || !!download || recording)
+  // The pill is as wide as its two sides need (they are equal, so the clock stays centred): about 12 px per icon.
+  const leftPx = 12 + (live && media?.playing ? 21 : 0) + (weather ? 41 : 0) + (dndOn ? 16 : 0)
+  const rightPx = (battery ? 34 : 0) + (live && download ? 52 : live && media?.playing ? 20 : 0) + (privacy.cam || privacy.mic ? 12 : 0)
+  const pillWidth = Math.max(live ? NOTCH.live.width : NOTCH.collapsed.width, 2 * Math.max(leftPx, rightPx) + 104)
   const size = expanded
     ? { width: NOTCH.expanded.width, height: Math.min(panelHeight, NOTCH.expanded.height) }
     : showToast
       ? NOTCH.toast
-      : live
-        ? NOTCH.live
-        : NOTCH.collapsed
+      : { width: pillWidth, height: NOTCH.collapsed.height }
   const bottomRadius = expanded ? 28 : showToast ? NOTCH.toastBottomRadius : NOTCH.collapsedBottomRadius
+  const soonest = timers.countdowns
+    .filter((c) => c.endAt !== null)
+    .sort((a, b) => (a.endAt ?? 0) - (b.endAt ?? 0))[0]
 
   let body: React.JSX.Element
   if (showResults) {
@@ -524,7 +648,7 @@ export default function App(): React.JSX.Element {
   } else if (expanded && tab === 'Clipboard') {
     body = <ClipboardPanel query={query} onCopied={onClipCopied} />
   } else if (expanded && tab === 'Today') {
-    body = <TodayPanel timer={focusTimer} todoVersion={todoVersion} onHold={onTodoHold} />
+    body = <TodayPanel timer={focusTimer} timers={timers} weather={weather} todoVersion={todoVersion} onHold={onTodoHold} />
   } else if (expanded && tab === 'Power') {
     body = (
       <PowerPanel
@@ -539,19 +663,18 @@ export default function App(): React.JSX.Element {
   } else if (expanded && tab === 'System') {
     // StatsPanel exists only while visible, so its polling stops when the notch collapses or the tab changes.
     body = <StatsPanel />
-  } else if (expanded && tab === 'Windows') {
+  } else if (expanded && tab === 'Controls') {
     body = (
-      <WindowsPanel
-        query={query}
-        command={!!parsed}
-        onSwitched={() => {
-          release()
-          onPowerDone() // let the panel close over the app you switched to
-        }}
+      <QuickPanel
+        battery={battery}
+        dndOn={dndOn}
+        dndUntil={dndUntil}
+        onDnd={setDnd}
+        recording={recording}
+        onRecord={() => (recording ? recorder.stop() : void recorder.start())}
+        onShot={() => void takeShot()}
       />
     )
-  } else if (expanded && tab === 'Controls') {
-    body = <QuickPanel battery={battery} />
   } else {
     body = <div className="body body-center">{tab}</div>
   }
@@ -630,17 +753,12 @@ export default function App(): React.JSX.Element {
               {body}
             </motion.div>
           </AnimatePresence>
+          {hasBar && (
           <label className={parsed ? 'bar is-command' : 'bar'}>
             <Icon name={parsed ? 'command' : 'search'} size={16} />
             <input
               ref={inputRef}
-              placeholder={
-                tab === 'Clipboard'
-                  ? 'Search clipboard, or type a command'
-                  : tab === 'Windows'
-                    ? 'Filter windows, or type a command'
-                    : 'Search apps, or type a command'
-              }
+              placeholder={tab === 'Clipboard' ? 'Search clipboard' : 'Search apps, or type a command'}
               aria-label="Search or command"
               spellCheck={false}
               autoComplete="off"
@@ -665,6 +783,7 @@ export default function App(): React.JSX.Element {
               !input && barFocused && <span className="bar-hint">lock · focus 25 · todo … · open …</span>
             )}
           </label>
+          )}
         </motion.div>
 
         {/* Collapsed pill content: clock, or the focus-timer ring while one exists. */}
@@ -674,7 +793,20 @@ export default function App(): React.JSX.Element {
           animate={{ opacity: expanded || showToast ? 0 : 1 }}
           transition={{ duration: 0.12 }}
         >
-          <NotchStatus clock={clock} timer={focusTimer} battery={battery} net={net} media={live ? media : null} />
+          <NotchStatus
+            clock={clock}
+            timer={focusTimer}
+            battery={battery}
+            net={net}
+            media={live ? media : null}
+            weather={weather}
+            dnd={dndOn}
+            privacy={privacy}
+            recordingMs={recording ? Date.now() - (recorder.startedAt ?? Date.now()) : null}
+            stopwatchMs={timers.stopwatch.running ? timers.elapsedMs : null}
+            countdown={soonest ? { leftMs: leftOf(soonest, timers.now), totalMs: soonest.totalMs } : null}
+            download={live ? download : null}
+          />
         </motion.div>
         <AnimatePresence>{showToast && toast && <NotchToast key={toast.id} toast={toast} />}</AnimatePresence>
       </div>

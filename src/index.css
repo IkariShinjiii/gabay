@@ -1479,118 +1479,6 @@ button.big-icon {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Windows tab ---------- */
-.wins {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
-  padding-top: 2px;
-}
-
-.win {
-  position: relative;
-  display: flex;
-  align-items: center;
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-  transition: background-color 140ms var(--ease-out);
-}
-
-.win.sel {
-  background: var(--surface-hover);
-}
-
-.win-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 30px 9px 10px;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.win-main:focus-visible {
-  outline: 2px solid var(--accent);
-  border-radius: 12px;
-}
-
-.win-icon {
-  flex: none;
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-}
-
-.win-icon-none {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: var(--well);
-  color: var(--muted);
-}
-
-.win-text {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.win-title {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.win-app {
-  font-size: 11px;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.win-close {
-  position: absolute;
-  top: 50%;
-  right: 6px;
-  width: 22px;
-  height: 22px;
-  margin-top: -11px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: var(--well);
-  color: var(--text-2);
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 140ms var(--ease-out), background-color 140ms var(--ease-out);
-}
-
-.win:hover .win-close,
-.win-close:focus-visible {
-  opacity: 1;
-}
-
-.win-close:hover {
-  background: #5a1d17;
-  color: #ffd2cb;
-}
-
 .muted {
   color: var(--muted);
 }
@@ -1929,4 +1817,380 @@ button.big-icon {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--accent-text);
+}
+
+.clip-thumb {
+  flex: none;
+  width: 40px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--surface-2);
+}
+
+/* ---------- Controls additions ---------- */
+.ct.solo .ct-main {
+  border-radius: inherit;
+}
+
+.mixer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.mix-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mix-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.mix-head img {
+  object-fit: contain;
+}
+
+.sub-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+/* Media seek bar: grows a little while used, with a knob like iOS. */
+.media-bar {
+  position: relative;
+  cursor: pointer;
+  touch-action: none;
+  transition: transform 160ms var(--ease-out);
+}
+
+.media-bar::before {
+  content: '';
+  position: absolute;
+  inset: -8px 0; /* bigger hit area than the thin bar */
+}
+
+.media-bar.seeking,
+.media-bar:hover {
+  transform: scaleY(1.6);
+}
+
+.media-knob {
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: #f2f2f2;
+  opacity: 0;
+  transform: scaleX(0.625);
+  transition: opacity 160ms var(--ease-out);
+  pointer-events: none;
+}
+
+.media-bar.seeking .media-knob,
+.media-bar:hover .media-knob {
+  opacity: 1;
+}
+
+.media-bar:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.lyrics {
+  position: relative;
+  min-height: 38px;
+  overflow: hidden;
+  padding-top: 2px;
+}
+
+.lyric-now {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lyric-next {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- pill additions ---------- */
+.st-icon {
+  display: inline-flex;
+}
+
+.st-weather {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.st-dnd {
+  margin-left: 5px;
+  color: #b9a7ff;
+}
+
+.st-dl {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+  font-size: 10.5px;
+  color: var(--accent-text);
+}
+
+.st-priv {
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+}
+
+.st-priv.cam {
+  background: #34c759;
+}
+
+.st-priv.mic {
+  background: #ff9f0a;
+}
+
+.status-timer.rec {
+  color: #ff6b5e;
+}
+
+.rec-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff453a;
+  animation: rec 1.2s steps(2) infinite;
+}
+
+@keyframes rec {
+  50% { opacity: 0.35; }
+}
+
+/* ---------- Today: weather, stopwatch, timers ---------- */
+.today-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.wx {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.wx-temp {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.wx-desc {
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.today-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 10px;
+}
+
+.card {
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.card .btn,
+.card .chip {
+  background: var(--well);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.sw-time {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+
+.sw-time.running {
+  color: var(--text);
+}
+
+.laps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tm-add {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 4px;
+}
+
+.tm-add .chip {
+  padding: 3px 7px;
+  font-size: 11px;
+}
+
+.tm-empty {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.tm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tm-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px 5px 10px;
+  border-radius: 10px;
+  background: var(--accent-tint);
+}
+
+.tm-row.paused {
+  background: var(--surface-2);
+}
+
+.tm-left {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-text);
+}
+
+.tm-row.paused .tm-left {
+  color: var(--text-2);
+}
+
+.tm-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.tm-btn {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--well);
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.tm-btn:hover {
+  color: var(--text);
+}
+
+/* ---------- Settings additions ---------- */
+.swatches {
+  gap: 8px;
+}
+
+.swatch {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  background: conic-gradient(#4c9bff, #a78bfa, #f472b6, #fb923c, #4ade80, #4c9bff);
+  box-shadow: 0 0 0 2px #000, 0 0 0 3px transparent;
+  transition: box-shadow 160ms var(--ease-out), transform 160ms var(--ease-out);
+}
+
+.swatch:hover {
+  transform: scale(1.08);
+}
+
+.swatch.on {
+  box-shadow: 0 0 0 2px #000, 0 0 0 4px #f2f2f2;
+}
+
+.swatch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.swatch-win {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #000;
+}
+
+.report-field {
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  font: inherit;
+  line-height: 1.4;
 }

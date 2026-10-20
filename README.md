@@ -107,20 +107,31 @@ The taskbar's system-tray features, built into the notch.
 - **Not possible from an app:** showing other apps' tray icons (the overflow arrow). Keep the Windows taskbar on
   auto-hide and reach those at the bottom edge as before.
 
-## Windows tab, live activities and alerts
+## Live activities and alerts
 
-- **Windows tab** (Ctrl+2): your open windows with their icons, most recently used first. Click one to switch to it,
-  hover for the x to close it (the app can still ask to save), or type in the bar to filter. Arrow keys and Enter work too.
-- **Live activity:** while music or a video plays, the collapsed notch widens a little and shows the album art on the left
-  and a moving level meter on the right.
+- **The collapsed pill** shows, besides the clock, network and battery: the weather (Settings > Weather), a moon while
+  Focus is on, and an iPhone-style dot while an app uses the camera (green) or microphone (orange). It widens as needed.
+- **Live activity:** while music or a video plays, the pill shows the album art and a moving level meter; while a browser
+  download runs (Chrome, Edge, Brave, Firefox), how much has arrived; while recording, a red dot and the time. The middle
+  shows a running stopwatch or the next timer instead of the clock.
 - **Toasts:** the collapsed notch grows for a few seconds, like an iPhone's Dynamic Island, for:
   - **Windows notifications** (app, sender and message). Settings can switch this off, or show only the app name.
     The text is shown, never stored or logged.
   - **A new track** (art, title, artist).
   - **Charging** (a ring fills to the battery level), **fully charged**, and **low battery** at 20% and 10% (in red).
   - **Calendar:** a heads-up 10 minutes before an event.
+  - **Timers** ending (with a chime), a **finished download**, a **saved screenshot** (with a thumbnail) or **recording**.
   - **An available update.**
-  Nothing pops up while something is full screen.
+  Nothing pops up while something is full screen; toasts that arrive while the panel is open wait until it closes.
+- **Focus** (Controls): silences notification toasts until you turn it off, for an hour, until 6 PM or until 7 AM.
+- **Screenshot** (Controls): saves the notch's screen to Pictures\Screenshots and copies it; the arrow opens Windows'
+  region snip. **Record** saves the screen with its sound to Videos\Gabay as WebM. Gabay hides itself from both.
+- **Volume per app** (Controls > Audio arrow): a slider for each app playing sound, like Windows' volume mixer.
+- **Now playing** (Controls): drag the progress bar to seek. With **Lyrics** on (Settings), the current line shows
+  under it, from lrclib.net (it sends the song's title and artist there, so it's off by default).
+- **Today:** weather, a stopwatch with laps, and up to 6 timers (+1, +5, +10 or +30 minutes) that keep running when the
+  notch closes.
+- **Clipboard** also keeps the last 10 copied images (memory only, never saved).
 - **Gestures on the open notch:** scroll over the tab bar to change the volume (a small volume bar appears); middle-click
   anywhere on the notch to play or pause.
 - **Calendar:** paste your calendar's private iCal address in Settings (Google Calendar: Settings > your calendar >
@@ -147,7 +158,12 @@ The taskbar's system-tray features, built into the notch.
   the Windows Runtime metadata in `System32\WinMetadata`, and cached in `%APPDATA%\gabay\bin`. Without that compiler
   those features quietly go away and the notch simply stays visible.
 - **Settings tab:** global hotkey, how long the pointer must stay away before the panel collapses (200-1500 ms), which
-  display the notch sits on (or Follow mouse), notifications, calendar and updates. Saved to `settings.json` in `%APPDATA%\gabay`; the main process validates every value.
+  display the notch sits on (or Follow mouse), notifications, accent colour (mint, your Windows accent, or six others),
+  weather city, lyrics, calendar, updates, **Report a bug**, and Experiments.
+- **Report a bug** (Settings): describe the problem, then send it as a prefilled GitHub issue or copy it to paste in a
+  chat. It adds the Gabay and Windows versions, screen setup, a few settings and recent error messages, with user names
+  and home folders removed. Nothing from the clipboard, notifications, calendar or files.
+- **The search bar** shows only on Launch (apps and commands) and Clipboard (filter). The hotkey opens Launch. Saved to `settings.json` in `%APPDATA%\gabay`; the main process validates every value.
 - The app and tray icons are drawn in `resources/` (a notch plus a compass, since gabay means guide); edit `resources/icon.svg` / `tray.svg` and run `npx electron scripts/render-icons.cjs` to regenerate the PNGs.
 
 ## Where the window behavior lives

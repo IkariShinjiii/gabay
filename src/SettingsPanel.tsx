@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { SettingsSnapshot, UpdateInfo } from './global'
+import { ACCENT_PRESETS } from './accent'
 import { COLLAPSE_STEP_MS } from './constants'
 
 interface Props {
@@ -70,6 +71,99 @@ function CalendarRow({ onHold }: { onHold: (held: boolean) => void }): React.JSX
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+/** Type a city; it is looked up once (Open-Meteo) and saved as coordinates. */
+function WeatherRow({ place, onHold, onSaved }: { place: string | null; onHold: (h: boolean) => void; onSaved: () => void }): React.JSX.Element {
+  const [draft, setDraft] = useState('')
+  const [state, setState] = useState<'idle' | 'finding' | 'none'>('idle')
+  const find = async (): Promise<void> => {
+    if (!draft.trim()) return
+    setState('finding')
+    const p = await window.overlay.weatherFind(draft).catch(() => null)
+    if (!p) return setState('none')
+    setState('idle')
+    setDraft('')
+    onSaved()
+  }
+  return (
+    <div className="set-row">
+      <div className="set-label">
+        Weather {place && <span className="set-val">{place}</span>}
+      </div>
+      <div className="set-inline">
+        <input
+          className="field"
+          placeholder={place ? 'Change city' : 'Your city, e.g. Iloilo'}
+          spellCheck={false}
+          autoComplete="off"
+          maxLength={100}
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value)
+            setState('idle')
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void find()
+            else if (e.key === 'Escape') e.currentTarget.blur()
+          }}
+          onFocus={() => onHold(true)}
+          onBlur={() => onHold(false)}
+        />
+        <button className="chip on" disabled={!draft.trim() || state === 'finding'} onClick={() => void find()}>
+          {state === 'finding' ? 'Finding…' : place ? 'Change' : 'Set'}
+        </button>
+      </div>
+      {state === 'none' && <div className="set-note">Couldn't find that place. Try the city name only.</div>}
+    </div>
+  )
+}
+
+/** Report a bug: a description plus scrubbed app details, sent as a GitHub issue or copied for a chat. */
+function ReportRow({ onHold }: { onHold: (h: boolean) => void }): React.JSX.Element {
+  const [text, setText] = useState('')
+  const [sent, setSent] = useState<'github' | 'copy' | null>(null)
+  const send = async (how: 'github' | 'copy'): Promise<void> => {
+    if (!text.trim()) return
+    if (await window.overlay.reportBug(text, how).catch(() => false)) {
+      setSent(how)
+      if (how === 'github') setText('')
+    }
+  }
+  return (
+    <div className="set-row">
+      <div className="set-label">Report a bug</div>
+      <textarea
+        className="field report-field"
+        placeholder="What went wrong, and what were you doing?"
+        spellCheck
+        maxLength={2000}
+        rows={3}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value)
+          setSent(null)
+        }}
+        onFocus={() => onHold(true)}
+        onBlur={() => onHold(false)}
+      />
+      <div className="set-opts">
+        <button className="chip on" disabled={!text.trim()} onClick={() => void send('github')} title="Opens a prefilled issue on GitHub (needs a GitHub account)">
+          Send on GitHub
+        </button>
+        <button className="chip" disabled={!text.trim()} onClick={() => void send('copy')} title="Copies the report so you can paste it in a chat">
+          Copy report
+        </button>
+      </div>
+      <div className="set-note muted">
+        {sent === 'copy'
+          ? 'Copied. Paste it in a message to the developer.'
+          : sent === 'github'
+            ? 'Opened in your browser. Press Submit there to send it.'
+            : 'Adds your Gabay and Windows versions, screen setup and recent errors. Nothing personal: no names, files, clipboard or messages.'}
+      </div>
     </div>
   )
 }
@@ -263,8 +357,43 @@ export default function SettingsPanel({ onSettings, onHold }: Props): React.JSX.
         </div>
       </div>
 
+      <div className="set-row">
+        <div className="set-label">Accent colour</div>
+        <div className="set-opts swatches">
+          {Object.entries(ACCENT_PRESETS).map(([key, a]) => (
+            <button
+              key={key}
+              className={settings.accent === key ? 'swatch on' : 'swatch'}
+              title={a.label}
+              aria-label={`${a.label} accent`}
+              aria-pressed={settings.accent === key}
+              style={a.hex ? { background: a.hex } : undefined}
+              onClick={() => void save({ accent: key })}
+            >
+              {key === 'windows' && <span className="swatch-win">W</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <WeatherRow place={settings.place?.name ?? null} onHold={onHold} onSaved={() => void window.overlay.getSettings().then((r) => { setSnap(r); onSettings(r.settings) })} />
+
+      <div className="set-row">
+        <div className="set-label">Lyrics in Now playing</div>
+        <div className="set-opts">
+          <button className={settings.lyrics ? 'chip on' : 'chip'} onClick={() => void save({ lyrics: true })}>
+            On
+          </button>
+          <button className={!settings.lyrics ? 'chip on' : 'chip'} onClick={() => void save({ lyrics: false })}>
+            Off
+          </button>
+        </div>
+        <div className="set-note muted">Looks up the song's title and artist on lrclib.net (free, open lyrics).</div>
+      </div>
+
       <CalendarRow onHold={onHold} />
       <UpdateRow />
+      <ReportRow onHold={onHold} />
 
       <div className="set-section">Experiments</div>
       <div className="set-row">

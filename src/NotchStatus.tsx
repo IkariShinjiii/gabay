@@ -1,8 +1,10 @@
 import Icon from './Icon'
 import type { IconName } from './icons'
-import type { LiveMedia } from './global'
+import type { DownloadState, LiveMedia, Weather } from './global'
 import type { BatteryInfo } from './useBattery'
 import { formatMs, type FocusTimer } from './useFocusTimer'
+import { formatClock } from './useTimers'
+import { weatherLook } from './weatherIcon'
 
 const R = 8
 const C = 2 * Math.PI * R
@@ -19,54 +21,115 @@ export function batteryIcon(b: BatteryInfo): IconName {
 const NET_ICON: Record<NetKind, IconName> = { wifi: 'wifi', ethernet: 'cable', offline: 'wifi-off' }
 const NET_LABEL: Record<NetKind, string> = { wifi: 'Wi-Fi connected', ethernet: 'Ethernet connected', offline: 'Offline' }
 
+const mb = (bytes: number): string => (bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.max(0, Math.round(bytes / 1e6))} MB`)
+
 interface Props {
   clock: string
   timer: FocusTimer
   battery: BatteryInfo | null
   net: NetKind
-  /** Playing media: shown as a live activity (art on the left, a moving level meter on the right). */
+  /** Playing media: art on the left, a moving level meter on the right. */
   media: LiveMedia | null
+  weather: Weather | null
+  dnd: boolean
+  /** Camera / microphone in use right now (iPhone-style dot on the right). */
+  privacy: { mic: boolean; cam: boolean }
+  /** Elapsed ms while a screen recording runs. */
+  recordingMs: number | null
+  /** Elapsed ms while the stopwatch runs. */
+  stopwatchMs: number | null
+  /** The countdown that ends first, while one runs. */
+  countdown: { leftMs: number; totalMs: number } | null
+  download: DownloadState | null
+}
+
+function Ring({ fraction }: { fraction: number }): React.JSX.Element {
+  return (
+    <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true">
+      <circle cx="10" cy="10" r={R} className="ring-bg" />
+      <circle
+        cx="10"
+        cy="10"
+        r={R}
+        className="ring-fg"
+        strokeDasharray={C}
+        strokeDashoffset={C * (1 - Math.max(0, Math.min(1, fraction)))}
+        transform="rotate(-90 10 10)"
+      />
+    </svg>
+  )
 }
 
 /**
- * The collapsed pill, laid out like a phone status bar around a notch: network on the left, the clock (or the
- * focus-timer ring) in the middle, battery on the right.
+ * The collapsed pill, laid out like a phone status bar around a notch: network and weather on the left, the clock (or
+ * whatever is running: a recording, the stopwatch, a timer) in the middle, battery and live indicators on the right.
  */
-export default function NotchStatus({ clock, timer, battery, net, media }: Props): React.JSX.Element {
+export default function NotchStatus(p: Props): React.JSX.Element {
+  const { timer, battery, net, media, weather } = p
   const live = media?.playing ? media : null
-  const left = timer.totalMs > 0 ? timer.remainingMs / timer.totalMs : 0
   const low = battery !== null && !battery.charging && battery.level <= 0.2
+  const look = weather ? weatherLook(weather.code, weather.day) : null
+
+  let center: React.JSX.Element
+  if (p.recordingMs !== null) {
+    center = (
+      <span className="status-timer rec">
+        <span className="rec-dot" />
+        {formatClock(p.recordingMs)}
+      </span>
+    )
+  } else if (p.stopwatchMs !== null) {
+    center = (
+      <span className="status-timer">
+        <Icon name="timer" size={12} />
+        {formatClock(p.stopwatchMs)}
+      </span>
+    )
+  } else if (p.countdown) {
+    center = (
+      <span className="status-timer">
+        <Ring fraction={p.countdown.totalMs ? p.countdown.leftMs / p.countdown.totalMs : 0} />
+        {formatClock(p.countdown.leftMs + 999)}
+      </span>
+    )
+  } else if (timer.status !== 'idle') {
+    center = (
+      <span className={timer.status === 'paused' ? 'status-timer paused' : 'status-timer'}>
+        <Ring fraction={timer.totalMs > 0 ? timer.remainingMs / timer.totalMs : 0} />
+        {timer.status === 'done' ? 'Done' : formatMs(timer.remainingMs)}
+      </span>
+    )
+  } else {
+    center = <span className="status-clock">{p.clock}</span>
+  }
+
+  const privacy = p.privacy.cam ? 'cam' : p.privacy.mic ? 'mic' : null
 
   return (
     <div className="status-row">
-      <span className={net === 'offline' ? 'st-side st-left st-warn' : 'st-side st-left'} title={NET_LABEL[net]}>
+      <span className={net === 'offline' ? 'st-side st-left st-warn' : 'st-side st-left'}>
         {live && (
           <span className="st-art" title={`${live.title} · ${live.artist}`}>
             {live.art ? <img src={live.art} alt="" draggable={false} /> : <Icon name="music" size={10} />}
           </span>
         )}
-        <Icon name={NET_ICON[net]} size={12} />
+        <span title={NET_LABEL[net]} className="st-icon">
+          <Icon name={NET_ICON[net]} size={12} />
+        </span>
+        {look && weather && (
+          <span className="st-weather" title={`${look.label}, ${weather.temp}° · ${weather.place}`}>
+            <Icon name={look.icon} size={12} />
+            {weather.temp}°
+          </span>
+        )}
+        {p.dnd && (
+          <span className="st-icon st-dnd" title="Do not disturb">
+            <Icon name="moon" size={11} />
+          </span>
+        )}
       </span>
 
-      {timer.status === 'idle' ? (
-        <span className="status-clock">{clock}</span>
-      ) : (
-        <span className={timer.status === 'paused' ? 'status-timer paused' : 'status-timer'}>
-          <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true">
-            <circle cx="10" cy="10" r={R} className="ring-bg" />
-            <circle
-              cx="10"
-              cy="10"
-              r={R}
-              className="ring-fg"
-              strokeDasharray={C}
-              strokeDashoffset={C * (1 - left)}
-              transform="rotate(-90 10 10)"
-            />
-          </svg>
-          {timer.status === 'done' ? 'Done' : formatMs(timer.remainingMs)}
-        </span>
-      )}
+      {center}
 
       <span className={low ? 'st-side st-right st-warn' : 'st-side st-right'}>
         {battery && (
@@ -75,14 +138,22 @@ export default function NotchStatus({ clock, timer, battery, net, media }: Props
             <span className="st-pct">{Math.round(battery.level * 100)}</span>
           </>
         )}
-        {live && (
-          <span className="st-eq" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-            <i />
+        {p.download ? (
+          <span className="st-dl" title={`Downloading ${p.download.name}`}>
+            <Icon name="download" size={11} />
+            {mb(p.download.bytes)}
           </span>
+        ) : (
+          live && (
+            <span className="st-eq" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
+          )
         )}
+        {privacy && <span className={`st-priv ${privacy}`} title={privacy === 'cam' ? 'Camera in use' : 'Microphone in use'} />}
       </span>
     </div>
   )
