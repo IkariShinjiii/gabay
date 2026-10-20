@@ -1,5 +1,5 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, screen, shell, Tray } from 'electron'
-import { writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { getStats } from './stats'
 import { startFullscreenWatch, stopFullscreenWatch } from './fullscreen'
@@ -295,6 +295,16 @@ app.whenReady().then(async () => {
     tray = new Tray(nativeImage.createFromPath(join(app.getAppPath(), 'resources', 'tray.png')))
     tray.setToolTip('Gabay')
     tray.on('click', summon)
+    // Installed builds start at login by default: turned on once, on first run. The tray checkbox decides after that.
+    const loginMarker = join(app.getPath('userData'), 'login-default-applied')
+    if (app.isPackaged && !existsSync(loginMarker)) {
+      app.setLoginItemSettings({ openAtLogin: true })
+      try {
+        writeFileSync(loginMarker, '')
+      } catch {
+        // Harmless: it is simply applied again next start.
+      }
+    }
     const buildMenu = (): Menu =>
       Menu.buildFromTemplate([
         { label: 'Show Gabay', click: summon },
