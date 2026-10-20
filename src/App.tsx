@@ -540,7 +540,16 @@ export default function App(): React.JSX.Element {
     // StatsPanel exists only while visible, so its polling stops when the notch collapses or the tab changes.
     body = <StatsPanel />
   } else if (expanded && tab === 'Windows') {
-    body = <WindowsPanel query={query} onSwitched={release} />
+    body = (
+      <WindowsPanel
+        query={query}
+        command={!!parsed}
+        onSwitched={() => {
+          release()
+          onPowerDone() // let the panel close over the app you switched to
+        }}
+      />
+    )
   } else if (expanded && tab === 'Controls') {
     body = <QuickPanel battery={battery} />
   } else {

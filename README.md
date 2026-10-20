@@ -63,8 +63,8 @@ search field to filter, click a row to copy it back, star to pin, "Clear history
 - Cap: 50 unpinned + 50 pinned items, 10,000 characters each. Images and files are ignored.
 - **Privacy:** unpinned history is memory-only and gone when Gabay quits. Only pinned items are written to disk
   (`clipboard-pinned.json` in `%APPDATA%\gabay`, plain text), so don't pin secrets.
-- **Known limit:** Electron 44's clipboard API can't read Windows' "exclude from history" flag, so text copied from a
-  password manager does appear in the list until you clear it or quit.
+- **Skips private copies:** text that a password manager or private window marks as "don't keep in clipboard history"
+  is never recorded (checked by the native helper).
 - The renderer only ever gets truncated one-line previews and opaque ids; the full text stays in the main process.
 
 ## Today tab, focus timer and command bar

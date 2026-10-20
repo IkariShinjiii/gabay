@@ -13,7 +13,7 @@ import { COLLAPSE_MAX, COLLAPSE_MIN, HOTKEYS, loadSettings, sanitize, saveSettin
 import { ensureIndex, getIcon, launch, search, toggleStar } from './launcher'
 import { isPowerAction, runPower } from './power'
 import { addTodo, listTodos, removeTodo, toggleTodo } from './todos'
-import { clearHistory, copyBack, listClipboard, startClipboardHistory, stopClipboardHistory, togglePin } from './clipboardHistory'
+import { clearHistory, copyBack, listClipboard, setClipboardGuard, startClipboardHistory, stopClipboardHistory, togglePin } from './clipboardHistory'
 
 // Software rendering. The GPU process alone cost ~110 MB of private memory (about 134 MB vs 16 MB) for a 520x400
 // overlay, with no measurable CPU difference for our animations (see docs/PERFORMANCE.md). Set GABAY_GPU=1 to
@@ -196,6 +196,7 @@ app.whenReady().then(async () => {
     fromUi(e)
     return removeTodo(typeof id === 'string' ? id : '')
   })
+  setClipboardGuard(async () => (await nativeCall('clipok')) !== false)
   if (!PREVIEW) startClipboardHistory()
   // Native helper: full screen on the notch's display, now playing, notifications, windows, volume, Bluetooth.
   const send = (channel: string, value: unknown): void => {
@@ -241,7 +242,7 @@ app.whenReady().then(async () => {
         const appName = str(n.app, 80) ?? 'Notification'
         send('overlay:note', settings.notePreview ? { app: appName, title: str(n.title, 120), body: str(n.body, 240) } : { app: appName, title: null, body: null })
       }
-    }).then(() => {
+    }, () => {
       void nativeCall('notes', settings.notifications && !PREVIEW ? 'on' : 'off')
       applyReserve()
     })
