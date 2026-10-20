@@ -8,6 +8,7 @@ interface Props {
   onSettings: (s: SettingsSnapshot['settings']) => void
   /** A focused text field keeps the panel open. */
   onHold: (held: boolean) => void
+  onShowWelcome: () => void
 }
 
 /** Private iCal address: typed here, sent once to main (which encrypts it), never shown back. */
@@ -210,7 +211,7 @@ function UpdateRow(): React.JSX.Element {
  * Buttons and a slider rather than <select>: a native dropdown opens its own popup window, which would take
  * the pointer off the notch and collapse the panel under the user.
  */
-export default function SettingsPanel({ onSettings, onHold }: Props): React.JSX.Element {
+export default function SettingsPanel({ onSettings, onHold, onShowWelcome }: Props): React.JSX.Element {
   const [snap, setSnap] = useState<SettingsSnapshot | null>(null)
   const [delay, setDelay] = useState<number | null>(null)
   const saveTimer = useRef<number | undefined>(undefined)
@@ -393,6 +394,14 @@ export default function SettingsPanel({ onSettings, onHold }: Props): React.JSX.
 
       <CalendarRow onHold={onHold} />
       <UpdateRow />
+      <div className="set-row">
+        <div className="set-label">Welcome tour</div>
+        <div className="set-opts">
+          <button className="chip" onClick={onShowWelcome}>
+            Show it again
+          </button>
+        </div>
+      </div>
       <ReportRow onHold={onHold} />
 
       <div className="set-section">Experiments</div>

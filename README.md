@@ -163,7 +163,9 @@ The taskbar's system-tray features, built into the notch.
 - **Report a bug** (Settings): describe the problem, then send it as a prefilled GitHub issue or copy it to paste in a
   chat. It adds the Gabay and Windows versions, screen setup, a few settings and recent error messages, with user names
   and home folders removed. Nothing from the clipboard, notifications, calendar or files.
-- **The search bar** shows only on Launch (apps and commands) and Clipboard (filter). The hotkey opens Launch. Saved to `settings.json` in `%APPDATA%\gabay`; the main process validates every value.
+- **The search bar** shows only on Launch (apps and commands) and Clipboard (filter). The hotkey opens Launch.
+- **Welcome tour:** the first start opens the notch into a four-step tour; Settings > Welcome tour shows it again. Preview it
+  with `GABAY_PREVIEW='Welcome'`. Saved to `settings.json` in `%APPDATA%\gabay`; the main process validates every value.
 - The app and tray icons are drawn in `resources/` (a notch plus a compass, since gabay means guide); edit `resources/icon.svg` / `tray.svg` and run `npx electron scripts/render-icons.cjs` to regenerate the PNGs.
 
 ## Where the window behavior lives

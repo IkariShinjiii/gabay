@@ -17,6 +17,7 @@ import NotchToast, { type Toast } from './NotchToast'
 import { chime, leftOf, useTimers } from './useTimers'
 import { useRecorder } from './useRecorder'
 import { applyAccent, resolveAccent } from './accent'
+import Welcome from './Welcome'
 import { useFocusTimer } from './useFocusTimer'
 
 const TABS = ['Controls', 'Today', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
@@ -30,7 +31,9 @@ export default function App(): React.JSX.Element {
   // Dev preview (see electron/main.ts): open straight onto the named tab, with no pointer involved.
   const previewParam = new URLSearchParams(location.hash.slice(1)).get('preview')
   const previewTab = TABS.find((t) => t === previewParam)
-  const [expanded, setExpanded] = useState(previewTab !== undefined)
+  // Dev preview of the first-run tour: open on it with no pointer involved.
+  const previewWelcome = previewParam === 'Welcome'
+  const [expanded, setExpanded] = useState(previewTab !== undefined || previewWelcome)
   const [tab, setTab] = useState<Tab>(previewTab ?? 'Today')
   // One bar for everything: text that parses as a command is a command, anything else searches apps (or the clipboard).
   const [input, setInput] = useState('')
@@ -43,7 +46,7 @@ export default function App(): React.JSX.Element {
   // `evaluate` is the single place that decides open vs. start-the-collapse-timer.
   const pointerInside = useRef(false)
   const holds = useRef(new Set<string>())
-  const isOpen = useRef(previewTab !== undefined)
+  const isOpen = useRef(previewTab !== undefined || previewWelcome)
   const collapseMs = useRef(COLLAPSE_DELAY_MS) // replaced by the saved setting once it loads
   const timer = useRef<number | undefined>(undefined)
 
@@ -103,6 +106,24 @@ export default function App(): React.JSX.Element {
   }, [setInteractive])
 
   const [dndUntil, setDndUntil] = useState(0)
+  const [activeHotkey, setActiveHotkey] = useState<string | null>(null)
+  const [accentName, setAccentName] = useState('mint')
+
+  // --- first-run tour: holds the panel open until finished or skipped ---
+  const [welcome, setWelcome] = useState(false)
+  const startWelcome = useCallback((): void => {
+    setWelcome(true)
+    hold('welcome', true)
+    evaluate()
+  }, [hold, evaluate])
+  const finishWelcome = useCallback((): void => {
+    setWelcome(false)
+    hold('welcome', false)
+    void window.overlay.setSettings({ welcomed: true, accent: accentRef.current })
+    evaluate()
+  }, [hold, evaluate])
+  const accentRef = useRef('mint')
+  accentRef.current = accentName
   const [place, setPlace] = useState<string | null>(null)
   const applySettings = useCallback((s: Settings): void => {
     collapseMs.current = s.collapseMs
@@ -116,7 +137,13 @@ export default function App(): React.JSX.Element {
   }, [])
 
   useEffect(() => {
-    void window.overlay.getSettings().then((r) => applySettings(r.settings))
+    void window.overlay.getSettings().then((r) => {
+      applySettings(r.settings)
+      setActiveHotkey(r.activeHotkey)
+      setAccentName(r.settings.accent)
+      // First run: open straight into the tour (never in screenshot previews, except the tour's own).
+      if (previewWelcome || (!r.settings.welcomed && !previewParam)) startWelcome()
+    })
   }, [applySettings])
 
   // Slide the notch away again once the pointer is gone, nothing holds the panel open and it isn't expanded.
@@ -531,7 +558,7 @@ export default function App(): React.JSX.Element {
 
   // App results show on every tab except Clipboard, but only for text that is not a command.
   // The bar lives on Launch (apps and commands) and Clipboard (filter) only; other tabs show just their content.
-  const hasBar = tab === 'Launch' || tab === 'Clipboard'
+  const hasBar = !welcome && (tab === 'Launch' || tab === 'Clipboard')
   // React doesn't fire onBlur for an input that unmounts while focused, so release its hold here, or the panel
   // could never collapse after switching from Launch to a tab without the bar.
   useEffect(() => {
@@ -641,7 +668,9 @@ export default function App(): React.JSX.Element {
     .sort((a, b) => (a.endAt ?? 0) - (b.endAt ?? 0))[0]
 
   let body: React.JSX.Element
-  if (showResults) {
+  if (welcome) {
+    body = <Welcome hotkey={activeHotkey} accent={accentName} onAccent={setAccentName} onDone={finishWelcome} />
+  } else if (showResults) {
     body = (
       <Launcher
         items={items}
@@ -666,7 +695,7 @@ export default function App(): React.JSX.Element {
       />
     )
   } else if (expanded && tab === 'Settings') {
-    body = <SettingsPanel onSettings={applySettings} onHold={onTodoHold} />
+    body = <SettingsPanel onSettings={applySettings} onHold={onTodoHold} onShowWelcome={startWelcome} />
   } else if (expanded && tab === 'System') {
     // StatsPanel exists only while visible, so its polling stops when the notch collapses or the tab changes.
     body = <StatsPanel />
@@ -714,6 +743,7 @@ export default function App(): React.JSX.Element {
           transition={{ duration: expanded ? 0.2 : 0.1, delay: expanded ? 0.12 : 0 }}
           style={{ pointerEvents: expanded ? 'auto' : 'none' }}
         >
+          {!welcome && (
           <div className="tabs" role="tablist" aria-label="Sections" onWheel={onTabsWheel}>
             {TABS.map((t, i) => (
               <button
@@ -748,9 +778,10 @@ export default function App(): React.JSX.Element {
               )}
             </AnimatePresence>
           </div>
+          )}
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={showResults ? 'results' : tab}
+              key={welcome ? 'welcome' : showResults ? 'results' : tab}
               className="body-wrap"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.31.0
+
+- **Welcome tour** on first run: four short steps in the open notch (hover to open, the search hotkey, full-screen
+  hiding and how to bring the notch back, and an accent colour). Settings > Welcome tour shows it again.
+- Checked at 100%, 125% and 150% display scaling (same layout, crisp at each).
+
 ## 0.30.0
 
 - **Removed** the Windows tab (Alt+Tab does it better). The search bar shows only on Launch and Clipboard.

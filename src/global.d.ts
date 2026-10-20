@@ -96,6 +96,7 @@ export interface Settings {
   place: { name: string; lat: number; lon: number } | null
   lyrics: boolean
   dndUntil: number
+  welcomed: boolean
   visibility: 'always' | 'auto'
 }
 
