@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.29.1
+
+Bug fixes:
+- Clipboard history no longer records text a password manager or private window marks as "keep out of clipboard history".
+- Windows tab: Enter with a command in the bar no longer also switches windows; the panel now closes after switching;
+  icons can't show the wrong app when Windows reuses a window handle.
+- The native helper restarts after a crash (up to 5 times in 10 minutes) and re-applies notifications and the reserved band.
+- The helper answers requests in parallel, so a slow Bluetooth scan no longer delays window switching or volume.
+- Now playing recovers if Windows' media service wasn't ready when Gabay started.
+- Updater: a failed download of latest.yml is treated as a failure instead of being parsed.
+
 ## 0.29.0
 
 - **Experiments > Reserve space at the top** (Settings, off by default): Gabay registers a 24 px black band at the top

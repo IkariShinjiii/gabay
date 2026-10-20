@@ -55,6 +55,11 @@ async function savePinned(): Promise<void> {
 }
 
 let polling = false
+// Asks whether the current clipboard may be kept (see the native helper's clipok). Unset or unanswered means yes.
+let guard: () => Promise<boolean> = async () => true
+export function setClipboardGuard(fn: () => Promise<boolean>): void {
+  guard = fn
+}
 
 async function poll(): Promise<void> {
   if (polling) return // a slow read must not stack up
@@ -64,6 +69,7 @@ async function poll(): Promise<void> {
     if (!text || text === lastSeen) return
     lastSeen = text
     if (!text.trim() || text.length > MAX_CHARS) return
+    if (!(await guard())) return // a password manager or private window asked not to be remembered
     record(text)
   } catch {
     // clipboard busy (another app holds it); try again next tick

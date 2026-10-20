@@ -9,6 +9,7 @@
 //   requests <id> <command> [args]  ->  r <id> <json>
 //            windows | focus <hwnd> | close <hwnd> | vol <0-100> | volget | media toggle|next|prev | bt | notes on|off
 //            appbar L T R B H | appbar off   (reserve a band at the top of a monitor, physical pixels)
+//            clipok                          (false when the copying app asked to keep it out of clipboard history)
 export const NATIVE_SOURCE = String.raw`
 using System;
 using System.Collections.Generic;
@@ -224,9 +225,12 @@ static class Native {
         var parts = line.Split(new[] { ' ' }, 3);
         if (parts.Length < 2) continue;
         string id = parts[0], cmd = parts[1], arg = parts.Length > 2 ? parts[2] : "";
-        string reply;
-        try { reply = Run(cmd, arg); } catch { reply = "null"; }
-        Send("r " + id + " " + reply);
+        // Each request on its own pool thread: a slow one (a Bluetooth scan) must not hold up a window switch.
+        ThreadPool.QueueUserWorkItem(_ => {
+          string reply;
+          try { reply = Run(cmd, arg); } catch { reply = "null"; }
+          Send("r " + id + " " + reply);
+        });
       }
     } catch { }
     // Gabay closed our stdin: it is gone. Give the reserved space back before leaving.
@@ -253,8 +257,33 @@ static class Native {
       case "bt": return Bluetooth();
       case "notes": notesOn = arg == "on"; return "true";
       case "appbar": return AppBar(arg);
+      case "clipok": return ClipOk() ? "true" : "false";
     }
     return "null";
+  }
+
+  // ---------- clipboard privacy ----------
+  // Password managers and private windows tag what they copy so clipboard history skips it. Electron can't see those
+  // tags, so Gabay asks here before keeping anything.
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern uint RegisterClipboardFormat(string name);
+  [DllImport("user32.dll")] static extern bool IsClipboardFormatAvailable(uint f);
+  [DllImport("user32.dll")] static extern bool OpenClipboard(IntPtr h);
+  [DllImport("user32.dll")] static extern bool CloseClipboard();
+  [DllImport("user32.dll")] static extern IntPtr GetClipboardData(uint f);
+  [DllImport("kernel32.dll")] static extern IntPtr GlobalLock(IntPtr h);
+  [DllImport("kernel32.dll")] static extern bool GlobalUnlock(IntPtr h);
+  static bool ClipOk() {
+    if (IsClipboardFormatAvailable(RegisterClipboardFormat("ExcludeClipboardContentFromMonitorProcessing"))) return false;
+    uint canInclude = RegisterClipboardFormat("CanIncludeInClipboardHistory");
+    if (!IsClipboardFormatAvailable(canInclude)) return true;
+    for (int i = 0; i < 5; i++) { if (OpenClipboard(IntPtr.Zero)) break; if (i == 4) return false; Thread.Sleep(20); }
+    try {
+      IntPtr h = GetClipboardData(canInclude);
+      if (h == IntPtr.Zero) return false;
+      IntPtr p = GlobalLock(h);
+      if (p == IntPtr.Zero) return false;
+      try { return Marshal.ReadInt32(p) != 0; } finally { GlobalUnlock(h); }
+    } finally { CloseClipboard(); }
   }
 
   // ---------- volume ----------
@@ -337,7 +366,9 @@ static class Native {
   static string artKey = "";
 
   static void MediaLoop() {
-    try { media = W(GlobalSystemMediaTransportControlsSessionManager.RequestAsync()); } catch { return; }
+    while (media == null) {
+      try { media = W(GlobalSystemMediaTransportControlsSessionManager.RequestAsync()); } catch { Thread.Sleep(10000); }
+    }
     string last = null;
     while (true) {
       try {

@@ -60,7 +60,9 @@ let nextId = 1
 const pending = new Map<number, { resolve: (v: unknown) => void; timer: NodeJS.Timeout }>()
 
 /** Start the helper. Best effort: if it can't be built or dies, its features quietly go away. */
-export async function startNative(on: NativeEvents): Promise<void> {
+let restarts: number[] = []
+
+export async function startNative(on: NativeEvents, onReady: () => void): Promise<void> {
   const exe = await helperExe()
   if (!exe || stopped) return
   const p = spawn(exe, [String(process.pid)], { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] })
@@ -108,11 +110,19 @@ export async function startNative(on: NativeEvents): Promise<void> {
     pending.clear()
     if (fsOn) on.fullscreen(null) // never leave the notch hidden because the helper went away
     on.media(null)
+    // Restart after a crash, at most 5 times in 10 minutes so a broken helper can't loop.
+    const now = Date.now()
+    restarts = restarts.filter((t) => now - t < 600_000)
+    if (!stopped && restarts.length < 5) {
+      restarts.push(now)
+      setTimeout(() => void startNative(on, onReady), 2000)
+    }
   })
+  onReady()
 }
 
 /** One request. `arg` must already be validated by the caller: it is passed on as part of a single line. */
-export function nativeCall(cmd: 'windows' | 'focus' | 'close' | 'vol' | 'volget' | 'media' | 'bt' | 'notes' | 'appbar', arg = ''): Promise<unknown> {
+export function nativeCall(cmd: 'windows' | 'focus' | 'close' | 'vol' | 'volget' | 'media' | 'bt' | 'notes' | 'appbar' | 'clipok', arg = ''): Promise<unknown> {
   const p = child
   if (!p?.stdin || /[\r\n]/.test(arg)) return Promise.resolve(null)
   const id = nextId++

@@ -62,7 +62,9 @@ export async function installUpdate(): Promise<boolean> {
   const f = found
   if (!f || !app.isPackaged) return false
   try {
-    const yml = await (await net.fetch(f.yml, { signal: AbortSignal.timeout(30_000) })).text()
+    const ymlRes = await net.fetch(f.yml, { signal: AbortSignal.timeout(30_000) })
+    if (!ymlRes.ok) return false
+    const yml = await ymlRes.text()
     const sha = /^sha512:\s*(\S+)/m.exec(yml)?.[1]
     if (!sha) return false
     const res = await net.fetch(f.exe.browser_download_url, { signal: AbortSignal.timeout(10 * 60_000) })

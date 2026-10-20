@@ -4,24 +4,29 @@ import Icon from './Icon'
 import type { OpenWindow } from './global'
 
 const REFRESH_MS = 2000
-const icons = new Map<string, string | null>() // by window id, for the session
+// By window handle plus app: Windows reuses handles, so the handle alone could show another app's icon.
+const icons = new Map<string, string | null>()
 
-function WindowIcon({ id }: { id: string }): React.JSX.Element {
-  const [url, setUrl] = useState<string | null | undefined>(icons.get(id))
+function WindowIcon({ id, app }: { id: string; app: string }): React.JSX.Element {
+  const key = `${id}|${app}`
+  const [url, setUrl] = useState<string | null | undefined>(icons.get(key))
   useEffect(() => {
-    if (icons.has(id)) return
+    if (icons.has(key)) {
+      setUrl(icons.get(key))
+      return
+    }
     let stale = false
     void window.overlay
       .windowIcon(id)
       .catch(() => null)
       .then((u) => {
-        icons.set(id, u)
+        icons.set(key, u)
         if (!stale) setUrl(u)
       })
     return () => {
       stale = true
     }
-  }, [id])
+  }, [id, key])
   return url ? (
     <img className="win-icon" src={url} alt="" width={28} height={28} draggable={false} />
   ) : (
@@ -39,7 +44,16 @@ const appLabel = (exe: string): string =>
  * Open windows, most recently used first, the way a taskbar shows them. Click switches to it; the x closes it
  * (politely: the app can still ask to save). Mounted only while visible, so its refresh stops with the panel.
  */
-export default function WindowsPanel({ query, onSwitched }: { query: string; onSwitched: () => void }): React.JSX.Element {
+export default function WindowsPanel({
+  query,
+  command,
+  onSwitched
+}: {
+  query: string
+  /** The bar holds a command: Enter belongs to it, not to the window list. */
+  command: boolean
+  onSwitched: () => void
+}): React.JSX.Element {
   const [list, setList] = useState<OpenWindow[] | null>(null)
   const [sel, setSel] = useState(0)
 
@@ -74,7 +88,7 @@ export default function WindowsPanel({ query, onSwitched }: { query: string; onS
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'ArrowDown' || e.key === 'ArrowRight') setSel((s) => Math.min(s + 1, shown.length - 1))
       else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') setSel((s) => Math.max(s - 1, 0))
-      else if (e.key === 'Enter' && shown[sel]) void focus(shown[sel])
+      else if (e.key === 'Enter' && !command && shown[sel]) void focus(shown[sel])
       else return
       e.preventDefault()
     }
@@ -102,7 +116,7 @@ export default function WindowsPanel({ query, onSwitched }: { query: string; onS
             onMouseEnter={() => setSel(i)}
           >
             <button className="win-main" title={w.title} onClick={() => void focus(w)}>
-              <WindowIcon id={w.id} />
+              <WindowIcon id={w.id} app={w.app} />
               <span className="win-text">
                 <span className="win-title">{w.title}</span>
                 <span className="win-app">
