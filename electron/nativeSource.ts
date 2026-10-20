@@ -8,6 +8,7 @@
 //            note <json>                a new Windows notification (only while notes are on)
 //   requests <id> <command> [args]  ->  r <id> <json>
 //            windows | focus <hwnd> | close <hwnd> | vol <0-100> | volget | media toggle|next|prev | bt | notes on|off
+//            appbar L T R B H | appbar off   (reserve a band at the top of a monitor, physical pixels)
 export const NATIVE_SOURCE = String.raw`
 using System;
 using System.Collections.Generic;
@@ -15,6 +16,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using System.Windows.Forms;
 using Windows.Foundation;
 using Windows.Media.Control;
 using Windows.Storage.Streams;
@@ -38,6 +40,70 @@ interface IMMDevice { int Activate(ref Guid id, int clsCtx, int activationParams
 [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 interface IMMDeviceEnumerator { int f(); int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice endpoint); }
 [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumeratorComObject { }
+
+// The reserved band: a black, never-activated strip registered as an app bar, so Windows fits maximized and snapped
+// windows below it (the same mechanism the taskbar uses). It steps aside while an app is full screen.
+class Band : Form {
+  [StructLayout(LayoutKind.Sequential)] struct RECT { public int L, T, R, B; }
+  [StructLayout(LayoutKind.Sequential)] struct APPBARDATA { public int cbSize; public IntPtr hWnd; public uint uCallbackMessage; public uint uEdge; public RECT rc; public IntPtr lParam; }
+  [DllImport("shell32.dll")] static extern UIntPtr SHAppBarMessage(uint msg, ref APPBARDATA d);
+  [DllImport("user32.dll")] static extern uint RegisterWindowMessage(string s);
+  [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int w, int hh, uint flags);
+  const uint ABM_NEW = 0, ABM_REMOVE = 1, ABM_QUERYPOS = 2, ABM_SETPOS = 3, ABE_TOP = 1;
+  const int ABN_POSCHANGED = 1, ABN_FULLSCREENAPP = 2;
+  readonly uint callback = RegisterWindowMessage("GabayAppBar");
+  bool registered;
+  int l, t, r, b, h;
+
+  public Band() {
+    FormBorderStyle = FormBorderStyle.None;
+    ShowInTaskbar = false;
+    BackColor = System.Drawing.Color.Black;
+    StartPosition = FormStartPosition.Manual;
+    TopMost = true;
+  }
+  protected override bool ShowWithoutActivation { get { return true; } }
+  protected override CreateParams CreateParams {
+    get { var p = base.CreateParams; p.ExStyle |= 0x80 | 0x08000000; return p; } // WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
+  }
+
+  APPBARDATA Data() { var d = new APPBARDATA(); d.cbSize = Marshal.SizeOf(typeof(APPBARDATA)); d.hWnd = Handle; return d; }
+
+  public void Reserve(int l, int t, int r, int b, int h) {
+    this.l = l; this.t = t; this.r = r; this.b = b; this.h = h;
+    if (!registered) { var d = Data(); d.uCallbackMessage = callback; SHAppBarMessage(ABM_NEW, ref d); registered = true; }
+    Place();
+    if (!Visible) Show();
+  }
+
+  void Place() {
+    var d = Data();
+    d.uEdge = ABE_TOP;
+    d.rc.L = l; d.rc.R = r; d.rc.T = t; d.rc.B = t + h;
+    SHAppBarMessage(ABM_QUERYPOS, ref d); // Windows may move it below another top bar
+    d.rc.B = d.rc.T + h;
+    SHAppBarMessage(ABM_SETPOS, ref d);
+    SetWindowPos(Handle, new IntPtr(-1), d.rc.L, d.rc.T, d.rc.R - d.rc.L, h, 0x0010 | 0x0040); // topmost, no activate, show
+  }
+
+  public void Release() {
+    if (registered) { var d = Data(); SHAppBarMessage(ABM_REMOVE, ref d); registered = false; }
+    Hide();
+  }
+
+  protected override void WndProc(ref Message m) {
+    if (registered && m.Msg == (int)callback) {
+      if ((int)m.WParam == ABN_POSCHANGED) Place();
+      else if ((int)m.WParam == ABN_FULLSCREENAPP) {
+        // Full screen app opened: drop behind it; closed: back on top.
+        SetWindowPos(Handle, m.LParam != IntPtr.Zero ? new IntPtr(1) : new IntPtr(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
+      }
+    }
+    base.WndProc(ref m);
+  }
+
+  protected override void OnFormClosing(FormClosingEventArgs e) { Release(); base.OnFormClosing(e); }
+}
 
 static class Native {
   [StructLayout(LayoutKind.Sequential)] struct RECT { public int L, T, R, B; }
@@ -96,6 +162,25 @@ static class Native {
     return b.Append('"').ToString();
   }
 
+  static Band band;
+  static void StartBand() {
+    var ready = new ManualResetEvent(false);
+    var th = new Thread(() => { band = new Band(); var unused = band.Handle; ready.Set(); Application.Run(); });
+    th.SetApartmentState(ApartmentState.STA);
+    th.IsBackground = true;
+    th.Start();
+    ready.WaitOne();
+  }
+  static string AppBar(string arg) {
+    if (band == null) StartBand();
+    if (arg == "off") { band.Invoke((Action)(() => band.Release())); return "true"; }
+    var n = arg.Split(' ');
+    if (n.Length != 5) return "false";
+    int l = int.Parse(n[0]), t = int.Parse(n[1]), r = int.Parse(n[2]), b = int.Parse(n[3]), h = Math.Max(1, Math.Min(80, int.Parse(n[4])));
+    band.Invoke((Action)(() => band.Reserve(l, t, r, b, h)));
+    return "true";
+  }
+
   static void Main(string[] args) {
     SetProcessDPIAware();
     self = args.Length > 0 ? uint.Parse(args[0]) : 0;
@@ -144,7 +229,9 @@ static class Native {
         Send("r " + id + " " + reply);
       }
     } catch { }
-    Environment.Exit(0); // Gabay closed our stdin: it is gone
+    // Gabay closed our stdin: it is gone. Give the reserved space back before leaving.
+    try { if (band != null) band.Invoke((Action)(() => band.Release())); } catch { }
+    Environment.Exit(0);
   }
 
   static string Run(string cmd, string arg) {
@@ -165,6 +252,7 @@ static class Native {
       case "media": return MediaCommand(arg) ? "true" : "false";
       case "bt": return Bluetooth();
       case "notes": notesOn = arg == "on"; return "true";
+      case "appbar": return AppBar(arg);
     }
     return "null";
   }

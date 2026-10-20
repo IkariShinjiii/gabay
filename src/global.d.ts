@@ -74,6 +74,7 @@ export interface Settings {
   followMouse: boolean
   notifications: boolean
   notePreview: boolean
+  reserveTop: boolean
   visibility: 'always' | 'auto'
 }
 

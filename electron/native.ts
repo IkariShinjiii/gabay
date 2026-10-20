@@ -20,6 +20,7 @@ const FW = (): string | null => {
 }
 
 const WINMD = ['Foundation', 'Media', 'Storage', 'UI', 'Devices', 'ApplicationModel']
+const NET = ['System.Windows.Forms.dll', 'System.Drawing.dll']
 
 async function helperExe(): Promise<string | null> {
   const fw = FW()
@@ -38,6 +39,7 @@ async function helperExe(): Promise<string | null> {
     '/target:exe',
     `/out:${exe}`,
     `/r:${join(fw, 'System.Runtime.dll')}`,
+    ...NET.map((d) => `/r:${join(fw, d)}`),
     ...WINMD.map((m) => `/r:${join(meta, `Windows.${m}.winmd`)}`),
     src
   ]
@@ -110,7 +112,7 @@ export async function startNative(on: NativeEvents): Promise<void> {
 }
 
 /** One request. `arg` must already be validated by the caller: it is passed on as part of a single line. */
-export function nativeCall(cmd: 'windows' | 'focus' | 'close' | 'vol' | 'volget' | 'media' | 'bt' | 'notes', arg = ''): Promise<unknown> {
+export function nativeCall(cmd: 'windows' | 'focus' | 'close' | 'vol' | 'volget' | 'media' | 'bt' | 'notes' | 'appbar', arg = ''): Promise<unknown> {
   const p = child
   if (!p?.stdin || /[\r\n]/.test(arg)) return Promise.resolve(null)
   const id = nextId++

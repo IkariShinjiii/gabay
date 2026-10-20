@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.29.0
+
+- **Experiments > Reserve space at the top** (Settings, off by default): Gabay registers a 24 px black band at the top
+  of the notch's screen as an app bar, like the taskbar, so maximized and snapped windows sit below the notch. It steps
+  behind full-screen apps, follows the notch to another screen, and is given back when turned off or when Gabay quits.
+
 ## 0.28.0
 
 - **Windows tab:** open windows with icons, most recent first; click to switch, x to close, type to filter.

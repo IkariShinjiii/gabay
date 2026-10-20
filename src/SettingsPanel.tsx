@@ -265,6 +265,24 @@ export default function SettingsPanel({ onSettings, onHold }: Props): React.JSX.
 
       <CalendarRow onHold={onHold} />
       <UpdateRow />
+
+      <div className="set-section">Experiments</div>
+      <div className="set-row">
+        <div className="set-label">Reserve space at the top</div>
+        <div className="set-opts">
+          <button
+            className={settings.reserveTop ? 'chip on' : 'chip'}
+            title="Maximized and snapped windows fit below the notch, like they do above the taskbar"
+            onClick={() => void save({ reserveTop: true })}
+          >
+            On
+          </button>
+          <button className={!settings.reserveTop ? 'chip on' : 'chip'} onClick={() => void save({ reserveTop: false })}>
+            Off
+          </button>
+        </div>
+        {settings.reserveTop && <div className="set-note muted">Maximized windows now start below the notch. Full screen still uses the whole screen.</div>}
+      </div>
     </div>
   )
 }

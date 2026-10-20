@@ -14,6 +14,8 @@ export interface Settings {
   notifications: boolean
   /** Include the sender and message text; off shows only the app name. */
   notePreview: boolean
+  /** Reserve a band at the top of the screen so maximized windows sit below the notch. */
+  reserveTop: boolean
   /** 'always': shown, except while something is full screen. 'auto': off-screen until the pointer rests on the top edge. */
   visibility: 'always' | 'auto'
 }
@@ -23,7 +25,7 @@ export const HOTKEYS = ['Control+Alt+G', 'Control+Shift+G', 'Control+Alt+Space',
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, visibility: 'always' }
+const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, reserveTop: false, visibility: 'always' }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -41,7 +43,8 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
   const followMouse = typeof r.followMouse === 'boolean' ? r.followMouse : base.followMouse
   const notifications = typeof r.notifications === 'boolean' ? r.notifications : base.notifications
   const notePreview = typeof r.notePreview === 'boolean' ? r.notePreview : base.notePreview
-  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, visibility }
+  const reserveTop = typeof r.reserveTop === 'boolean' ? r.reserveTop : base.reserveTop
+  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, reserveTop, visibility }
 }
 
 export async function loadSettings(): Promise<Settings> {
