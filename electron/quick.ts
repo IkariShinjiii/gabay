@@ -40,7 +40,7 @@ export type QuickAction =
 /** Pages Windows Settings opens for tiles that only need a shortcut. Fixed list: the renderer sends a key, never a URI. */
 export const SETTINGS_PAGES = {
   energy: 'ms-settings:batterysaver',
-  nightlight: 'ms-settings:nightlight',
+  airplane: 'ms-settings:network-airplanemode',
   accessibility: 'ms-settings:easeofaccess',
   display: 'ms-settings:display',
   colors: 'ms-settings:colors',
@@ -233,11 +233,20 @@ function Snap {
   $o | ConvertTo-Json -Compress
 }
 
+$brightMethods = $null
 [Console]::Out.WriteLine('ready')
 while ($true) {
   $line = [Console]::In.ReadLine()
   if ($null -eq $line) { break }
   try {
+    # Slider drags: set and acknowledge at once, no snapshot, so a drag can stream values.
+    if ($line -match '^svol (\d{1,3})$') { [Gabay]::SetVolume([float]([Math]::Min(100, [int]$Matches[1]) / 100)); [Console]::Out.WriteLine('{"ok":true}'); continue }
+    if ($line -match '^sbright (\d{1,3})$') {
+      if ($null -eq $brightMethods) { $brightMethods = @(Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightnessMethods) }
+      $level = [byte][Math]::Min(100, [int]$Matches[1])
+      foreach ($m in $brightMethods) { $null = Invoke-CimMethod -InputObject $m -MethodName WmiSetBrightness -Arguments @{ Timeout = 1; Brightness = $level } }
+      [Console]::Out.WriteLine('{"ok":true}'); continue
+    }
     if ($line -match '^vol (\d{1,3})$') { [Gabay]::SetVolume([float]([int]$Matches[1] / 100)) }
     elseif ($line -eq 'mute') { [Gabay]::SetMute(-not [Gabay]::GetMute()) }
     elseif ($line -match '^bright (\d{1,3})$') {
@@ -415,8 +424,22 @@ async function snapshotWith(reply: Reply | null): Promise<QuickState> {
   }
 }
 
+// Last full snapshot, so the Controls tab can paint at once while a fresh one loads.
+let last: QuickState | null = null
+const remember = (s: QuickState): QuickState => (last = s)
+
+export const quickPeek = (): QuickState | null => last
+
 export async function quickGet(): Promise<QuickState> {
-  return snapshotWith(await send('get'))
+  return remember(await snapshotWith(await send('get')))
+}
+
+/** Slider drags: sets volume or brightness without the slow full snapshot. */
+export async function quickSlide(kind: unknown, value: unknown): Promise<void> {
+  if ((kind !== 'volume' && kind !== 'brightness') || typeof value !== 'number' || !Number.isFinite(value)) return
+  const v = Math.round(Math.min(100, Math.max(0, value)))
+  await send(`${kind === 'volume' ? 'svol' : 'sbright'} ${v}`)
+  if (last) last = kind === 'volume' ? { ...last, volume: v / 100 } : { ...last, brightness: v }
 }
 
 /** Validates the action, turns it into one fixed command line, and returns the state afterwards. */
@@ -436,7 +459,7 @@ export async function quickSet(action: unknown): Promise<QuickState> {
     else if (a.kind === 'radio' && (a.radio === 'wifi' || a.radio === 'bluetooth') && typeof a.on === 'boolean')
       cmd = `radio ${a.radio} ${a.on ? 'on' : 'off'}`
   }
-  return snapshotWith(await send(cmd ?? 'get'))
+  return remember(await snapshotWith(await send(cmd ?? 'get')))
 }
 
 /** wifi, ethernet or offline, from the network interfaces: no process, no polling. */

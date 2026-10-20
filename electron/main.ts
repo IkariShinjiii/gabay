@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { getStats } from './stats'
 import { startFullscreenWatch, stopFullscreenWatch } from './fullscreen'
 import { currentProjectMode, isProjectMode, setProjectMode } from './project'
-import { isSettingsKey, networkKind, quickGet, quickSet, SETTINGS_PAGES, stopQuick } from './quick'
+import { isSettingsKey, networkKind, quickGet, quickPeek, quickSet, quickSlide, SETTINGS_PAGES, stopQuick } from './quick'
 import { COLLAPSE_MAX, COLLAPSE_MIN, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
 import { ensureIndex, getIcon, launch, search, toggleStar } from './launcher'
 import { isPowerAction, runPower } from './power'
@@ -40,6 +40,11 @@ const WIN_HEIGHT = 580
 /** The chosen display, or the primary one if it is unset or no longer attached. */
 function pickDisplay(id: number | null): Electron.Display {
   return screen.getAllDisplays().find((d) => d.id === id) ?? screen.getPrimaryDisplay()
+}
+
+/** The display the notch belongs on: under the pointer when following the mouse, else the chosen one. */
+function targetDisplay(s: { displayId: number | null; followMouse: boolean }): Electron.Display {
+  return s.followMouse ? screen.getDisplayNearestPoint(screen.getCursorScreenPoint()) : pickDisplay(s.displayId)
 }
 
 /** Top-center of a display. `bounds` (not `workArea`) so y = 0 is the true top edge, wherever the taskbar sits. */
@@ -112,7 +117,7 @@ let tray: Tray | null = null // module-level so it isn't garbage-collected (the 
 app.whenReady().then(async () => {
   if (!gotLock) return
   let settings = await loadSettings()
-  const win = createOverlay(pickDisplay(settings.displayId))
+  const win = createOverlay(targetDisplay(settings))
 
   // Renderer reports whether the pointer is over the notch.
   // true  -> window captures the mouse (interactive)
@@ -187,13 +192,15 @@ app.whenReady().then(async () => {
   // Full screen on the notch's display (video, game, F11): the renderer tucks the notch away until it's revealed.
   if (!PREVIEW) {
     void startFullscreenWatch(
-      () => pickDisplay(settings.displayId).bounds,
+      () => targetDisplay(settings).bounds,
       (fs) => {
         if (!win.isDestroyed()) win.webContents.send('overlay:fullscreen', fs)
       }
     )
   }
   void ensureIndex() // warm the Start Menu index so the first search is instant
+  // One snapshot shortly after start, so the first Controls tab opens with real values instead of a spinner.
+  if (!PREVIEW) setTimeout(() => void quickGet().catch(() => null), 3000)
 
   // Global hotkey summons the panel with the search field focused. Never a Win-key combo (Windows reserves
   // those). Ctrl+Alt+Space is already taken by the Claude desktop app on this machine, so the saved choice is
@@ -215,11 +222,27 @@ app.whenReady().then(async () => {
 
   // Put the window back at top-center of the chosen display. Setting bounds twice is deliberate: moving to a
   // display with a different scale factor can rescale the window on the first call, and the second pins it.
+  let placedOn = targetDisplay(settings).id
   const placeNotch = (): void => {
-    const b = notchBounds(pickDisplay(settings.displayId))
+    const d = targetDisplay(settings)
+    placedOn = d.id
+    const b = notchBounds(d)
     win.setBounds(b)
     win.setBounds(b)
   }
+  // Follow mouse: a cheap pointer check, only with more than one display. The panel stays put while it is open
+  // (the pointer is on it anyway) and the notch moves once the pointer settles on another screen.
+  let followTimer: NodeJS.Timeout | undefined
+  const syncFollow = (): void => {
+    clearInterval(followTimer)
+    followTimer = undefined
+    if (PREVIEW || !settings.followMouse) return
+    followTimer = setInterval(() => {
+      if (win.isDestroyed() || screen.getAllDisplays().length < 2) return
+      if (screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id !== placedOn) placeNotch()
+    }, 500)
+  }
+  syncFollow()
   screen.on('display-added', placeNotch)
   screen.on('display-removed', placeNotch)
   screen.on('display-metrics-changed', placeNotch)
@@ -232,9 +255,14 @@ app.whenReady().then(async () => {
       activeHotkey,
       hotkeys: HOTKEYS,
       collapseRange: { min: COLLAPSE_MIN, max: COLLAPSE_MAX },
-      displays: screen.getAllDisplays().map((d, i) => ({
+      displays: screen.getAllDisplays().map((d, i, all) => ({
         id: d.id,
-        label: `Display ${i + 1} (${d.bounds.width}x${d.bounds.height})${d.id === primary ? ', primary' : ''}`
+        label: d.internal
+          ? 'Laptop screen'
+          : all.filter((o) => !o.internal).length > 1
+            ? `External ${i + 1}`
+            : 'External screen',
+        detail: `${d.size.width}x${d.size.height}${d.id === primary ? ', main' : ''}`
       }))
     }
   }
@@ -245,12 +273,14 @@ app.whenReady().then(async () => {
   ipcMain.handle('settings:set', async (e, patch: unknown) => {
     fromUi(e)
     const prevDisplay = settings.displayId
+    const prevFollow = settings.followMouse
     const next: Settings = sanitize(patch, settings)
     // Also retry when the same hotkey is picked again: the other app that held it may have exited since.
     const pickedHotkey = typeof patch === 'object' && patch !== null && 'hotkey' in patch
     if (next.hotkey !== settings.hotkey || (pickedHotkey && next.hotkey !== activeHotkey)) applyHotkey(next.hotkey)
     settings = next
-    if (next.displayId !== prevDisplay) placeNotch()
+    if (next.displayId !== prevDisplay || next.followMouse !== prevFollow) placeNotch()
+    if (next.followMouse !== prevFollow) syncFollow()
     await saveSettings(settings)
     return snapshot()
   })
@@ -292,6 +322,14 @@ app.whenReady().then(async () => {
   ipcMain.handle('quick:get', (e) => {
     fromUi(e)
     return quickGet()
+  })
+  ipcMain.handle('quick:peek', (e) => {
+    fromUi(e)
+    return quickPeek()
+  })
+  ipcMain.handle('quick:slide', (e, kind: unknown, value: unknown) => {
+    fromUi(e)
+    return quickSlide(kind, value)
   })
   ipcMain.handle('quick:set', (e, action: unknown) => {
     fromUi(e)
