@@ -41,6 +41,7 @@ export type QuickAction =
 export const SETTINGS_PAGES = {
   energy: 'ms-settings:batterysaver',
   airplane: 'ms-settings:network-airplanemode',
+  wifi: 'ms-settings:network-wifi',
   accessibility: 'ms-settings:easeofaccess',
   display: 'ms-settings:display',
   colors: 'ms-settings:colors',

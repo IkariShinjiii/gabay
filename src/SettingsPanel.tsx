@@ -1,17 +1,122 @@
 import { useEffect, useRef, useState } from 'react'
-import type { SettingsSnapshot } from './global'
+import type { SettingsSnapshot, UpdateInfo } from './global'
 import { COLLAPSE_STEP_MS } from './constants'
 
 interface Props {
   /** Tells the notch the new settings immediately, without a reload. */
   onSettings: (s: SettingsSnapshot['settings']) => void
+  /** A focused text field keeps the panel open. */
+  onHold: (held: boolean) => void
+}
+
+/** Private iCal address: typed here, sent once to main (which encrypts it), never shown back. */
+function CalendarRow({ onHold }: { onHold: (held: boolean) => void }): React.JSX.Element {
+  const [connected, setConnected] = useState<boolean | null>(null)
+  const [draft, setDraft] = useState('')
+  const [state, setState] = useState<'idle' | 'saving' | 'bad'>('idle')
+  useEffect(() => {
+    void window.overlay.calendarGet(false).then((a) => setConnected(a.connected), () => setConnected(false))
+  }, [])
+  useEffect(() => () => onHold(false), [onHold])
+  const save = async (url: string): Promise<void> => {
+    setState('saving')
+    const ok = await window.overlay.calendarSet(url).catch(() => false)
+    if (!ok) return setState('bad')
+    setState('idle')
+    setDraft('')
+    setConnected(url !== '')
+    if (url) void window.overlay.calendarGet(true)
+  }
+  return (
+    <div className="set-row">
+      <div className="set-label">
+        Calendar {connected && <span className="set-val">connected</span>}
+      </div>
+      {connected ? (
+        <div className="set-opts">
+          <button className="chip" onClick={() => void save('')}>
+            Disconnect
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="set-inline">
+            <input
+              className="field"
+              type="password"
+              placeholder="Paste your calendar's secret iCal address"
+              spellCheck={false}
+              autoComplete="off"
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value)
+                setState('idle')
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && draft.trim()) void save(draft)
+                else if (e.key === 'Escape') e.currentTarget.blur()
+              }}
+              onFocus={() => onHold(true)}
+              onBlur={() => onHold(false)}
+            />
+            <button className="chip on" disabled={!draft.trim() || state === 'saving'} onClick={() => void save(draft)}>
+              {state === 'saving' ? 'Saving…' : 'Connect'}
+            </button>
+          </div>
+          <div className="set-note muted">
+            {state === 'bad'
+              ? 'That address did not work. It should start with https:// or webcal://.'
+              : "Google Calendar: Settings › your calendar › Integrate calendar › Secret address in iCal format. It's stored encrypted on this PC."}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function UpdateRow(): React.JSX.Element {
+  const [info, setInfo] = useState<{ current: string; available: UpdateInfo | null; packaged: boolean } | null>(null)
+  const [state, setState] = useState<'idle' | 'checking' | 'installing' | 'failed'>('idle')
+  useEffect(() => {
+    void window.overlay.updateGet(false).then(setInfo, () => undefined)
+  }, [])
+  const check = async (): Promise<void> => {
+    setState('checking')
+    setInfo(await window.overlay.updateGet(true).catch(() => info))
+    setState('idle')
+  }
+  const install = async (): Promise<void> => {
+    setState('installing')
+    if (!(await window.overlay.updateInstall().catch(() => false))) setState('failed')
+  }
+  if (!info) return <div className="set-row" />
+  return (
+    <div className="set-row">
+      <div className="set-label">
+        Version <span className="set-val">{info.current}</span>
+      </div>
+      <div className="set-opts">
+        {info.available ? (
+          <button className="chip on" disabled={state === 'installing'} onClick={() => void install()}>
+            {state === 'installing' ? 'Downloading…' : `Install ${info.available.version}`}
+          </button>
+        ) : (
+          <button className="chip" disabled={!info.packaged || state === 'checking'} onClick={() => void check()}>
+            {state === 'checking' ? 'Checking…' : 'Check for updates'}
+          </button>
+        )}
+      </div>
+      {state === 'failed' && <div className="set-note">The update couldn't be downloaded or didn't check out. Try again later.</div>}
+      {!info.packaged && <div className="set-note muted">Updates work in the installed app.</div>}
+    </div>
+  )
 }
 
 /**
  * Buttons and a slider rather than <select>: a native dropdown opens its own popup window, which would take
  * the pointer off the notch and collapse the panel under the user.
  */
-export default function SettingsPanel({ onSettings }: Props): React.JSX.Element {
+export default function SettingsPanel({ onSettings, onHold }: Props): React.JSX.Element {
   const [snap, setSnap] = useState<SettingsSnapshot | null>(null)
   const [delay, setDelay] = useState<number | null>(null)
   const saveTimer = useRef<number | undefined>(undefined)
@@ -135,6 +240,31 @@ export default function SettingsPanel({ onSettings }: Props): React.JSX.Element 
           ))}
         </div>
       </div>
+      <div className="set-row">
+        <div className="set-label">Notifications in the notch</div>
+        <div className="set-opts">
+          <button className={settings.notifications ? 'chip on' : 'chip'} onClick={() => void save({ notifications: true })}>
+            On
+          </button>
+          <button className={!settings.notifications ? 'chip on' : 'chip'} onClick={() => void save({ notifications: false })}>
+            Off
+          </button>
+          {settings.notifications && (
+            <>
+              <span className="set-sep" />
+              <button className={settings.notePreview ? 'chip on' : 'chip'} title="Sender and message" onClick={() => void save({ notePreview: true })}>
+                Show text
+              </button>
+              <button className={!settings.notePreview ? 'chip on' : 'chip'} title="Only which app it came from" onClick={() => void save({ notePreview: false })}>
+                App name only
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <CalendarRow onHold={onHold} />
+      <UpdateRow />
     </div>
   )
 }

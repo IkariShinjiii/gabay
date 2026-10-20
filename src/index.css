@@ -98,7 +98,8 @@ body,
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 2px;
+  gap: 0;
+  position: relative;
 }
 
 .tab {
@@ -107,7 +108,7 @@ body,
   background: none;
   font: inherit;
   cursor: pointer;
-  padding: 6px 11px;
+  padding: 6px 9px;
   border-radius: 8px;
   color: var(--muted);
 }
@@ -124,8 +125,8 @@ body,
 /* Active marker: a short bar under the label, the same accent as the focus ring */
 .tab-marker {
   position: absolute;
-  left: 11px;
-  right: 11px;
+  left: 9px;
+  right: 9px;
   bottom: 1px;
   height: 2px;
   border-radius: 1px;
@@ -171,38 +172,6 @@ body,
   align-items: center;
   justify-content: center;
   color: var(--muted);
-}
-
-.stats {
-  padding: 6px 0 4px; /* gauges line up with the tabs row and the bar below */
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.gauge-head {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 6px;
-  color: var(--text-2);
-}
-
-.gauge-detail {
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.gauge-track {
-  height: 10px;
-  border-radius: 5px;
-  background: var(--surface-hover);
-  overflow: hidden;
-}
-
-.gauge-fill {
-  height: 100%;
-  border-radius: 5px;
-  background: var(--accent);
 }
 
 .results {
@@ -420,7 +389,7 @@ body,
 .today {
   display: flex;
   gap: 14px;
-  padding: 14px;
+  padding: 8px 0 0;
 }
 
 .today-left {
@@ -1334,4 +1303,619 @@ button.big-icon {
 .more-tile:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+/* ---------- live activity in the pill: art on the left, a level meter on the right ---------- */
+.st-art {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 5px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.st-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.st-eq {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.5px;
+  height: 12px;
+  margin-left: 6px;
+}
+
+.st-eq i {
+  width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--accent);
+  transform-origin: center;
+  /* Stepped and in sync: about 7 redraws a second instead of every frame (drawing is in software). */
+  animation: eq 900ms steps(6) infinite;
+}
+
+.st-eq i:nth-child(2) { animation-delay: -300ms; }
+.st-eq i:nth-child(3) { animation-delay: -600ms; }
+.st-eq i:nth-child(4) { animation-delay: -150ms; }
+
+@keyframes eq {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .st-eq i { animation: none; transform: scaleY(0.6); }
+}
+
+/* ---------- toast: the collapsed notch grown for a moment ---------- */
+.toast {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 22px 12px 18px;
+  pointer-events: none;
+}
+
+.toast-lead {
+  position: relative;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toast-lead img {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.toast-well {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--well);
+  color: var(--text);
+}
+
+.toast-accent .toast-well { background: var(--accent-tint); color: var(--accent-text); }
+.toast-warn .toast-well { background: #3a1410; color: #ff7a66; }
+
+.toast-ring { position: absolute; inset: 0; }
+.toast-ring circle { fill: none; stroke-width: 3; }
+.toast-ring-bg { stroke: rgba(255, 255, 255, 0.08); }
+.toast-ring-fg { stroke: var(--accent); stroke-linecap: round; }
+.toast-warn .toast-ring-fg { stroke: #ff7a66; }
+
+.toast-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toast-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toast-accent .toast-label { color: var(--accent-text); }
+
+.toast-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toast-sub {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- volume pop-up over the tab bar ---------- */
+.vol-hud {
+  position: absolute;
+  inset: 3px 120px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border-radius: 13px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line), 0 6px 18px rgba(0, 0, 0, 0.5);
+  color: var(--text);
+  pointer-events: none;
+}
+
+.vol-hud-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--well);
+  overflow: hidden;
+}
+
+.vol-hud-bar span {
+  display: block;
+  height: 100%;
+  background: #f2f2f2;
+  transform-origin: left center;
+  transition: transform 120ms var(--ease-out);
+}
+
+.vol-hud-val {
+  width: 26px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Windows tab ---------- */
+.wins {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.win {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  transition: background-color 140ms var(--ease-out);
+}
+
+.win.sel {
+  background: var(--surface-hover);
+}
+
+.win-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 30px 9px 10px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.win-main:focus-visible {
+  outline: 2px solid var(--accent);
+  border-radius: 12px;
+}
+
+.win-icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.win-icon-none {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--well);
+  color: var(--muted);
+}
+
+.win-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.win-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.win-app {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.win-close {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  margin-top: -11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--well);
+  color: var(--text-2);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 140ms var(--ease-out), background-color 140ms var(--ease-out);
+}
+
+.win:hover .win-close,
+.win-close:focus-visible {
+  opacity: 1;
+}
+
+.win-close:hover {
+  background: #5a1d17;
+  color: #ffd2cb;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* ---------- Wi-Fi and Bluetooth lists (Controls sub-views) ---------- */
+.sub-refresh {
+  margin-left: auto;
+}
+
+.sub-refresh.spin .icon {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.sub-empty {
+  padding: 28px 8px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.net-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.net-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 140ms var(--ease-out);
+}
+
+.net-row:hover {
+  background: var(--surface-hover);
+}
+
+.net-row.on {
+  background: var(--accent-tint);
+}
+
+.net-row:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+.net-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.net-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.net-row.on .net-state {
+  color: var(--accent-text);
+}
+
+.sig {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: 16px;
+  height: 12px;
+}
+
+.sig i {
+  flex: 1;
+  border-radius: 1px;
+  background: var(--well);
+}
+
+.sig i.on {
+  background: var(--text);
+}
+
+.net-row.on .sig i.on {
+  background: var(--accent);
+}
+
+.ct-well.small {
+  width: 24px;
+  height: 24px;
+}
+
+.sub-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* ---------- Today: up next from the calendar ---------- */
+.agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.agenda-hint {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.ev {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: inset 3px 0 0 var(--well);
+}
+
+.ev.live {
+  background: var(--accent-tint);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.ev-when {
+  flex: none;
+  min-width: 58px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.ev.live .ev-when {
+  color: var(--accent-text);
+}
+
+.ev-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ev-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ev-loc {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Thin dark scrollbars wherever a list scrolls. */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-button {
+  display: none;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: var(--well);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--line);
+}
+
+/* ---------- Settings: longer now, so it scrolls inside the capped notch ---------- */
+.settings {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.set-inline {
+  display: flex;
+  gap: 8px;
+}
+
+.set-inline .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.set-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 3px 4px;
+  background: var(--line);
+}
+
+/* ---------- polish: empty states ---------- */
+.empty {
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
+}
+
+.empty-well {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.empty-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.empty-hint {
+  max-width: 300px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* ---------- polish: System rings ---------- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.gauge {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 14px 8px 12px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.gauge svg circle {
+  fill: none;
+  stroke-width: 7;
+}
+
+.gauge-bg {
+  stroke: var(--well);
+}
+
+.gauge-fg {
+  stroke: var(--accent);
+  stroke-linecap: round;
+}
+
+.gauge.hot .gauge-fg {
+  stroke: #ff9a5c;
+}
+
+.gauge-pct {
+  position: absolute;
+  top: 14px;
+  width: 76px;
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.gauge-label {
+  margin-top: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.gauge .gauge-detail {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ---------- polish: Today's timer sits in a card ---------- */
+.today .timer {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.today .timer .btn,
+.today .timer .chip {
+  background: var(--well);
 }

@@ -5,21 +5,31 @@ import { STATS_POLL_MS } from './constants'
 
 const GB = 1024 ** 3
 
+const R = 30
+const C = 2 * Math.PI * R
+
+/** A ring that fills with the value; it turns warm past 85%, where it starts to matter. */
 function Gauge({ label, percent, detail }: { label: string; percent: number; detail: string }): React.JSX.Element {
+  const p = Math.max(0, Math.min(100, percent))
   return (
-    <div className="gauge">
-      <div className="gauge-head">
-        <span>{label}</span>
-        <span className="gauge-detail">{detail}</span>
-      </div>
-      <div className="gauge-track">
-        <motion.div
-          className="gauge-fill"
+    <div className={p > 85 ? 'gauge hot' : 'gauge'}>
+      <svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true">
+        <circle cx="38" cy="38" r={R} className="gauge-bg" />
+        <motion.circle
+          cx="38"
+          cy="38"
+          r={R}
+          className="gauge-fg"
+          strokeDasharray={C}
           initial={false}
-          animate={{ width: `${percent}%` }}
-          transition={{ type: 'spring', stiffness: 220, damping: 30 }}
+          animate={{ strokeDashoffset: C * (1 - p / 100) }}
+          transition={{ type: 'spring', stiffness: 160, damping: 28 }}
+          transform="rotate(-90 38 38)"
         />
-      </div>
+      </svg>
+      <span className="gauge-pct">{Math.round(p)}%</span>
+      <span className="gauge-label">{label}</span>
+      <span className="gauge-detail">{detail}</span>
     </div>
   )
 }
@@ -49,22 +59,22 @@ export default function StatsPanel(): React.JSX.Element {
     }
   }, [])
 
-  if (!stats) return <div className="body body-center">Measuring…</div>
+  if (!stats) return <div className="body body-center muted">Measuring…</div>
 
   const ramPercent = (stats.ramUsedBytes / stats.ramTotalBytes) * 100
   return (
     <div className="body stats">
-      <Gauge label="CPU" percent={stats.cpuPercent} detail={`${stats.cpuPercent.toFixed(0)}%`} />
+      <Gauge label="CPU" percent={stats.cpuPercent} detail="Processor" />
       <Gauge
-        label="RAM"
+        label="Memory"
         percent={ramPercent}
-        detail={`${(stats.ramUsedBytes / GB).toFixed(1)} / ${(stats.ramTotalBytes / GB).toFixed(1)} GB`}
+        detail={`${(stats.ramUsedBytes / GB).toFixed(1)} of ${(stats.ramTotalBytes / GB).toFixed(0)} GB`}
       />
       {stats.diskTotalBytes > 0 && (
         <Gauge
           label="Disk"
           percent={(stats.diskUsedBytes / stats.diskTotalBytes) * 100}
-          detail={`${(stats.diskUsedBytes / GB).toFixed(0)} / ${(stats.diskTotalBytes / GB).toFixed(0)} GB`}
+          detail={`${((stats.diskTotalBytes - stats.diskUsedBytes) / GB).toFixed(0)} GB free`}
         />
       )}
     </div>

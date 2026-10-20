@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import Icon from './Icon'
-import type { Todo } from './global'
+import type { CalEvent, Todo } from './global'
 import { formatMs, type FocusTimer } from './useFocusTimer'
 
 interface Props {
@@ -12,6 +12,53 @@ interface Props {
 }
 
 const PRESETS = [15, 25, 50]
+
+const time = (t: number): string => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+
+/** "Now", "9:30 AM", or "Tomorrow" for events after today. */
+function when(ev: CalEvent, now: number): string {
+  const startOfTomorrow = new Date(new Date(now).setHours(24, 0, 0, 0)).getTime()
+  if (ev.start >= startOfTomorrow) return ev.allDay ? 'Tomorrow' : `Tmrw ${time(ev.start)}`
+  if (ev.allDay) return 'All day'
+  if (ev.start <= now && ev.end > now) return 'Now'
+  return time(ev.start)
+}
+
+/** Up next from the connected calendar: what's on now and the next few events of today and tomorrow. */
+function Agenda({ now }: { now: number }): React.JSX.Element | null {
+  const [agenda, setAgenda] = useState<{ connected: boolean; events: CalEvent[]; error: boolean } | null>(null)
+  useEffect(() => {
+    void window.overlay.calendarGet(false).then(setAgenda, () => undefined)
+  }, [])
+  if (!agenda) return null
+  if (!agenda.connected) return <div className="agenda-hint">Add your calendar in Settings to see what's next.</div>
+  const next = agenda.events.filter((e) => e.end > now).slice(0, 3)
+  return (
+    <div className="agenda">
+      {next.length === 0 ? (
+        <div className="agenda-hint">{agenda.error ? "Couldn't reach your calendar." : 'Nothing else on your calendar today.'}</div>
+      ) : (
+        next.map((e) => {
+          const live = !e.allDay && e.start <= now && e.end > now
+          return (
+            <div key={`${e.title}|${e.start}`} className={live ? 'ev live' : 'ev'}>
+              <span className="ev-when">{when(e, now)}</span>
+              <span className="ev-text">
+                <span className="ev-title">{e.title}</span>
+                {e.location && (
+                  <span className="ev-loc">
+                    <Icon name="map-pin" size={10} />
+                    {e.location}
+                  </span>
+                )}
+              </span>
+            </div>
+          )
+        })
+      )}
+    </div>
+  )
+}
 
 /** Mounted only while the Today tab is visible, so its 1 s clock stops when the panel closes. */
 export default function TodayPanel({ timer, todoVersion, onHold }: Props): React.JSX.Element {
@@ -67,6 +114,7 @@ export default function TodayPanel({ timer, todoVersion, onHold }: Props): React
       </div>
 
       <div className="today-right">
+        <Agenda now={now.getTime()} />
         <input
           className="field todo-field"
           placeholder="Add a to-do…"

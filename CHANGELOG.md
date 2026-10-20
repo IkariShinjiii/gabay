@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.28.0
+
+- **Windows tab:** open windows with icons, most recent first; click to switch, x to close, type to filter.
+- **Live activity:** album art and a level meter in the collapsed notch while media plays.
+- **Toasts in the notch:** Windows notifications (can be off or app-name-only), new track, charging ring, fully charged,
+  low battery, calendar heads-up, update available. None during full screen.
+- **Gestures:** scroll the tab bar for volume (with a volume pop-up), middle-click to play/pause.
+- **Wi-Fi and Bluetooth lists** in Controls: connect to saved networks in place; paired devices and their status.
+- **Calendar** from a private iCal address (stored encrypted): up next on Today, heads-up 10 minutes before.
+- **Updates** from GitHub releases, verified against the release's SHA-512, installed only when you press Install.
+- **Polish:** System shows ring gauges, empty states have icons and hints, Today's timer sits in a card, thin dark scrollbars.
+- **Performance:** one native helper replaces the full-screen watcher; spellcheck, occlusion tracking and the spare
+  renderer are off; the level meter redraws about 7 times a second and stops when hidden. See docs/PERFORMANCE.md.
+
 ## 0.27.1
 
 - App and tray icons recolored to black and mint, matching the app and installer.

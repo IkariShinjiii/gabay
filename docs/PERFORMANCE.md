@@ -55,3 +55,25 @@ rises once on first use (renderer and GPU allocate for the expanded layout) and 
   on the GPU, but re-run kill-test items 2 and 3 once to be sure.
 - Dev builds use more (about 217 MB private at Milestone 3); only production numbers are judged against the budget.
 - One machine, one run per figure. Treat differences under ~10 MB as noise.
+
+## Native helper and live features (0.28.0)
+
+Same method, preview build, collapsed and idle 20 s after start, measured on 2026-10-20.
+
+| | Private memory | CPU (10 s idle) |
+| --- | --- | --- |
+| Electron (4 processes) | about 130 MB | 0.01% |
+| `gabay-native` helper (full screen, media, notifications) | 25 MB | under 0.01% |
+| Total | 155 MB (159 MB before the trims below) | 0.01%; 0.1% with the music meter |
+
+The helper replaced the 9 MB full-screen watcher. It costs about 16 MB more because it loads the Windows Runtime for
+media and notifications. The total is now just over the old 150 MB budget. The hidden PowerShell helper (about 60 MB)
+still runs only while the Controls tab is open, plus once for 30 s after start to warm the Controls snapshot.
+
+Trims in this release:
+- `spellcheck: false` on the overlay (no dictionaries loaded).
+- `disable-features=CalculateNativeWinOcclusion,SpareRendererForSitePerProcess`: no occlusion polling of every desktop
+  window, no idle spare renderer.
+- The music level meter is stepped and synced (about 7 redraws a second, not every frame) and stops while the notch is
+  hidden or a toast is showing. Drawing is in software, so continuous animation would cost CPU.
+- Toasts don't run during full screen.

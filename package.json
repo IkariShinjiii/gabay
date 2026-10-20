@@ -1,6 +1,6 @@
 {
   "name": "gabay",
-  "version": "0.27.1",
+  "version": "0.28.0",
   "description": "Gabay - personal Windows top-edge shell",
   "private": true,
   "main": "./out/main/index.js",
@@ -8,7 +8,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
-    "dist": "electron-vite build && electron-builder --win",
+    "dist": "electron-vite build && electron-builder --win --publish never",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {

@@ -1,5 +1,6 @@
 import Icon from './Icon'
 import type { IconName } from './icons'
+import type { LiveMedia } from './global'
 import type { BatteryInfo } from './useBattery'
 import { formatMs, type FocusTimer } from './useFocusTimer'
 
@@ -23,19 +24,27 @@ interface Props {
   timer: FocusTimer
   battery: BatteryInfo | null
   net: NetKind
+  /** Playing media: shown as a live activity (art on the left, a moving level meter on the right). */
+  media: LiveMedia | null
 }
 
 /**
  * The collapsed pill, laid out like a phone status bar around a notch: network on the left, the clock (or the
  * focus-timer ring) in the middle, battery on the right.
  */
-export default function NotchStatus({ clock, timer, battery, net }: Props): React.JSX.Element {
+export default function NotchStatus({ clock, timer, battery, net, media }: Props): React.JSX.Element {
+  const live = media?.playing ? media : null
   const left = timer.totalMs > 0 ? timer.remainingMs / timer.totalMs : 0
   const low = battery !== null && !battery.charging && battery.level <= 0.2
 
   return (
     <div className="status-row">
       <span className={net === 'offline' ? 'st-side st-left st-warn' : 'st-side st-left'} title={NET_LABEL[net]}>
+        {live && (
+          <span className="st-art" title={`${live.title} · ${live.artist}`}>
+            {live.art ? <img src={live.art} alt="" draggable={false} /> : <Icon name="music" size={10} />}
+          </span>
+        )}
         <Icon name={NET_ICON[net]} size={12} />
       </span>
 
@@ -65,6 +74,14 @@ export default function NotchStatus({ clock, timer, battery, net }: Props): Reac
             <Icon name={batteryIcon(battery)} size={13} />
             <span className="st-pct">{Math.round(battery.level * 100)}</span>
           </>
+        )}
+        {live && (
+          <span className="st-eq" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
         )}
       </span>
     </div>
