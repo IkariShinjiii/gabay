@@ -109,14 +109,26 @@ export default function SettingsPanel({ onSettings }: Props): React.JSX.Element 
       <div className="set-row">
         <div className="set-label">Show on</div>
         <div className="set-opts">
-          <button className={shownDisplay === null ? 'chip on' : 'chip'} onClick={() => void save({ displayId: null })}>
-            Primary
+          <button
+            className={settings.followMouse ? 'chip on' : 'chip'}
+            title="Moves to whichever screen the mouse is on"
+            onClick={() => void save({ followMouse: true })}
+          >
+            Follow mouse
+          </button>
+          <button
+            className={!settings.followMouse && shownDisplay === null ? 'chip on' : 'chip'}
+            title="Windows' main display"
+            onClick={() => void save({ displayId: null, followMouse: false })}
+          >
+            Main display
           </button>
           {displays.map((d) => (
             <button
               key={d.id}
-              className={shownDisplay === d.id ? 'chip on' : 'chip'}
-              onClick={() => void save({ displayId: d.id })}
+              className={!settings.followMouse && shownDisplay === d.id ? 'chip on' : 'chip'}
+              title={d.detail}
+              onClick={() => void save({ displayId: d.id, followMouse: false })}
             >
               {d.label}
             </button>

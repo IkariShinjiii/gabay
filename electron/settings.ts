@@ -8,6 +8,8 @@ export interface Settings {
   collapseMs: number
   /** Electron display id, or null for the primary display. */
   displayId: number | null
+  /** Move the notch to whichever display the pointer is on (displayId is then ignored). */
+  followMouse: boolean
   /** 'always': shown, except while something is full screen. 'auto': off-screen until the pointer rests on the top edge. */
   visibility: 'always' | 'auto'
 }
@@ -17,7 +19,7 @@ export const HOTKEYS = ['Control+Alt+G', 'Control+Shift+G', 'Control+Alt+Space',
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, visibility: 'always' }
+const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, visibility: 'always' }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -32,7 +34,8 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
   const displayId =
     r.displayId === null ? null : typeof r.displayId === 'number' && Number.isInteger(r.displayId) ? r.displayId : base.displayId
   const visibility = r.visibility === 'always' || r.visibility === 'auto' ? r.visibility : base.visibility
-  return { hotkey, collapseMs, displayId, visibility }
+  const followMouse = typeof r.followMouse === 'boolean' ? r.followMouse : base.followMouse
+  return { hotkey, collapseMs, displayId, followMouse, visibility }
 }
 
 export async function loadSettings(): Promise<Settings> {

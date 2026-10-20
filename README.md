@@ -91,11 +91,11 @@ The taskbar's system-tray features, built into the notch.
 - **Controls tab** (Ctrl+1):
   - Split tiles: the main part acts, the chevron opens the matching Windows Settings page. Wi-Fi and Bluetooth switch the
     radios; Audio mutes and shows the output device; Dark mode switches Windows' app and system theme (applied live);
-    Night light opens its settings (Windows gives apps no supported switch for it).
-  - iOS-style volume and brightness bars (brightness on built-in displays only); click the speaker icon to mute.
+    Airplane mode uses Windows' own switch.
+  - iOS-style volume and brightness bars (brightness on built-in displays only): drag anywhere, tap to jump; click the speaker icon to mute.
   - Now playing, from Windows' media session (browsers, Spotify and other players that show in the volume flyout): artwork,
     title, artist, previous, play/pause, next and progress.
-  - Second page (dots in the footer): Airplane mode (Windows' own switch), Project (the Win+P chooser: PC screen only,
+  - Second page (dots in the footer): Project (the Win+P chooser: PC screen only,
     Duplicate, Extend, Second screen only, through Windows' DisplaySwitch), and shortcuts to Energy saver, Accessibility,
     Live captions, Mobile hotspot, Nearby sharing, Cast and Notifications settings.
   - Footer: battery, keyboard layout of the focused window, Windows Settings.

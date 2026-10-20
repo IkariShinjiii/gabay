@@ -16,7 +16,6 @@ type MoreTile =
   | { kind: 'view'; label: string; icon: IconName }
   | { kind: 'link'; label: string; icon: IconName; settings: SettingsKey }
 const MORE: MoreTile[] = [
-  { kind: 'airplane', label: 'Airplane mode', icon: 'plane' },
   { kind: 'link', label: 'Energy saver', icon: 'leaf', settings: 'energy' },
   { kind: 'view', label: 'Project', icon: 'presentation' },
   { kind: 'link', label: 'Accessibility', icon: 'accessibility', settings: 'accessibility' },
@@ -68,28 +67,125 @@ function SplitTile(props: {
   )
 }
 
-/** Thick slider: the whole bar is the control, the icon and value sit inside it. */
+const clamp = (v: number): number => Math.max(0, Math.min(100, v))
+
+/**
+ * iOS-style slider: the whole bar is the control. Dragging moves the value relative to where the pointer went down (it
+ * doesn't jump), follows the pointer every frame with no easing, and stretches a little past either end like
+ * Control Center. A tap without a drag jumps to that spot. Values stream to the parent while dragging.
+ */
 function BigSlider(props: {
   icon: IconName
   label: string
   value: number
-  shown: string
-  onChange: (v: number) => void
+  format: (v: number) => string
+  onSlide: (v: number, done: boolean) => void
   onIcon?: () => void
   iconLabel?: string
 }): React.JSX.Element {
-  const pct = Math.max(0, Math.min(100, props.value))
+  const ref = useRef<HTMLDivElement>(null)
+  const drag = useRef<{ x: number; start: number; w: number; moved: boolean } | null>(null)
+  const [local, setLocal] = useState<number | null>(null) // wins over props while dragging and until the system catches up
+  const [held, setHeld] = useState(false)
+  const [stretch, setStretch] = useState(0) // -1..1: how far past an end the drag went
+  const hold = useRef<number | undefined>(undefined)
+
+  // Let go of the local value once the polled value agrees, or after a grace period (see finish).
+  useEffect(() => {
+    if (local !== null && !held && Math.abs(props.value - local) <= 1) setLocal(null)
+  }, [props.value, local, held])
+  useEffect(() => () => window.clearTimeout(hold.current), [])
+
+  const v = local ?? props.value
+  const pct = clamp(v)
+
+  const finish = (value: number): void => {
+    props.onSlide(value, true)
+    window.clearTimeout(hold.current)
+    hold.current = window.setTimeout(() => setLocal(null), 2000)
+  }
+
+  const onDown = (e: React.PointerEvent<HTMLDivElement>): void => {
+    if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return
+    const el = ref.current
+    if (!el) return
+    el.setPointerCapture(e.pointerId)
+    drag.current = { x: e.clientX, start: pct, w: el.getBoundingClientRect().width, moved: false }
+    window.clearTimeout(hold.current)
+    setHeld(true)
+  }
+  const onMove = (e: React.PointerEvent<HTMLDivElement>): void => {
+    const d = drag.current
+    if (!d) return
+    const dx = e.clientX - d.x
+    if (!d.moved && Math.abs(dx) < 3) return
+    d.moved = true
+    const raw = d.start + (dx / d.w) * 100
+    const next = clamp(raw)
+    const over = raw - next
+    setStretch(over === 0 ? 0 : Math.sign(over) * Math.min(1, Math.sqrt(Math.abs(over) / 60)))
+    if (next !== v) {
+      setLocal(next)
+      props.onSlide(next, false)
+    }
+  }
+  const onUp = (e: React.PointerEvent<HTMLDivElement>): void => {
+    const d = drag.current
+    if (!d) return
+    drag.current = null
+    setHeld(false)
+    setStretch(0)
+    let value = local ?? pct
+    if (!d.moved) {
+      const r = ref.current?.getBoundingClientRect()
+      if (r) value = clamp(((e.clientX - r.left) / r.width) * 100)
+      setLocal(value)
+    }
+    finish(value)
+  }
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+    const step = e.shiftKey ? 10 : 5
+    const next =
+      e.key === 'ArrowRight' || e.key === 'ArrowUp'
+        ? clamp(pct + step)
+        : e.key === 'ArrowLeft' || e.key === 'ArrowDown'
+          ? clamp(pct - step)
+          : e.key === 'Home'
+            ? 0
+            : e.key === 'End'
+              ? 100
+              : null
+    if (next === null) return
+    e.preventDefault()
+    setLocal(next)
+    finish(next)
+  }
+
+  const shown = Math.round(pct)
+  const sx = 1 + (held ? 0.015 : 0) + Math.abs(stretch) * 0.035
+  const sy = held ? 1.1 - Math.abs(stretch) * 0.04 : 1
   return (
-    <div className="big" style={{ '--pct': `${pct}%` } as React.CSSProperties}>
-      <input
-        type="range"
-        className="big-range"
-        min={0}
-        max={100}
-        value={pct}
-        aria-label={props.label}
-        onChange={(e) => props.onChange(Number(e.target.value))}
-      />
+    <div
+      ref={ref}
+      className={held ? 'big held' : 'big'}
+      role="slider"
+      tabIndex={0}
+      aria-label={props.label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={shown}
+      aria-valuetext={props.format(shown)}
+      style={{
+        transform: `scale(${sx}, ${sy})`,
+        transformOrigin: stretch < 0 ? 'right center' : stretch > 0 ? 'left center' : 'center'
+      }}
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
+      onKeyDown={onKey}
+    >
+      <div className="big-fill" style={{ transform: `scaleX(${pct / 100})` }} />
       {props.onIcon ? (
         <button className={pct > 6 ? 'big-icon on-fill' : 'big-icon'} aria-label={props.iconLabel} title={props.iconLabel} onClick={props.onIcon}>
           <Icon name={props.icon} size={15} />
@@ -99,7 +195,7 @@ function BigSlider(props: {
           <Icon name={props.icon} size={15} />
         </span>
       )}
-      <span className={pct > 88 ? 'big-val on-fill' : 'big-val'}>{props.shown}</span>
+      <span className={pct > 88 ? 'big-val on-fill' : 'big-val'}>{props.format(shown)}</span>
     </div>
   )
 }
@@ -113,7 +209,17 @@ const fmt = (s: number): string => {
 }
 
 /** Now playing, from Windows' media session (any app that reports to the volume flyout: browsers, Spotify, ...). */
-function MediaCard({ media, device, onCommand }: { media: MediaInfo; device: string | null; onCommand: (c: 'toggle' | 'next' | 'prev') => void }): React.JSX.Element {
+function MediaCard({
+  media,
+  device,
+  onCommand,
+  animateIn
+}: {
+  media: MediaInfo
+  device: string | null
+  onCommand: (c: 'toggle' | 'next' | 'prev') => void
+  animateIn: boolean
+}): React.JSX.Element {
   // Windows only updates the position now and then; extrapolate while playing so the bar moves smoothly.
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -128,7 +234,7 @@ function MediaCard({ media, device, onCommand }: { media: MediaInfo; device: str
   return (
     <motion.div
       className="media"
-      initial={{ opacity: 0, y: 8 }}
+      initial={animateIn ? { opacity: 0, y: 8 } : false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 420, damping: 36 }}
     >
@@ -186,19 +292,27 @@ function MediaCard({ media, device, onCommand }: { media: MediaInfo; device: str
   )
 }
 
+// The last state seen, so reopening the tab paints at once; main also keeps one from a warm-up right after launch.
+let cache: QuickState | null = null
+
 /** Mounted only while the Controls tab is visible; its polling (and the helper process behind it) stops when it unmounts. */
 export default function QuickPanel({ battery }: { battery: BatteryInfo | null }): React.JSX.Element {
-  const [state, setState] = useState<QuickState | null>(null)
+  const [state, setStateRaw] = useState<QuickState | null>(cache)
+  const setState = (s: QuickState): void => {
+    cache = s
+    setStateRaw(s)
+  }
+  // Media already there when the tab opens shows at once; only media that appears later animates in.
+  const mediaAtMount = useRef(!!cache?.media)
   const [page, setPage] = useState(0)
   const [dir, setDir] = useState(1)
   // Dev preview can open a sub-view directly (#preview=Controls&sub=project); normal use always starts on the main view.
   const [view, setView] = useState<'main' | 'project'>(() =>
     new URLSearchParams(location.hash.slice(1)).get('sub') === 'project' ? 'project' : 'main'
   )
-  // While a slider is being dragged its local value wins over polled values, so it doesn't jump back.
-  const [dragVol, setDragVol] = useState<number | null>(null)
-  const [dragBright, setDragBright] = useState<number | null>(null)
-  const sendTimer = useRef<number | undefined>(undefined)
+  // Slider values stream to the system one at a time: while one is in flight only the newest waiting value is kept.
+  const busy = useRef({ volume: false, brightness: false })
+  const pending = useRef<{ volume?: number; brightness?: number }>({})
 
   useEffect(() => {
     let cancelled = false
@@ -212,11 +326,14 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
       }
       if (!cancelled) timer = window.setTimeout(tick, POLL_MS)
     }
+    if (!cache)
+      void window.overlay.quickPeek().then((s) => {
+        if (!cancelled && s) setStateRaw((cur) => cur ?? s)
+      })
     void tick()
     return () => {
       cancelled = true
       window.clearTimeout(timer)
-      window.clearTimeout(sendTimer.current)
     }
   }, [])
 
@@ -228,14 +345,29 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
     }
   }
 
-  // Sliders send once the value has rested for 120 ms, then release the local override.
-  const slide = (kind: 'volume' | 'brightness', value: number): void => {
-    if (kind === 'volume') setDragVol(value)
-    else setDragBright(value)
-    window.clearTimeout(sendTimer.current)
-    sendTimer.current = window.setTimeout(() => {
-      void act({ kind, value }).then(() => (kind === 'volume' ? setDragVol(null) : setDragBright(null)))
-    }, 120)
+  const pump = (kind: 'volume' | 'brightness'): void => {
+    const v = pending.current[kind]
+    if (busy.current[kind] || v === undefined) return
+    pending.current[kind] = undefined
+    busy.current[kind] = true
+    void window.overlay
+      .quickSlide(kind, v)
+      .catch(() => undefined)
+      .finally(() => {
+        busy.current[kind] = false
+        pump(kind)
+      })
+  }
+  const unmuting = useRef(false)
+  const slide = (kind: 'volume' | 'brightness', value: number, done: boolean): void => {
+    // Dragging volume up while muted unmutes, as on a phone.
+    if (kind === 'volume' && state?.muted && value > 0 && !unmuting.current) {
+      unmuting.current = true
+      void act({ kind: 'mute' }).finally(() => (unmuting.current = false))
+    }
+    pending.current[kind] = Math.round(value)
+    pump(kind)
+    void done
   }
 
   if (!state) return <div className="body body-center">Loading…</div>
@@ -243,8 +375,8 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
 
   const wifiOn = state.radios.wifi
   const btOn = state.radios.bluetooth
-  const volume = dragVol ?? (state.volume !== null ? Math.round(state.volume * 100) : null)
-  const brightness = dragBright ?? state.brightness
+  const volume = state.volume !== null ? Math.round(state.volume * 100) : null
+  const brightness = state.brightness
   const volIcon: IconName = state.muted || volume === 0 ? 'volume-x' : (volume ?? 0) < 50 ? 'volume-1' : 'volume-2'
   const goPage = (i: number): void => {
     setDir(i > page ? 1 : -1)
@@ -295,13 +427,13 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
             </div>
             <div className="ct-row two">
               <SplitTile
-                icon="moon"
-                label="Night light"
-                sub="Schedule and strength"
-                on={false}
-                mainTitle="Open Night light settings"
-                onMain={() => void window.overlay.quickOpen('nightlight')}
-                settings="nightlight"
+                icon="plane"
+                label="Airplane mode"
+                sub={state.airplane === null ? 'Unavailable' : state.airplane ? 'On' : 'Off'}
+                on={!!state.airplane}
+                disabled={state.airplane === null}
+                onMain={() => void act({ kind: 'airplane' })}
+                settings="airplane"
               />
               <SplitTile
                 icon="contrast"
@@ -319,17 +451,30 @@ export default function QuickPanel({ battery }: { battery: BatteryInfo | null })
                 icon={volIcon}
                 label="Volume"
                 value={state.muted ? 0 : volume}
-                shown={state.muted ? 'Muted' : `${volume}%`}
-                onChange={(v) => slide('volume', v)}
+                format={(v) => (state.muted ? 'Muted' : `${v}%`)}
+                onSlide={(v, done) => slide('volume', v, done)}
                 onIcon={() => void act({ kind: 'mute' })}
                 iconLabel={state.muted ? 'Unmute' : 'Mute'}
               />
             )}
             {brightness !== null && (
-              <BigSlider icon="sun" label="Brightness" value={brightness} shown={`${brightness}%`} onChange={(v) => slide('brightness', v)} />
+              <BigSlider
+                icon="sun"
+                label="Brightness"
+                value={brightness}
+                format={(v) => `${v}%`}
+                onSlide={(v, done) => slide('brightness', v, done)}
+              />
             )}
 
-            {state.media && <MediaCard media={state.media} device={state.audioName} onCommand={(c) => void act({ kind: 'media', command: c })} />}
+            {state.media && (
+              <MediaCard
+                media={state.media}
+                device={state.audioName}
+                animateIn={!mediaAtMount.current}
+                onCommand={(c) => void act({ kind: 'media', command: c })}
+              />
+            )}
           </motion.div>
         ) : (
           <motion.div

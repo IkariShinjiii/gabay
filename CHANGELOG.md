@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.26.0
+
+- Sliders rebuilt to feel like iOS: drag-driven (no jump on grab), the fill tracks the pointer every frame, values stream to Windows while dragging, rubber-band stretch past the ends, glide on tap. Dragging volume while muted unmutes.
+- Controls open instantly: the last snapshot is cached (and warmed right after launch), so tiles paint at once and refresh in place.
+- Night light removed; Airplane mode takes its place next to Dark mode.
+- Show on: Follow mouse, plus friendly screen names (Laptop screen, External screen).
+- SF Pro is used when installed, else Segoe UI Variable.
+
 ## 0.25.1
 
 - The notch now hides during browser video full screen (YouTube, Netflix in Brave/Chrome/Edge). Those windows stay "maximized" in full screen, so detection now looks for a missing title bar instead.

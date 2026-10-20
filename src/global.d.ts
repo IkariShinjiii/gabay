@@ -6,6 +6,8 @@ export interface OverlayApi {
   /** Volume, brightness, radios, keyboard layout and Wi-Fi name; helper process runs only while this is being polled. */
   quickGet(): Promise<QuickState>
   quickSet(action: QuickAction): Promise<QuickState>
+  quickPeek(): Promise<QuickState | null>
+  quickSlide(kind: 'volume' | 'brightness', value: number): Promise<void>
   /** Opens a fixed Windows Settings page by key. */
   quickOpen(key: SettingsKey): Promise<boolean>
   networkKind(): Promise<'wifi' | 'ethernet' | 'offline'>
@@ -47,6 +49,7 @@ export interface Settings {
   hotkey: string
   collapseMs: number
   displayId: number | null
+  followMouse: boolean
   visibility: 'always' | 'auto'
 }
 
@@ -56,7 +59,7 @@ export interface SettingsSnapshot {
   activeHotkey: string | null
   hotkeys: string[]
   collapseRange: { min: number; max: number }
-  displays: { id: number; label: string }[]
+  displays: { id: number; label: string; detail: string }[]
 }
 
 export interface Todo {
@@ -115,7 +118,7 @@ export type ProjectMode = 'internal' | 'clone' | 'extend' | 'external'
 
 export type SettingsKey =
   | 'energy'
-  | 'nightlight'
+  | 'airplane'
   | 'accessibility'
   | 'display'
   | 'colors'
