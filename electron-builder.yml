@@ -1,4 +1,4 @@
-appId: com.ikarishinjiii.gabay
+﻿appId: com.ikarishinjiii.gabay
 productName: Gabay
 directories:
   output: dist
@@ -18,7 +18,7 @@ extraFiles:
     to: THIRD-PARTY-NOTICES.txt
 electronDist: node_modules/electron/dist
 win:
-  icon: resources/icon.png
+  icon: resources/icon.ico
   target:
     - target: nsis
       arch: x64
