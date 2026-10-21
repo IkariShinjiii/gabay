@@ -555,6 +555,22 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
           </button>
         </div>
       </div>
+      <div className="set-row">
+        <div className="set-label">Update channel</div>
+        <div className="set-opts">
+          <button className={settings.updateChannel === 'stable' ? 'chip on' : 'chip'} onClick={() => void save({ updateChannel: 'stable' })}>
+            Stable
+          </button>
+          <button
+            className={settings.updateChannel === 'preview' ? 'chip on' : 'chip'}
+            title="Get new versions before everyone else. They may have rough edges."
+            onClick={() => void save({ updateChannel: 'preview' })}
+          >
+            Preview
+          </button>
+        </div>
+        {settings.updateChannel === 'preview' && <div className="set-note muted">You get new versions first, before they go out to everyone.</div>}
+      </div>
       <WhatsNewRow version={snap.version} />
       <ShortcutsRow hotkey={liveHotkey ?? activeHotkey} />
       <div className="set-row">

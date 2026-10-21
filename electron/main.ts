@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { app, BrowserWindow, powerMonitor, globalShortcut, ipcMain, Menu, nativeImage, screen, session, shell, systemPreferences, Tray } from 'electron'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -15,7 +16,7 @@ import { currentProjectMode, isProjectMode, setProjectMode } from './project'
 import { isSettingsKey, networkKind, quickGet, quickPeek, quickSet, quickSlide, SETTINGS_PAGES, stopQuick } from './quick'
 import { COLLAPSE_MAX, COLLAPSE_MIN, DEFAULTS, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
 import { getNotes, setNotes } from './notes'
-import { ensureIndex, getIcon, launch, search, toggleStar } from './launcher'
+import { ensureIndex, findByExe, getIcon, isStarred, launch, pinnedApps, search, toggleStar } from './launcher'
 import { isPowerAction, runPower } from './power'
 import { addTodo, listTodos, removeTodo, toggleTodo } from './todos'
 import { clearHistory, copyBack, listClipboard, setClipboardGuard, startClipboardHistory, stopClipboardHistory, togglePin } from './clipboardHistory'
@@ -47,7 +48,7 @@ app.on('second-instance', () => {
 })
 
 const WIN_WIDTH = 560
-const WIN_HEIGHT = 580
+const WIN_HEIGHT = 640 // the tallest panel (with the dock) plus room for the shadow
 
 /** The chosen display, or the primary one if it is unset or no longer attached. */
 function pickDisplay(id: number | null): Electron.Display {
@@ -167,7 +168,12 @@ app.whenReady().then(async () => {
   })
   ipcMain.handle('launcher:toggle-star', (e, id: unknown) => {
     fromUi(e)
-    return typeof id === 'string' ? toggleStar(id) : false
+    if (typeof id !== 'string') return false
+    // Starred apps are the dock's pinned apps.
+    return toggleStar(id).then((on) => {
+      if (settings.hideTaskbar) void pushWins()
+      return on
+    })
   })
   ipcMain.handle('power:run', (e, action: unknown) => {
     fromUi(e)
@@ -240,8 +246,38 @@ app.whenReady().then(async () => {
         ? [{ id: w.h, title: str(w.t, 200) ?? '', path: typeof w.p === 'string' ? w.p : null, minimized: w.min === true, active: w.fg === true, attention: w.flash === true }]
         : []
     ).slice(0, 40)
-  const winsForUi = async (): Promise<unknown[]> =>
-    Promise.all(openWins.map(async ({ path, ...w }) => ({ ...w, icon: await iconFor(path) })))
+  // The dock: starred apps first (open or not), then other open apps in the order they were last used. Windows of the
+  // same program share one icon. Keys are opaque; program paths stay here.
+  type DockGroup = { key: string; name: string; path: string | null; launchId: string | null; wins: Win[] }
+  let dockGroups: DockGroup[] = []
+  const keyOf = (path: string): string => 'g' + createHash('sha1').update(path.toLowerCase()).digest('hex').slice(0, 12)
+  const buildDock = async (): Promise<DockGroup[]> => {
+    const pins = await pinnedApps().catch(() => [])
+    const groups: DockGroup[] = pins.map((p) => ({ key: 'p' + p.id, name: p.name, path: p.exe, launchId: p.id, wins: [] }))
+    for (const w of openWins) {
+      const exe = w.path?.toLowerCase() ?? null
+      let g = exe ? groups.find((x) => x.path?.toLowerCase() === exe) : undefined
+      if (!g) {
+        const base = w.path ? (w.path.split(/[\\/]/).pop() ?? '').replace(/\.exe$/i, '') : ''
+        g = { key: w.path ? keyOf(w.path) : 'w' + w.id, name: base || w.title, path: w.path, launchId: null, wins: [] }
+        groups.push(g)
+      }
+      g.wins.push(w)
+    }
+    return groups
+  }
+  const winsForUi = async (): Promise<unknown[]> => {
+    dockGroups = await buildDock()
+    return Promise.all(
+      dockGroups.map(async (g) => ({
+        key: g.key,
+        name: g.name,
+        pinned: g.launchId !== null,
+        icon: (g.launchId ? await getIcon(g.launchId).catch(() => null) : null) ?? (await iconFor(g.path)),
+        wins: g.wins.map(({ path, ...w }) => w)
+      }))
+    )
+  }
   const pushWins = async (): Promise<void> => send('overlay:windows', await winsForUi())
   {
     void startNative({
@@ -299,6 +335,16 @@ app.whenReady().then(async () => {
       void applyTaskbar()
     })
   }
+  ipcMain.handle('presence:wait', (e) => {
+    fromUi(e)
+    return new Promise<boolean>((resolve) => {
+      const check = (): void => {
+        if (powerMonitor.getSystemIdleTime() < 5) resolve(true)
+        else setTimeout(check, 2000)
+      }
+      check()
+    })
+  })
   ipcMain.handle('windows:get', async (e) => {
     fromUi(e)
     if (!settings.hideTaskbar) return []
@@ -312,6 +358,46 @@ app.whenReady().then(async () => {
     const w = openWins.find((x) => x.id === id) // only windows Gabay listed
     if (!w) return false
     return (await nativeCall(w.active && !w.minimized ? 'minimize' : 'focus', w.id)) === true
+  })
+  ipcMain.handle('windows:launch', async (e, key: unknown) => {
+    fromUi(e)
+    const g = dockGroups.find((x) => x.key === key)
+    if (!g) return false
+    if (g.launchId) return launch(g.launchId)
+    return g.path ? (await shell.openPath(g.path)) === '' : false
+  })
+  // Right-click on a dock icon: a native menu, so it can spill outside the notch.
+  ipcMain.handle('windows:menu', async (e, key: unknown) => {
+    fromUi(e)
+    const g = dockGroups.find((x) => x.key === key)
+    if (!g) return false
+    const pinId = g.launchId ?? (g.path ? await findByExe(g.path) : null)
+    const pinned = pinId ? await isStarred(pinId) : false
+    const items: Electron.MenuItemConstructorOptions[] = []
+    if (g.launchId || g.path) {
+      items.push({
+        label: g.wins.length ? 'Open new window' : 'Open',
+        click: () => void (g.launchId ? launch(g.launchId) : g.path ? shell.openPath(g.path) : undefined)
+      })
+    }
+    if (pinId) {
+      items.push({
+        label: pinned ? 'Unpin from dock' : 'Pin to dock',
+        click: () => void toggleStar(pinId).then(() => pushWins())
+      })
+    }
+    if (g.wins.length) {
+      items.push({ type: 'separator' })
+      items.push({
+        label: g.wins.length > 1 ? `Close all ${g.wins.length} windows` : 'Close window',
+        click: () => {
+          for (const w of g.wins) void nativeCall('close', w.id)
+        }
+      })
+    }
+    if (!items.length) return false
+    // Resolves when the menu closes, so the panel can stay open while it's up.
+    return new Promise<boolean>((resolve) => Menu.buildFromTemplate(items).popup({ window: win, callback: () => resolve(true) }))
   })
   ipcMain.handle('media:get', (e) => {
     fromUi(e)
@@ -490,7 +576,7 @@ app.whenReady().then(async () => {
   let update: UpdateInfo | null = null
   let autoInstalling = false
   const lookForUpdate = async (): Promise<void> => {
-    const u = await checkUpdate()
+    const u = await checkUpdate(settings.updateChannel)
     if (u && u.version !== update?.version) send('overlay:update', u)
     update = u
   }
@@ -636,6 +722,7 @@ app.whenReady().then(async () => {
     const prevFollow = settings.followMouse
     const prevReserve = settings.reserveTop
     const prevHide = settings.hideTaskbar
+    const prevChannel = settings.updateChannel
     // taskbarWasAutoHide is main's own record; a patch (or Reset's defaults) never overwrites it.
     const next: Settings = { ...sanitize(patch, settings), taskbarWasAutoHide: settings.taskbarWasAutoHide }
     // Also retry when the same hotkey is picked again: the other app that held it may have exited since.
@@ -648,6 +735,7 @@ app.whenReady().then(async () => {
     if (next.reserveTop !== prevReserve) applyReserve()
     await saveSettings(settings)
     if (next.hideTaskbar !== prevHide) await applyTaskbar()
+    if (next.updateChannel !== prevChannel && app.isPackaged) void lookForUpdate()
     return snapshot()
   }
   ipcMain.handle('settings:set', (e, patch: unknown) => {

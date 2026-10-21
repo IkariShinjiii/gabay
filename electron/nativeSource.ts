@@ -85,6 +85,49 @@ interface IChannelAudioVolume {
   void GetChannelVolume(uint i, out float level);
 }
 
+// Camera in use: Media Foundation's sensor activity monitor reports which processes are streaming from each camera.
+// (Windows stopped keeping the privacy record in the registry up to date, so this is the live source.)
+[ComImport, Guid("DE5072EE-DBE3-46DC-8A87-B6F631194751"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMFSensorActivitiesReportCallback { [PreserveSig] int OnActivitiesReport(IMFSensorActivitiesReport report); }
+[ComImport, Guid("683F7A5E-4A19-43CD-B1A9-DBF4AB3F7777"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMFSensorActivitiesReport { void GetCount(out uint n); void GetActivityReport(uint i, out IMFSensorActivityReport r); }
+[ComImport, Guid("3E8C4BE1-A8C2-4528-90DE-2851BDE5FEAD"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMFSensorActivityReport {
+  void GetFriendlyName(IntPtr buf, uint cch, out uint written);
+  void GetSymbolicLink(IntPtr buf, uint cch, out uint written);
+  void GetProcessCount(out uint n);
+  void GetProcessActivity(uint i, out IMFSensorProcessActivity a);
+}
+[ComImport, Guid("39DC7F4A-B141-4719-813C-A7F46162A2B8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMFSensorProcessActivity { void GetProcessId(out uint pid); void GetStreamingState([MarshalAs(UnmanagedType.Bool)] out bool on); }
+[ComImport, Guid("D0CEF145-B3F4-4340-A2E5-7A5080CA05CB"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMFSensorActivityMonitor { void Start(); void Stop(); }
+
+[ComVisible(true), ClassInterface(ClassInterfaceType.None)]
+class CameraWatch : IMFSensorActivitiesReportCallback {
+  public volatile uint[] Streaming = new uint[0];
+  public Action Changed;
+  public int OnActivitiesReport(IMFSensorActivitiesReport report) {
+    try {
+      var pids = new List<uint>();
+      uint n; report.GetCount(out n);
+      for (uint i = 0; i < n; i++) {
+        IMFSensorActivityReport r; report.GetActivityReport(i, out r);
+        uint pc; r.GetProcessCount(out pc);
+        for (uint j = 0; j < pc; j++) {
+          IMFSensorProcessActivity a; r.GetProcessActivity(j, out a);
+          bool on; a.GetStreamingState(out on);
+          uint pid; a.GetProcessId(out pid);
+          if (on && !pids.Contains(pid)) pids.Add(pid);
+        }
+      }
+      Streaming = pids.ToArray();
+      if (Changed != null) Changed();
+    } catch { }
+    return 0;
+  }
+}
+
 // The reserved band: a black, never-activated strip registered as an app bar, so Windows fits maximized and snapped
 // windows below it (the same mechanism the taskbar uses). It steps aside while an app is full screen.
 class Band : Form {
@@ -194,6 +237,9 @@ static class Native {
   [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr p, EnumProc f, IntPtr l);
   [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int cmd);
   [DllImport("user32.dll")] static extern bool ShowWindowAsync(IntPtr h, int cmd);
+  [DllImport("user32.dll")] static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
+  [DllImport("mfsensorgroup.dll")] static extern int MFCreateSensorActivityMonitor(IMFSensorActivitiesReportCallback cb, out IMFSensorActivityMonitor m);
+  [DllImport("mfplat.dll")] static extern int MFStartup(uint version, uint flags);
   [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr h);
   [DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool attach);
@@ -338,6 +384,10 @@ static class Native {
       }
       case "windows": return Windows();
       case "focus": return Focus(new IntPtr(long.Parse(arg))) ? "true" : "false";
+      case "close": {
+        var h = new IntPtr(long.Parse(arg));
+        return IsWindow(h) && Listable(h) && PostMessage(h, 0x0010, IntPtr.Zero, IntPtr.Zero) ? "true" : "false"; // WM_CLOSE
+      }
       case "minimize": {
         var h = new IntPtr(long.Parse(arg));
         return IsWindow(h) && Listable(h) && ShowWindowAsync(h, 6) ? "true" : "false"; // SW_MINIMIZE
@@ -436,11 +486,20 @@ static class Native {
   // re-check each minute as a safety net. Windows doesn't always keep that record up to date, so the microphone is
   // also checked directly: any app recording from an input device right now (a cheap check, every 1.5 s while someone
   // is at the PC).
+  static IMFSensorActivityMonitor camMonitor; // kept alive for as long as the helper runs
   static void PrivacyLoop() {
     IntPtr store;
     bool watching = RegOpenKeyEx(new IntPtr(unchecked((int)0x80000001)), // HKEY_CURRENT_USER
       @"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore", 0, 0x0010 /* KEY_NOTIFY */, out store) == 0;
     var changed = new AutoResetEvent(false);
+    // Live camera use; a report wakes the loop at once.
+    CameraWatch cams = null;
+    try {
+      MFStartup(0x00020070, 0);
+      var cw = new CameraWatch(); cw.Changed = () => changed.Set();
+      IMFSensorActivityMonitor mon;
+      if (MFCreateSensorActivityMonitor(cw, out mon) == 0) { mon.Start(); cams = cw; camMonitor = mon; }
+    } catch { }
     bool armed = false, dirty = true;
     var regMic = new List<string>(); var regCam = new List<string>();
     DateTime nextRead = DateTime.MinValue;
@@ -458,7 +517,14 @@ static class Native {
       }
       var mic = new List<string>(regMic);
       try { foreach (var n in Recording()) if (!mic.Contains(n)) mic.Add(n); } catch { }
-      string now = "{\"mic\":" + Names(mic) + ",\"cam\":" + Names(regCam) + "}";
+      var cam = new List<string>(regCam);
+      if (cams != null) foreach (var pid in cams.Streaming) {
+        if (pid == 0) continue;
+        string p = ProcPath(pid);
+        string name = p == null ? "An app" : System.IO.Path.GetFileNameWithoutExtension(p);
+        if (!cam.Contains(name)) cam.Add(name);
+      }
+      string now = "{\"mic\":" + Names(mic) + ",\"cam\":" + Names(cam) + "}";
       if (now != last) { Send("priv " + now); last = now; }
       int wait = fsActive || IdleMs() > 60000 ? 5000 : 1500;
       if (watching ? changed.WaitOne(wait) : false) {

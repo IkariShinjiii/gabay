@@ -275,3 +275,43 @@ export async function toggleStar(id: string): Promise<boolean> {
   await saveStore()
   return s.starred.includes(id)
 }
+
+// --- the dock: starred apps stay in it, and open windows join their app ---
+const exeCache = new Map<string, string | null>()
+/** The program a Start menu shortcut runs (lowercase), or null for Store apps and unreadable shortcuts. */
+function exeOf(e: Entry): string | null {
+  if (e.kind !== 'lnk') return null
+  if (!exeCache.has(e.id)) {
+    let exe: string | null = null
+    try {
+      const t = shell.readShortcutLink(e.target).target
+      if (t && /\.exe$/i.test(t)) exe = t.replace(/%([^%]+)%/g, (m, v: string) => process.env[v] ?? m).toLowerCase()
+    } catch {
+      // Not a readable shortcut.
+    }
+    exeCache.set(e.id, exe)
+  }
+  return exeCache.get(e.id) ?? null
+}
+
+/** Starred apps, in the order they were starred. */
+export async function pinnedApps(): Promise<{ id: string; name: string; exe: string | null }[]> {
+  await ensureIndex()
+  const s = await loadStore()
+  return s.starred.flatMap((id) => {
+    const e = entries.get(id)
+    return e ? [{ id, name: e.name, exe: exeOf(e) }] : []
+  })
+}
+
+/** The Start menu entry that runs this program, if any (so an open app can be pinned). */
+export async function findByExe(exe: string): Promise<string | null> {
+  await ensureIndex()
+  const want = exe.toLowerCase()
+  for (const e of entries.values()) if (exeOf(e) === want) return e.id
+  return null
+}
+
+export async function isStarred(id: string): Promise<boolean> {
+  return (await loadStore()).starred.includes(id)
+}

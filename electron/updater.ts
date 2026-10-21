@@ -34,16 +34,31 @@ function newer(a: string, b: string): boolean {
 
 const fromRepo = (a: Asset | undefined): a is Asset => !!a && typeof a.browser_download_url === 'string' && a.browser_download_url.startsWith(DOWNLOADS)
 
-/** Null when up to date, offline, or running from source. */
-export async function checkUpdate(): Promise<UpdateInfo | null> {
+interface Release {
+  tag_name?: unknown
+  body?: unknown
+  assets?: Asset[]
+  draft?: unknown
+}
+
+/** Null when up to date, offline, or running from source. 'preview' also considers pre-releases, newest first. */
+export async function checkUpdate(channel: 'stable' | 'preview' = 'stable'): Promise<UpdateInfo | null> {
   if (!app.isPackaged) return null
   try {
-    const res = await net.fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
+    const res = await net.fetch(`https://api.github.com/repos/${REPO}/releases${channel === 'preview' ? '?per_page=10' : '/latest'}`, {
       headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Gabay' },
       signal: AbortSignal.timeout(15_000)
     })
     if (!res.ok) return null
-    const rel = (await res.json()) as { tag_name?: unknown; body?: unknown; assets?: Asset[] }
+    let rel: Release
+    if (channel === 'preview') {
+      const list = ((await res.json()) as Release[]).filter(
+        (r) => r && r.draft !== true && typeof r.tag_name === 'string' && /^v?\d+\.\d+\.\d+$/.test(r.tag_name)
+      )
+      list.sort((a, b) => (newer(a.tag_name as string, b.tag_name as string) ? -1 : 1))
+      if (!list[0]) return null
+      rel = list[0]
+    } else rel = (await res.json()) as Release
     const tag = typeof rel.tag_name === 'string' ? rel.tag_name : ''
     if (!/^v?\d+\.\d+\.\d+$/.test(tag) || !newer(tag, app.getVersion())) return null
     const assets = Array.isArray(rel.assets) ? rel.assets : []
