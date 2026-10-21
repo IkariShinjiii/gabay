@@ -2,6 +2,15 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.3.1',
+    [
+      'Works on desktop PCs: battery, Wi-Fi and Bluetooth only show when the PC has them',
+      'Shows a wired (LAN) connection, even when Wi-Fi is also connected',
+      'Volume per app no longer scrolls sideways',
+      'A tip in Settings for when notifications pop up twice'
+    ]
+  ],
+  [
     '1.3.0',
     [
       'The dock groups windows by app, keeps your starred apps, and has a right-click menu',
