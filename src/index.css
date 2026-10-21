@@ -84,7 +84,7 @@ body,
   top: 0;
   left: 0;
   width: 520px;
-  max-height: 540px; /* NOTCH.expanded.height: the notch grows to fit the content, up to this */
+  max-height: 600px; /* NOTCH.expanded.height: the notch grows to fit the content, up to this */
   box-sizing: border-box;
   padding: 6px 20px 16px; /* tabs sit in the band where the notch hangs */
   display: flex;
@@ -2573,7 +2573,8 @@ button.big-icon {
   display: flex;
   justify-content: center;
   gap: 4px;
-  padding: 6px 4px 2px;
+  margin-top: 2px;
+  padding: 8px 4px 2px;
   border-top: 1px solid var(--line);
   overflow-x: auto;
   scrollbar-width: none;

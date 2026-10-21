@@ -48,7 +48,7 @@ app.on('second-instance', () => {
 })
 
 const WIN_WIDTH = 560
-const WIN_HEIGHT = 640 // the tallest panel (with the dock) plus room for the shadow
+const WIN_HEIGHT = 700 // the tallest panel (with the dock) plus room for the shadow
 
 /** The chosen display, or the primary one if it is unset or no longer attached. */
 function pickDisplay(id: number | null): Electron.Display {
