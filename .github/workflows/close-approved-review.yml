@@ -1,0 +1,22 @@
+# When a review (label "review") is marked "approved", close it so Issues stays for bug reports.
+# It does nothing else: no edits, comments or label changes, and it skips any issue without both labels.
+# The website still shows closed reviews.
+name: Close approved reviews
+on:
+  issues:
+    types: [labeled]
+permissions:
+  issues: write
+jobs:
+  close:
+    if: >-
+      github.event.label.name == 'approved' &&
+      github.event.issue.state == 'open' &&
+      contains(github.event.issue.labels.*.name, 'review')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close the review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: gh issue close "$NUMBER" --repo "$GITHUB_REPOSITORY" --reason completed
