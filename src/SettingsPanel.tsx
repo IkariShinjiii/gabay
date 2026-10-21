@@ -502,6 +502,17 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
             )}
           </div>
         )}
+        {settings.notifications && snap.notificationAccess === 'Allowed' && (
+          <div className="set-tip">
+            <span>
+              Seeing every notification twice? Turn on <b>Do not disturb</b> in Windows: its pop-ups stop, and Gabay still
+              shows each one in the notch.
+            </span>
+            <button className="chip" onClick={() => void window.overlay.quickOpen('notifications')}>
+              Open Windows notifications
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="set-row">

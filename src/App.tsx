@@ -287,7 +287,25 @@ export default function App(): React.JSX.Element {
   }, [])
 
   const focusTimer = useFocusTimer()
-  const battery = useBattery()
+  // Desktops have no battery: Chromium then reports a full one that's always charging, so Gabay asks Windows instead.
+  const rawBattery = useBattery()
+  const [hasBattery, setHasBattery] = useState(true)
+  useEffect(() => {
+    let tries = 0
+    let id = 0
+    const ask = (): void => {
+      void window.overlay.hardware().then(
+        (hw) => {
+          if (hw) setHasBattery(hw.battery)
+          else if (++tries < 10) id = window.setTimeout(ask, 3000)
+        },
+        () => undefined
+      )
+    }
+    ask()
+    return () => window.clearTimeout(id)
+  }, [])
+  const battery = hasBattery ? rawBattery : null
 
   // --- toasts: the collapsed notch grows for a moment (notification, new track, charging, meeting, update) ---
   const [toast, setToast] = useState<Toast | null>(null)
@@ -562,9 +580,12 @@ export default function App(): React.JSX.Element {
   }, [])
   useEffect(() => {
     refreshNet()
+    // Once more after the helper is up: it tells wired from Wi-Fi when both are connected.
+    const later = window.setTimeout(refreshNet, 8000)
     window.addEventListener('online', refreshNet)
     window.addEventListener('offline', refreshNet)
     return () => {
+      window.clearTimeout(later)
       window.removeEventListener('online', refreshNet)
       window.removeEventListener('offline', refreshNet)
     }

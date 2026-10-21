@@ -910,6 +910,10 @@ input {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.ct-row.one {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /* Split tile: main part acts, the chevron part opens Settings. Filled with the accent when on. */
 .ct {
   display: flex;
@@ -1838,8 +1842,11 @@ button.big-icon {
   flex-direction: column;
   gap: 10px;
   max-height: 320px;
+  overflow-x: hidden;
   overflow-y: auto;
-  padding-right: 2px;
+  scrollbar-gutter: stable;
+  /* Room for the bottom slider's edge, so the list never needs a sideways scroll. */
+  padding: 0 2px 2px 0;
 }
 
 .mix-row {
@@ -2503,6 +2510,25 @@ button.big-icon {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+}
+
+.set-tip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+.set-tip b {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .set-warn {

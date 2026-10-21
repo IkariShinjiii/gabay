@@ -831,9 +831,18 @@ app.whenReady().then(async () => {
     fromUi(e)
     return isProjectMode(mode) ? setProjectMode(mode) : false
   })
-  ipcMain.handle('network:kind', (e) => {
+  // The helper knows which adapter carries the internet (wired wins when Wi-Fi is also connected); the interface list is
+  // the fallback while it starts.
+  ipcMain.handle('network:kind', async (e) => {
     fromUi(e)
-    return networkKind()
+    const kind = await nativeCall('net').catch(() => null)
+    return kind === 'wifi' || kind === 'ethernet' || kind === 'offline' ? kind : networkKind()
+  })
+  // Desktops often have no battery or Wi-Fi; the notch and Controls leave those out. null while the helper starts.
+  ipcMain.handle('hardware:get', async (e) => {
+    fromUi(e)
+    const hw = (await nativeCall('hw').catch(() => null)) as { battery?: unknown; wifi?: unknown } | null
+    return hw && typeof hw === 'object' ? { battery: hw.battery !== false, wifi: hw.wifi !== false } : null
   })
 
   ipcMain.handle('stats:get', (event) => {
