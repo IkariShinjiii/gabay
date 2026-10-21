@@ -1,6 +1,7 @@
 // What each release brought, in plain words. Shown once as a toast after updating, and in Settings > What's new.
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
+  ['1.3.3', ['Controls fits again with the dock and lyrics showing: nothing is cut off or squeezed']],
   [
     '1.3.2',
     [

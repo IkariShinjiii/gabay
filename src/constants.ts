@@ -10,7 +10,7 @@ export const NOTCH = {
   live: { width: 264, height: 24 },
   toast: { width: 380, height: 70 },
   toastBottomRadius: 24,
-  expanded: { width: 520, height: 540, dock: 58 } // height is the cap; the notch takes the content's height
+  expanded: { width: 520, height: 600, dock: 62 } // height is the cap; the notch takes the content's height
 } as const
 
 // Auto-hide: how long the pointer must rest on the top edge to reveal the notch, and how long after it leaves
