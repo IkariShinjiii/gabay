@@ -32,8 +32,8 @@ interface Props {
   media: LiveMedia | null
   weather: Weather | null
   dnd: boolean
-  /** Camera / microphone in use right now (iPhone-style dot on the right). */
-  privacy: { mic: boolean; cam: boolean }
+  /** Apps using the camera / microphone right now (iPhone-style dot on the right; hover names them). */
+  privacy: { mic: string[]; cam: string[] }
   /** An open app is flashing for attention (only while the Windows taskbar is hidden). */
   attention: boolean
   /** Elapsed ms while a screen recording runs. */
@@ -105,7 +105,15 @@ export default function NotchStatus(p: Props): React.JSX.Element {
     center = <span className="status-clock">{p.clock}</span>
   }
 
-  const privacy = p.privacy.cam ? 'cam' : p.privacy.mic ? 'mic' : null
+  const privacy = p.privacy.cam.length ? 'cam' : p.privacy.mic.length ? 'mic' : null
+  const list = (names: string[]): string =>
+    names.length <= 1 ? (names[0] ?? 'An app') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+  const privacyTip = [
+    p.privacy.cam.length ? `${list(p.privacy.cam)} ${p.privacy.cam.length > 1 ? 'are' : 'is'} using the camera` : '',
+    p.privacy.mic.length ? `${list(p.privacy.mic)} ${p.privacy.mic.length > 1 ? 'are' : 'is'} using the microphone` : ''
+  ]
+    .filter(Boolean)
+    .join('. ')
 
   return (
     <div className="status-row">
@@ -156,7 +164,7 @@ export default function NotchStatus(p: Props): React.JSX.Element {
             </span>
           )
         )}
-        {privacy && <span className={`st-priv ${privacy}`} title={privacy === 'cam' ? 'Camera in use' : 'Microphone in use'} />}
+        {privacy && <span className={`st-priv ${privacy}`} title={privacyTip} />}
       </span>
     </div>
   )

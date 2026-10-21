@@ -2580,31 +2580,40 @@ button.big-icon {
   opacity: 0.55;
 }
 
-/* Under each icon: a dot for open, a bar for the one in use, a pulsing accent dot for attention */
-.dock-mark {
+/* Under each icon: a dot per open window, wide for the app in use, pulsing accent for attention */
+.dock-marks {
   position: absolute;
   bottom: 2px;
   left: 50%;
+  display: flex;
+  gap: 2px;
+  transform: translateX(-50%);
+}
+
+.dock-marks i {
   width: 4px;
   height: 3px;
   border-radius: 2px;
   background: var(--muted);
   opacity: 0.7;
-  transform: translateX(-50%);
   transition: width 200ms cubic-bezier(0.22, 1, 0.36, 1), background-color 200ms ease;
 }
 
-.dock-app.on .dock-mark {
+.dock-app.on .dock-marks i:first-child {
   width: 14px;
   background: var(--accent);
   opacity: 1;
 }
 
-.dock-app.attn .dock-mark {
-  width: 6px;
+.dock-app.attn .dock-marks i {
   background: var(--accent);
   opacity: 1;
   animation: attn 1.6s ease-in-out infinite;
+}
+
+/* Pinned but not running */
+.dock-app.closed img {
+  opacity: 0.8;
 }
 
 @keyframes attn {
@@ -2615,7 +2624,7 @@ button.big-icon {
 
 @media (prefers-reduced-motion: reduce) {
   .st-attn,
-  .dock-app.attn .dock-mark {
+  .dock-app.attn .dock-marks i {
     animation: none;
   }
 }

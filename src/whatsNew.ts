@@ -1,6 +1,15 @@
 // What each release brought, in plain words. Shown once as a toast after updating, and in Settings > What's new.
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
+  [
+    '1.3.0',
+    [
+      'The dock groups windows by app, keeps your starred apps, and has a right-click menu',
+      'The camera dot works again, and hovering the dot shows which app is using it',
+      "After an update, this note waits until you're back at the PC",
+      'A Preview update channel, to get new versions first'
+    ]
+  ],
   ['1.2.0', ['Updates install by themselves while you are away from the PC (Settings > Install updates automatically)']],
   [
     '1.1.0',

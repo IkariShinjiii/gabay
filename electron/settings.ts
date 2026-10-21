@@ -34,6 +34,8 @@ export interface Settings {
   hideTaskbar: boolean
   /** Install updates by themselves while the person is away from the PC. */
   autoUpdate: boolean
+  /** 'preview' also gets pre-releases (new versions before everyone else). */
+  updateChannel: 'stable' | 'preview'
   /** Whether the taskbar was already auto-hiding before Gabay hid it (put back when hiding stops); null while not hiding.
    * Main's own bookkeeping: never taken from the renderer. */
   taskbarWasAutoHide: boolean | null
@@ -45,7 +47,7 @@ export const ACCENTS = ['mint', 'windows', 'blue', 'purple', 'pink', 'orange', '
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, welcomed: false, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarWasAutoHide: null, autoUpdate: true }
+export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, welcomed: false, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarWasAutoHide: null, autoUpdate: true, updateChannel: 'stable' }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -80,7 +82,8 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
   const taskbarWasAutoHide =
     r.taskbarWasAutoHide === null || typeof r.taskbarWasAutoHide === 'boolean' ? r.taskbarWasAutoHide : base.taskbarWasAutoHide
   const autoUpdate = typeof r.autoUpdate === 'boolean' ? r.autoUpdate : base.autoUpdate
-  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, reserveTop, accent, place, lyrics, dndUntil, welcomed, seenVersion, visibility, hideTaskbar, taskbarWasAutoHide, autoUpdate }
+  const updateChannel = r.updateChannel === 'stable' || r.updateChannel === 'preview' ? r.updateChannel : base.updateChannel
+  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, reserveTop, accent, place, lyrics, dndUntil, welcomed, seenVersion, visibility, hideTaskbar, taskbarWasAutoHide, autoUpdate, updateChannel }
 }
 
 export async function loadSettings(): Promise<Settings> {

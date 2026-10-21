@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { COLLAPSE_DELAY_MS, HIDE_DELAY_MS, NOTCH, REVEAL_DWELL_MS } from './constants'
-import type { DownloadState, LauncherItem, LiveMedia, OpenWindow, PowerAction, Settings, Weather } from './global'
+import type { DownloadState, LauncherItem, DockApp, LiveMedia, PowerAction, Settings, Weather } from './global'
 import Dock from './Dock'
 import ClipboardPanel from './ClipboardPanel'
 import { parseCommand, type CommandActions } from './commands'
@@ -26,11 +26,14 @@ import { useFocusTimer } from './useFocusTimer'
 const TABS = ['Controls', 'Today', 'Notes', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
 type Tab = (typeof TABS)[number]
 
-const SAMPLE_WINS: OpenWindow[] = [
-  { id: '1', title: 'Inbox - Mail', icon: null, minimized: false, active: true, attention: false },
-  { id: '2', title: 'Project notes', icon: null, minimized: false, active: false, attention: false },
-  { id: '3', title: 'Music', icon: null, minimized: true, active: false, attention: false },
-  { id: '4', title: 'Chat', icon: null, minimized: false, active: false, attention: true }
+const SAMPLE_WINS: DockApp[] = [
+  { key: 'a', name: 'Mail', icon: null, pinned: true, wins: [{ id: '1', title: 'Inbox - Mail', minimized: false, active: true, attention: false }] },
+  { key: 'b', name: 'Browser', icon: null, pinned: true, wins: [
+    { id: '2', title: 'Project notes', minimized: false, active: false, attention: false },
+    { id: '3', title: 'Recipes', minimized: true, active: false, attention: false }
+  ] },
+  { key: 'c', name: 'Files', icon: null, pinned: true, wins: [] },
+  { key: 'd', name: 'Chat', icon: null, pinned: false, wins: [{ id: '4', title: 'Chat', minimized: false, active: false, attention: true }] }
 ]
 
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
@@ -161,7 +164,8 @@ export default function App(): React.JSX.Element {
       versionRef.current = r.version
       // After an update (not on a first run, which gets the tour): say once what's new.
       if (r.settings.welcomed && r.settings.seenVersion !== r.version && !previewParam) {
-        window.setTimeout(() => announceUpdate.current(r.version), 2500)
+        // An automatic update can finish while nobody is at the PC: wait until someone is, then say it.
+        void window.overlay.whenPresent().then(() => window.setTimeout(() => announceUpdate.current(r.version), 2500))
         void window.overlay.setSettings({ seenVersion: r.version })
       }
       // First run: open straight into the tour (never in screenshot previews, except the tour's own).
@@ -359,7 +363,7 @@ export default function App(): React.JSX.Element {
     if (previewParam === 'Busy') {
       setWeather({ place: 'Iloilo', temp: 31, code: 2, day: true, high: 33, low: 26, at: 0 })
       setDndUntil(-1)
-      setPrivacy({ mic: false, cam: true })
+      setPrivacy({ mic: [], cam: ['Camera'] })
       setDownload({ name: 'setup.exe', bytes: 48_000_000 })
     }
     if (previewParam) return
@@ -421,7 +425,7 @@ export default function App(): React.JSX.Element {
   }, [place])
 
   // --- open apps (while the Windows taskbar is hidden) ---
-  const [wins, setWins] = useState<OpenWindow[]>(previewDock ? SAMPLE_WINS : [])
+  const [wins, setWins] = useState<DockApp[]>(previewDock ? SAMPLE_WINS : [])
   useEffect(() => {
     if (previewParam) return
     return window.overlay.onWindows(setWins)
@@ -429,14 +433,14 @@ export default function App(): React.JSX.Element {
   useEffect(() => {
     if (expanded && dockOn && !previewParam) void window.overlay.windowsGet().then(setWins, () => undefined)
   }, [expanded, dockOn])
-  const attention = dockOn && wins.some((w) => w.attention)
+  const attention = dockOn && wins.some((a) => a.wins.some((w) => w.attention))
 
   // --- camera / microphone dot, downloads ---
-  const [privacy, setPrivacy] = useState({ mic: false, cam: false })
+  const [privacy, setPrivacy] = useState<{ mic: string[]; cam: string[] }>({ mic: [], cam: [] })
   const [download, setDownload] = useState<DownloadState | null>(null)
   useEffect(() => {
     if (previewParam) return
-    const offPriv = window.overlay.onPrivacy((p) => setPrivacy({ mic: p.mic.length > 0, cam: p.cam.length > 0 }))
+    const offPriv = window.overlay.onPrivacy(setPrivacy)
     const offDl = window.overlay.onDownload(setDownload)
     const offDone = window.overlay.onDownloadDone((name) =>
       pushToast({ icon: 'download', label: 'Download complete', title: name, sub: 'In your Downloads folder', tone: 'accent' })
@@ -703,10 +707,13 @@ export default function App(): React.JSX.Element {
   const live = !expanded && !showToast && onScreen && (!!media?.playing || !!download || recording)
   // The pill is as wide as its two sides need (they are equal, so the clock stays centred): about 12 px per icon.
   const leftPx = 12 + (live && media?.playing ? 21 : 0) + (weather ? 41 : 0) + (dndOn ? 16 : 0) + (attention ? 12 : 0)
-  const rightPx = (battery ? 34 : 0) + (live && download ? 52 : live && media?.playing ? 20 : 0) + (privacy.cam || privacy.mic ? 12 : 0)
+  const rightPx = (battery ? 34 : 0) + (live && download ? 52 : live && media?.playing ? 20 : 0) + (privacy.cam.length || privacy.mic.length ? 12 : 0)
   const pillWidth = Math.max(live ? NOTCH.live.width : NOTCH.collapsed.width, 2 * Math.max(leftPx, rightPx) + 104)
+  // The dock adds its own height on top of the usual cap, so tall tabs aren't squeezed by it.
+  const dockShown = dockOn && !welcome && wins.length > 0
+  const panelCap = NOTCH.expanded.height + (dockShown ? NOTCH.expanded.dock : 0)
   const size = expanded
-    ? { width: NOTCH.expanded.width, height: Math.min(panelHeight, NOTCH.expanded.height) }
+    ? { width: NOTCH.expanded.width, height: Math.min(panelHeight, panelCap) }
     : showToast
       ? NOTCH.toast
       : { width: pillWidth, height: NOTCH.collapsed.height }
@@ -791,7 +798,7 @@ export default function App(): React.JSX.Element {
           initial={false}
           animate={{ opacity: expanded ? 1 : 0 }}
           transition={{ duration: expanded ? 0.2 : 0.1, delay: expanded ? 0.12 : 0 }}
-          style={{ pointerEvents: expanded ? 'auto' : 'none' }}
+          style={{ pointerEvents: expanded ? 'auto' : 'none', maxHeight: panelCap }}
         >
           {!welcome && (
           <div className="tabs" role="tablist" aria-label="Sections" onWheel={onTabsWheel}>
@@ -841,7 +848,7 @@ export default function App(): React.JSX.Element {
               {body}
             </motion.div>
           </AnimatePresence>
-          {dockOn && !welcome && wins.length > 0 && <Dock wins={wins} onClick={(id) => void window.overlay.windowsClick(id)} />}
+          {dockShown && <Dock apps={wins} onHold={(h) => { hold('menu', h); if (!h) evaluate() }} />}
           {hasBar && (
           <label className={parsed ? 'bar is-command' : 'bar'}>
             <Icon name={parsed ? 'command' : 'search'} size={16} />

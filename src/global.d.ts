@@ -73,10 +73,16 @@ export interface OverlayApi {
   logError(msg: string): void
   onPrivacy(cb: (p: { mic: string[]; cam: string[] }) => void): () => void
   /** Open windows, while "Hide the Windows taskbar" is on. */
-  onWindows(cb: (w: OpenWindow[]) => void): () => void
-  windowsGet(): Promise<OpenWindow[]>
+  /** Resolves once someone is using the PC (keyboard or mouse in the last few seconds). */
+  whenPresent(): Promise<boolean>
+  onWindows(cb: (w: DockApp[]) => void): () => void
+  windowsGet(): Promise<DockApp[]>
   /** Switch to an open window, or minimize it when it's the one in use. */
   windowsClick(id: string): Promise<boolean>
+  /** Start a dock app (a pinned app that isn't open, or another window of one that is). */
+  windowsLaunch(key: string): Promise<boolean>
+  /** Right-click menu for a dock app; resolves when the menu closes. */
+  windowsMenu(key: string): Promise<boolean>
   onDownload(cb: (d: DownloadState | null) => void): () => void
   onDownloadDone(cb: (name: string) => void): () => void
   listWifi(): Promise<{ networks: WifiNetwork[]; error: 'off' | 'location' | null }>
@@ -98,12 +104,20 @@ export interface OverlayApi {
 export interface OpenWindow {
   id: string
   title: string
-  icon: string | null
   minimized: boolean
   /** The window last in use before Gabay. */
   active: boolean
   /** Flashing for attention. */
   attention: boolean
+}
+
+/** One icon in the dock: an app, with its open windows (none for a pinned app that isn't running). */
+export interface DockApp {
+  key: string
+  name: string
+  icon: string | null
+  pinned: boolean
+  wins: OpenWindow[]
 }
 
 export interface Settings {
@@ -123,6 +137,7 @@ export interface Settings {
   visibility: 'always' | 'auto'
   hideTaskbar: boolean
   autoUpdate: boolean
+  updateChannel: 'stable' | 'preview'
   taskbarWasAutoHide: boolean | null
 }
 

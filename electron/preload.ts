@@ -61,8 +61,11 @@ contextBridge.exposeInMainWorld('overlay', {
     ipcRenderer.on('overlay:windows', handler)
     return () => ipcRenderer.removeListener('overlay:windows', handler)
   },
+  whenPresent: () => ipcRenderer.invoke('presence:wait'),
   windowsGet: () => ipcRenderer.invoke('windows:get'),
   windowsClick: (id: string) => ipcRenderer.invoke('windows:click', id),
+  windowsLaunch: (key: string) => ipcRenderer.invoke('windows:launch', key),
+  windowsMenu: (key: string) => ipcRenderer.invoke('windows:menu', key),
   onDownload: (cb: (d: unknown) => void): (() => void) => {
     const handler = (_e: unknown, d: unknown): void => cb(d)
     ipcRenderer.on('overlay:download', handler)
