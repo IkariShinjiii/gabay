@@ -34,6 +34,8 @@ interface Props {
   dnd: boolean
   /** Camera / microphone in use right now (iPhone-style dot on the right). */
   privacy: { mic: boolean; cam: boolean }
+  /** An open app is flashing for attention (only while the Windows taskbar is hidden). */
+  attention: boolean
   /** Elapsed ms while a screen recording runs. */
   recordingMs: number | null
   /** Elapsed ms while the stopwatch runs. */
@@ -122,6 +124,7 @@ export default function NotchStatus(p: Props): React.JSX.Element {
             {weather.temp}°
           </span>
         )}
+        {p.attention && <span className="st-attn" title="An app wants your attention" />}
         {p.dnd && (
           <span className="st-icon st-dnd" title="Do not disturb">
             <Icon name="moon" size={11} />

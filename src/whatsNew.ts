@@ -2,6 +2,14 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.1.0',
+    [
+      'Hide the Windows taskbar (Settings > Experiments): your open apps move into the notch',
+      'A dot on the notch when an app wants your attention',
+      'The mic dot now shows whenever an app is recording'
+    ]
+  ],
+  [
     '1.0.0',
     [
       'Gabay 1.0: ready to share',

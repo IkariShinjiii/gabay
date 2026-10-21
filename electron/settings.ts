@@ -30,6 +30,11 @@ export interface Settings {
   seenVersion: string
   /** 'always': shown, except while something is full screen. 'auto': off-screen until the pointer rests on the top edge. */
   visibility: 'always' | 'auto'
+  /** Turn on the Windows taskbar's auto-hide and show open apps in the notch instead. */
+  hideTaskbar: boolean
+  /** Whether the taskbar was already auto-hiding before Gabay hid it (put back when hiding stops); null while not hiding.
+   * Main's own bookkeeping: never taken from the renderer. */
+  taskbarWasAutoHide: boolean | null
 }
 
 /** Never a Win-key combo (Windows reserves those). The first free one is used when the saved one is taken. */
@@ -38,7 +43,7 @@ export const ACCENTS = ['mint', 'windows', 'blue', 'purple', 'pink', 'orange', '
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, welcomed: false, seenVersion: '', visibility: 'always' }
+export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, welcomed: false, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarWasAutoHide: null }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -69,7 +74,10 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
   const dndUntil = typeof r.dndUntil === 'number' && (r.dndUntil === -1 || r.dndUntil >= 0) ? r.dndUntil : base.dndUntil
   const welcomed = typeof r.welcomed === 'boolean' ? r.welcomed : base.welcomed
   const seenVersion = typeof r.seenVersion === 'string' && /^\d+\.\d+\.\d+$/.test(r.seenVersion) ? r.seenVersion : base.seenVersion
-  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, reserveTop, accent, place, lyrics, dndUntil, welcomed, seenVersion, visibility }
+  const hideTaskbar = typeof r.hideTaskbar === 'boolean' ? r.hideTaskbar : base.hideTaskbar
+  const taskbarWasAutoHide =
+    r.taskbarWasAutoHide === null || typeof r.taskbarWasAutoHide === 'boolean' ? r.taskbarWasAutoHide : base.taskbarWasAutoHide
+  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, reserveTop, accent, place, lyrics, dndUntil, welcomed, seenVersion, visibility, hideTaskbar, taskbarWasAutoHide }
 }
 
 export async function loadSettings(): Promise<Settings> {

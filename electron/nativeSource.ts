@@ -14,7 +14,11 @@
 //            clipseq                         (clipboard sequence number: changes on every copy)
 //            mixer | appvol <pid> <0-100>    (per-app volume)
 //            seek <seconds>                  (now playing)
+//            wins on|off | windows           (open windows: pushed on change while on, or asked for)
+//            focus <h> | minimize <h>        (switch to / minimize an open window)
+//            tbget | tbset <0|1> [restore]   (the Windows taskbar's auto-hide; restore is applied when Gabay exits)
 //   pushes   priv <json>                     camera / microphone in use, and by which apps
+//            wins <json>                     open windows, in z-order, while wins is on
 export const NATIVE_SOURCE = String.raw`
 using System;
 using System.Collections.Generic;
@@ -52,7 +56,12 @@ interface IMMDeviceEnumerator { int f(); int GetDefaultAudioEndpoint(int dataFlo
 [ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 interface IMMDeviceAny { void Activate(ref Guid id, int clsCtx, IntPtr activationParams, [MarshalAs(UnmanagedType.IUnknown)] out object o); }
 [ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDeviceEnumeratorAny { void f(); void GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDeviceAny endpoint); }
+interface IMMDeviceEnumeratorAny {
+  void EnumAudioEndpoints(int dataFlow, int stateMask, out IMMDeviceCollection devices);
+  void GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDeviceAny endpoint);
+}
+[ComImport, Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMMDeviceCollection { void GetCount(out uint n); void Item(uint i, out IMMDeviceAny device); }
 [ComImport, Guid("77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 interface IAudioSessionManager2 { void a(); void b(); void GetSessionEnumerator(out IAudioSessionEnumerator e); }
 [ComImport, Guid("E2F5BB11-0570-40CA-ACDD-3AA01277DEE8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -140,6 +149,24 @@ class Band : Form {
   protected override void OnFormClosing(FormClosingEventArgs e) { Release(); base.OnFormClosing(e); }
 }
 
+// A hidden window that Windows tells about top-level windows opening, closing, being activated or flashing for
+// attention (the same "shell hook" messages the taskbar gets), so the open-apps list needs no polling.
+class ShellWatch : Form {
+  [DllImport("user32.dll")] static extern bool RegisterShellHookWindow(IntPtr h);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern uint RegisterWindowMessage(string s);
+  readonly uint msg = RegisterWindowMessage("SHELLHOOK");
+  public Action<int, IntPtr> OnShell;
+  public ShellWatch() { FormBorderStyle = FormBorderStyle.None; ShowInTaskbar = false; }
+  protected override CreateParams CreateParams {
+    get { var p = base.CreateParams; p.ExStyle |= 0x80; return p; } // WS_EX_TOOLWINDOW
+  }
+  public void Watch() { RegisterShellHookWindow(Handle); }
+  protected override void WndProc(ref Message m) {
+    if (m.Msg == (int)msg && OnShell != null) { try { OnShell(m.WParam.ToInt32(), m.LParam); } catch { } }
+    base.WndProc(ref m);
+  }
+}
+
 static class Native {
   [StructLayout(LayoutKind.Sequential)] struct RECT { public int L, T, R, B; }
   [StructLayout(LayoutKind.Sequential)] struct MONITORINFO { public int cbSize; public RECT rcMonitor; public RECT rcWork; public uint dwFlags; }
@@ -157,6 +184,25 @@ static class Native {
   [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
   [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
   [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern bool QueryFullProcessImageName(IntPtr h, int flags, StringBuilder s, ref int size);
+  delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
+  [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
+  [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr h, uint cmd);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll")] static extern int GetWindowTextLength(IntPtr h);
+  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc f, IntPtr l);
+  [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr p, EnumProc f, IntPtr l);
+  [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int cmd);
+  [DllImport("user32.dll")] static extern bool ShowWindowAsync(IntPtr h, int cmd);
+  [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr h);
+  [DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool attach);
+  [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+  [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+  [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out int value, int size);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string cls, string name);
+  [StructLayout(LayoutKind.Sequential)] struct APPBARDATA { public int cbSize; public IntPtr hWnd; public uint uCallbackMessage; public uint uEdge; public RECT rc; public IntPtr lParam; }
+  [DllImport("shell32.dll")] static extern UIntPtr SHAppBarMessage(uint msg, ref APPBARDATA d);
 
   static readonly object outLock = new object();
   static volatile bool fsActive; // a full-screen app is in front (set by the main loop)
@@ -261,8 +307,9 @@ static class Native {
         });
       }
     } catch { }
-    // Gabay closed our stdin: it is gone. Give the reserved space back before leaving.
+    // Gabay closed our stdin: it is gone. Give the reserved space back, and the taskbar setting, before leaving.
     try { if (band != null) band.Invoke((Action)(() => band.Release())); } catch { }
+    try { if (tbRestore >= 0) TaskbarAutoHide(tbRestore == 1); } catch { }
     Environment.Exit(0);
   }
 
@@ -284,6 +331,25 @@ static class Native {
       case "mixer": return Mixer();
       case "appvol": { var a = arg.Split(' '); return AppVolume(uint.Parse(a[0]), Math.Max(0, Math.Min(100, int.Parse(a[1]))) / 100f) ? "true" : "false"; }
       case "seek": return Seek(double.Parse(arg, System.Globalization.CultureInfo.InvariantCulture)) ? "true" : "false";
+      case "wins": {
+        if (arg == "on") { if (shell == null) StartShell(); winsOn = true; lastWins = null; winTimer.Change(0, Timeout.Infinite); }
+        else winsOn = false;
+        return "true";
+      }
+      case "windows": return Windows();
+      case "focus": return Focus(new IntPtr(long.Parse(arg))) ? "true" : "false";
+      case "minimize": {
+        var h = new IntPtr(long.Parse(arg));
+        return IsWindow(h) && Listable(h) && ShowWindowAsync(h, 6) ? "true" : "false"; // SW_MINIMIZE
+      }
+      case "tbget": return TaskbarAutoHide() ? "true" : "false";
+      case "tbset": {
+        // tbset <0|1> [restore 0|1]: the restore value is put back if Gabay goes away without saying so.
+        var a = arg.Split(' ');
+        tbRestore = a.Length > 1 ? (a[1] == "1" ? 1 : 0) : -1;
+        TaskbarAutoHide(a[0] == "1");
+        return "true";
+      }
     }
     return "null";
   }
@@ -365,27 +431,71 @@ static class Native {
   [DllImport("advapi32.dll", CharSet = CharSet.Unicode)] static extern int RegOpenKeyEx(IntPtr root, string sub, int options, int access, out IntPtr key);
   [DllImport("advapi32.dll")] static extern int RegNotifyChangeKeyValue(IntPtr key, bool subtree, int filter, IntPtr evt, bool async);
 
-  // Reading every app's entry each second cost more CPU than the rest of the helper together, so the loop sleeps until
-  // Windows reports a change under ConsentStore (an app starting or stopping the camera or mic), with a re-check each
-  // minute as a safety net.
+  // Reading every app's entry each second cost more CPU than the rest of the helper together, so that record is read
+  // only when Windows reports a change under ConsentStore (an app starting or stopping the camera or mic), with a
+  // re-check each minute as a safety net. Windows doesn't always keep that record up to date, so the microphone is
+  // also checked directly: any app recording from an input device right now (a cheap check, every 1.5 s while someone
+  // is at the PC).
   static void PrivacyLoop() {
     IntPtr store;
     bool watching = RegOpenKeyEx(new IntPtr(unchecked((int)0x80000001)), // HKEY_CURRENT_USER
       @"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore", 0, 0x0010 /* KEY_NOTIFY */, out store) == 0;
     var changed = new AutoResetEvent(false);
+    bool armed = false, dirty = true;
+    var regMic = new List<string>(); var regCam = new List<string>();
+    DateTime nextRead = DateTime.MinValue;
     string last = null;
     while (true) {
-      // Arm the notification before reading, so a change during the read still wakes the next wait.
-      if (watching && RegNotifyChangeKeyValue(store, true, 0x1 | 0x4 /* names, values */, changed.SafeWaitHandle.DangerousGetHandle(), true) != 0) watching = false;
-      try {
-        var mic = InUse("microphone");
-        var cam = InUse("webcam");
-        string now = "{\"mic\":" + Names(mic) + ",\"cam\":" + Names(cam) + "}";
-        if (now != last) { Send("priv " + now); last = now; }
-      } catch { }
-      if (watching) changed.WaitOne(60000); else Thread.Sleep(2000);
-      Thread.Sleep(150); // let a burst of writes settle before reading
+      if (dirty || DateTime.UtcNow >= nextRead) {
+        // Arm the notification before reading, so a change during the read still wakes the next wait.
+        if (watching && !armed) {
+          if (RegNotifyChangeKeyValue(store, true, 0x1 | 0x4 /* names, values */, changed.SafeWaitHandle.DangerousGetHandle(), true) == 0) armed = true;
+          else watching = false;
+        }
+        try { regMic = InUse("microphone"); regCam = InUse("webcam"); } catch { }
+        dirty = false;
+        nextRead = DateTime.UtcNow.AddSeconds(watching ? 60 : 2);
+      }
+      var mic = new List<string>(regMic);
+      try { foreach (var n in Recording()) if (!mic.Contains(n)) mic.Add(n); } catch { }
+      string now = "{\"mic\":" + Names(mic) + ",\"cam\":" + Names(regCam) + "}";
+      if (now != last) { Send("priv " + now); last = now; }
+      int wait = fsActive || IdleMs() > 60000 ? 5000 : 1500;
+      if (watching ? changed.WaitOne(wait) : false) {
+        armed = false; dirty = true;
+        Thread.Sleep(150); // let a burst of writes settle before reading
+      } else if (!watching) Thread.Sleep(wait);
     }
+  }
+
+  // Apps with an active recording session on any input device, by name.
+  static List<string> Recording() {
+    var found = new List<string>();
+    var en = new MMDeviceEnumeratorComObject() as IMMDeviceEnumeratorAny;
+    IMMDeviceCollection col; en.EnumAudioEndpoints(1 /* capture */, 1 /* active */, out col);
+    uint n; col.GetCount(out n);
+    var iid = typeof(IAudioSessionManager2).GUID;
+    for (uint i = 0; i < n; i++) {
+      try {
+        IMMDeviceAny dev; col.Item(i, out dev);
+        object o; dev.Activate(ref iid, 23, IntPtr.Zero, out o);
+        IAudioSessionEnumerator se; ((IAudioSessionManager2)o).GetSessionEnumerator(out se);
+        int c; se.GetCount(out c);
+        for (int j = 0; j < c; j++) {
+          try {
+            IAudioSessionControl2 s; se.GetSession(j, out s);
+            int state; s.GetState(out state);
+            if (state != 1) continue; // only sessions recording right now
+            uint pid; s.GetProcessId(out pid);
+            if (pid == 0) continue;
+            string p = ProcPath(pid);
+            string name = p == null ? "An app" : System.IO.Path.GetFileNameWithoutExtension(p);
+            if (!found.Contains(name)) found.Add(name);
+          } catch { }
+        }
+      } catch { }
+    }
+    return found;
   }
   static string Names(List<string> l) {
     var sb = new StringBuilder("[");
@@ -463,6 +573,117 @@ static class Native {
     if (p == IntPtr.Zero) return null;
     try { var s = new StringBuilder(1024); int n = s.Capacity; return QueryFullProcessImageName(p, 0, s, ref n) ? s.ToString() : null; }
     finally { CloseHandle(p); }
+  }
+
+  // Taskbar rules: visible, unowned, not a tool window, not cloaked (another desktop, a suspended Store app), titled.
+  static bool Listable(IntPtr h) {
+    if (!IsWindowVisible(h) || GetWindow(h, 4) != IntPtr.Zero) return false; // owned popups belong to their owner
+    if ((GetWindowLong(h, -20) & 0x80) != 0) return false; // WS_EX_TOOLWINDOW
+    int cloaked; if (DwmGetWindowAttribute(h, 14, out cloaked, 4) == 0 && cloaked != 0) return false;
+    if (GetWindowTextLength(h) == 0) return false;
+    string c = ClassOf(h);
+    return c != "Progman" && c != "Shell_TrayWnd" && c != "Shell_SecondaryTrayWnd" && c != "Windows.UI.Core.CoreWindow";
+  }
+
+  static ShellWatch shell;
+  static volatile bool winsOn;
+  static string lastWins;
+  static readonly object winLock = new object();
+  static readonly HashSet<long> flashing = new HashSet<long>();
+  static long lastActive; // the last window someone used that isn't Gabay: clicking it in Gabay minimizes it
+  static readonly System.Threading.Timer winTimer = new System.Threading.Timer(_ => PushWindows(), null, Timeout.Infinite, Timeout.Infinite);
+
+  static void StartShell() {
+    IntPtr fg = GetForegroundWindow(); uint fp; GetWindowThreadProcessId(fg, out fp);
+    if (fp != self) lastActive = fg.ToInt64();
+    var ready = new ManualResetEvent(false);
+    var th = new Thread(() => { shell = new ShellWatch(); var unused = shell.Handle; shell.OnShell = OnShell; shell.Watch(); ready.Set(); Application.Run(); });
+    th.SetApartmentState(ApartmentState.STA);
+    th.IsBackground = true;
+    th.Start();
+    ready.WaitOne();
+  }
+
+  static void OnShell(int code, IntPtr h) {
+    long id = h.ToInt64();
+    lock (winLock) {
+      if (code == 0x8006) flashing.Add(id); // HSHELL_FLASH: an app wants attention (the taskbar's orange button)
+      else if ((code & 0x7FFF) == 4) { // HSHELL_WINDOWACTIVATED (and the "rude" variant)
+        uint pid; GetWindowThreadProcessId(h, out pid);
+        if (h != IntPtr.Zero && pid != self) lastActive = id;
+        flashing.Remove(id);
+      } else if (code == 2) flashing.Remove(id); // destroyed
+    }
+    // Several messages arrive together (open, activate, retitle): one list a moment later covers them.
+    if (winsOn) winTimer.Change(120, Timeout.Infinite);
+  }
+
+  static void PushWindows() {
+    if (!winsOn) return;
+    try {
+      string now = Windows();
+      if (now != lastWins) { lastWins = now; Send("wins " + now); }
+    } catch { }
+  }
+
+  static string Windows() {
+    var sb = new StringBuilder("[");
+    bool first = true;
+    long active; HashSet<long> flash;
+    lock (winLock) { active = lastActive; flash = new HashSet<long>(flashing); }
+    EnumWindows((h, l) => {
+      if (!Listable(h)) return true;
+      uint pid; GetWindowThreadProcessId(h, out pid);
+      if (pid == self) return true;
+      // Store apps run inside ApplicationFrameHost; the real app is the child window from another process.
+      if (ClassOf(h) == "ApplicationFrameWindow") {
+        uint inner = 0, host = pid;
+        EnumChildWindows(h, (c, x) => { uint cp; GetWindowThreadProcessId(c, out cp); if (cp != host) { inner = cp; return false; } return true; }, IntPtr.Zero);
+        if (inner == 0) return true; // a suspended Store app with no content
+        pid = inner;
+      }
+      var t = new StringBuilder(GetWindowTextLength(h) + 1); GetWindowText(h, t, t.Capacity);
+      long id = h.ToInt64();
+      if (!first) sb.Append(',');
+      first = false;
+      sb.Append("{\"h\":\"").Append(id).Append("\",\"t\":").Append(J(t.ToString()))
+        .Append(",\"p\":").Append(J(ProcPath(pid))).Append(",\"min\":").Append(IsIconic(h) ? "true" : "false")
+        .Append(",\"fg\":").Append(id == active ? "true" : "false")
+        .Append(",\"flash\":").Append(flash.Contains(id) ? "true" : "false").Append('}');
+      return true;
+    }, IntPtr.Zero);
+    return sb.Append(']').ToString();
+  }
+
+  // Windows only lets the foreground app hand focus over. Gabay is in front when this runs (it was just clicked), so
+  // join its input queue for the call; if that is refused, a synthetic Alt tap lifts the lock.
+  static bool Focus(IntPtr h) {
+    if (!IsWindow(h) || !Listable(h)) return false;
+    if (IsIconic(h)) ShowWindow(h, 9); // SW_RESTORE
+    uint dummy;
+    uint fgThread = GetWindowThreadProcessId(GetForegroundWindow(), out dummy);
+    uint me = GetCurrentThreadId();
+    bool attached = fgThread != 0 && fgThread != me && AttachThreadInput(me, fgThread, true);
+    bool ok = SetForegroundWindow(h);
+    BringWindowToTop(h);
+    if (attached) AttachThreadInput(me, fgThread, false);
+    if (!ok || GetForegroundWindow() != h) {
+      keybd_event(0x12, 0, 0, UIntPtr.Zero); keybd_event(0x12, 0, 2, UIntPtr.Zero);
+      ok = SetForegroundWindow(h);
+    }
+    return ok;
+  }
+
+  // ---------- the Windows taskbar's own auto-hide setting ----------
+  static int tbRestore = -1;
+  static bool TaskbarAutoHide() {
+    var d = new APPBARDATA(); d.cbSize = Marshal.SizeOf(typeof(APPBARDATA)); d.hWnd = FindWindow("Shell_TrayWnd", null);
+    return ((uint)SHAppBarMessage(4, ref d) & 1) != 0; // ABM_GETSTATE, ABS_AUTOHIDE
+  }
+  static void TaskbarAutoHide(bool on) {
+    var d = new APPBARDATA(); d.cbSize = Marshal.SizeOf(typeof(APPBARDATA)); d.hWnd = FindWindow("Shell_TrayWnd", null);
+    d.lParam = new IntPtr(on ? 1 : 0);
+    SHAppBarMessage(10, ref d); // ABM_SETSTATE
   }
 
   // ---------- now playing ----------

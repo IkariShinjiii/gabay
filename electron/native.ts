@@ -76,6 +76,7 @@ export interface NativeEvents {
   note: (raw: unknown) => void
   privacy: (raw: unknown) => void
   noteAccess: (status: string) => void
+  windows: (raw: unknown) => void
 }
 
 let child: ChildProcess | null = null
@@ -111,6 +112,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
         } else if (kind === 'media') on.media(JSON.parse(rest))
         else if (kind === 'note') on.note(JSON.parse(rest))
         else if (kind === 'priv') on.privacy(JSON.parse(rest))
+        else if (kind === 'wins') on.windows(JSON.parse(rest))
         else if (kind === 'noteaccess') on.noteAccess(rest.slice(0, 40))
         else if (kind === 'r') {
           const s2 = rest.indexOf(' ')
@@ -137,6 +139,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
     pending.clear()
     if (fsOn) on.fullscreen(null) // never leave the notch hidden because the helper went away
     on.media(null)
+    on.windows([])
     on.privacy({ mic: [], cam: [] }) // never leave a camera or mic dot lit for a helper that's gone
     // Restart after a crash, at most 5 times in 10 minutes so a broken helper can't loop.
     const now = Date.now()
@@ -150,7 +153,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
 }
 
 /** One request. `arg` must already be validated by the caller: it is passed on as part of a single line. */
-export function nativeCall(cmd: 'vol' | 'volget' | 'media' | 'bt' | 'notes' | 'appbar' | 'clipok' | 'clipseq' | 'mixer' | 'appvol' | 'seek', arg = ''): Promise<unknown> {
+export function nativeCall(cmd: 'vol' | 'volget' | 'media' | 'bt' | 'notes' | 'appbar' | 'clipok' | 'clipseq' | 'mixer' | 'appvol' | 'seek' | 'wins' | 'windows' | 'focus' | 'minimize' | 'tbget' | 'tbset', arg = ''): Promise<unknown> {
   const p = child
   if (!p?.stdin || /[\r\n]/.test(arg)) return Promise.resolve(null)
   const id = nextId++

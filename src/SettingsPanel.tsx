@@ -577,6 +577,27 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
         </div>
         {settings.reserveTop && <div className="set-note muted">Maximized windows now start below the notch. Full screen still uses the whole screen.</div>}
       </div>
+      <div className="set-row">
+        <div className="set-label">Hide the Windows taskbar</div>
+        <div className="set-opts">
+          <button
+            className={settings.hideTaskbar ? 'chip on' : 'chip'}
+            title="Auto-hides the taskbar and shows your open apps at the bottom of this panel"
+            onClick={() => void save({ hideTaskbar: true })}
+          >
+            On
+          </button>
+          <button className={!settings.hideTaskbar ? 'chip on' : 'chip'} onClick={() => void save({ hideTaskbar: false })}>
+            Off
+          </button>
+        </div>
+        {settings.hideTaskbar && (
+          <div className="set-note muted">
+            Your open apps are at the bottom of this panel: click one to switch to it, or the one you're using to minimize it.
+            The taskbar is still there if you push the pointer to the bottom edge. Turning this off or quitting Gabay puts it back.
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -56,6 +56,13 @@ contextBridge.exposeInMainWorld('overlay', {
     ipcRenderer.on('overlay:privacy', handler)
     return () => ipcRenderer.removeListener('overlay:privacy', handler)
   },
+  onWindows: (cb: (w: unknown) => void): (() => void) => {
+    const handler = (_e: unknown, w: unknown): void => cb(w)
+    ipcRenderer.on('overlay:windows', handler)
+    return () => ipcRenderer.removeListener('overlay:windows', handler)
+  },
+  windowsGet: () => ipcRenderer.invoke('windows:get'),
+  windowsClick: (id: string) => ipcRenderer.invoke('windows:click', id),
   onDownload: (cb: (d: unknown) => void): (() => void) => {
     const handler = (_e: unknown, d: unknown): void => cb(d)
     ipcRenderer.on('overlay:download', handler)
