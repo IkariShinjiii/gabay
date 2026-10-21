@@ -13,6 +13,8 @@ export interface OverlayApi {
   networkKind(): Promise<'wifi' | 'ethernet' | 'offline'>
   /** What this PC has; desktops often have no battery or Wi-Fi. */
   hardware(): Promise<{ battery: boolean; wifi: boolean } | null>
+  /** Whether Windows' own Do not disturb is on. */
+  windowsDnd(): Promise<boolean>
   /** Win+P display mode: read the current one, or switch with Windows' DisplaySwitch. */
   projectGet(): Promise<ProjectMode>
   projectSet(mode: ProjectMode): Promise<boolean>
@@ -129,6 +131,7 @@ export interface Settings {
   followMouse: boolean
   notifications: boolean
   notePreview: boolean
+  noteSound: boolean
   reserveTop: boolean
   accent: string
   place: { name: string; lat: number; lon: number } | null
@@ -257,6 +260,8 @@ export interface NoteInfo {
   app: string
   title: string | null
   body: string | null
+  /** Play the notification sound (Windows' Do not disturb is on, so Windows is silent). */
+  sound?: boolean
 }
 
 export interface WifiNetwork {

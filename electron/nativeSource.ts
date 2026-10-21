@@ -395,6 +395,7 @@ static class Native {
       case "tbget": return TaskbarAutoHide() ? "true" : "false";
       case "net": return "\"" + Net() + "\"";
       case "hw": return Hardware();
+      case "dnd": return WindowsDnd() ? "true" : "false";
       case "tbset": {
         // tbset <0|1> [restore 0|1]: the restore value is put back if Gabay goes away without saying so.
         var a = arg.Split(' ');
@@ -865,6 +866,15 @@ static class Native {
       // app is in front (toasts don't show then anyway).
       Thread.Sleep(fsActive || IdleMs() > 60000 ? 5000 : 2000);
     }
+  }
+
+  // ---------- Windows' Do not disturb ----------
+  // Read-only: the shell publishes its quiet-hours profile as a WNF state (0 = off). Gabay never changes it.
+  [DllImport("ntdll.dll")] static extern int NtQueryWnfStateData(ref ulong name, IntPtr type, IntPtr scope, out uint stamp, byte[] buf, ref int len);
+  static bool WindowsDnd() {
+    ulong name = 0xd83063ea3bf1c75UL; // WNF_SHEL_QUIETHOURS_ACTIVE_PROFILE_CHANGED
+    var b = new byte[4]; int len = 4; uint stamp;
+    return NtQueryWnfStateData(ref name, IntPtr.Zero, IntPtr.Zero, out stamp, b, ref len) == 0 && len >= 4 && BitConverter.ToInt32(b, 0) != 0;
   }
 
   // ---------- network and hardware ----------

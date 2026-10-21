@@ -322,12 +322,14 @@ app.whenReady().then(async () => {
         const names = (v: unknown): string[] => (Array.isArray(v) ? v.flatMap((x) => (typeof x === 'string' ? [x.slice(0, 60)] : [])).slice(0, 8) : [])
         send('overlay:privacy', { mic: names(r?.mic), cam: names(r?.cam) })
       },
-      note: (raw) => {
+      note: async (raw) => {
         if (!settings.notifications || !raw || typeof raw !== 'object') return
         if (settings.dndUntil === -1 || Date.now() < settings.dndUntil) return // do not disturb
         const n = raw as Record<string, unknown>
         const appName = str(n.app, 80) ?? 'Notification'
-        send('overlay:note', settings.notePreview ? { app: appName, title: str(n.title, 120), body: str(n.body, 240) } : { app: appName, title: null, body: null })
+        // Windows is silent while its Do not disturb is on, so Gabay plays the sound instead (if wanted).
+        const sound = settings.noteSound && (await nativeCall('dnd').catch(() => null)) === true
+        send('overlay:note', settings.notePreview ? { app: appName, title: str(n.title, 120), body: str(n.body, 240), sound } : { app: appName, title: null, body: null, sound })
       }
     }, () => {
       void nativeCall('notes', settings.notifications && !PREVIEW ? 'on' : 'off')
@@ -833,6 +835,10 @@ app.whenReady().then(async () => {
   })
   // The helper knows which adapter carries the internet (wired wins when Wi-Fi is also connected); the interface list is
   // the fallback while it starts.
+  ipcMain.handle('windows:dnd', async (e) => {
+    fromUi(e)
+    return (await nativeCall('dnd').catch(() => null)) === true
+  })
   ipcMain.handle('network:kind', async (e) => {
     fromUi(e)
     const kind = await nativeCall('net').catch(() => null)
