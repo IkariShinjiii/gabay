@@ -540,6 +540,21 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
 
       <CalendarRow onHold={onHold} />
       <UpdateRow />
+      <div className="set-row">
+        <div className="set-label">Install updates automatically</div>
+        <div className="set-opts">
+          <button
+            className={settings.autoUpdate ? 'chip on' : 'chip'}
+            title="While you're away from the PC for a few minutes, Gabay updates and restarts by itself"
+            onClick={() => void save({ autoUpdate: true })}
+          >
+            On
+          </button>
+          <button className={!settings.autoUpdate ? 'chip on' : 'chip'} onClick={() => void save({ autoUpdate: false })}>
+            Off
+          </button>
+        </div>
+      </div>
       <WhatsNewRow version={snap.version} />
       <ShortcutsRow hotkey={liveHotkey ?? activeHotkey} />
       <div className="set-row">

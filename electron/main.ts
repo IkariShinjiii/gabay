@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, screen, session, shell, systemPreferences, Tray } from 'electron'
+import { app, BrowserWindow, powerMonitor, globalShortcut, ipcMain, Menu, nativeImage, screen, session, shell, systemPreferences, Tray } from 'electron'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { getStats } from './stats'
@@ -484,16 +484,28 @@ app.whenReady().then(async () => {
     return setCalendarUrl(url)
   })
 
-  // Updates: checked shortly after start and every 6 hours; installing waits for the person.
+  // Updates: checked shortly after start and every hour. With auto-update on (the default), a found update installs
+  // by itself once the person has been away from the keyboard and mouse for 3 minutes, with nothing full screen and
+  // no recording running; Gabay restarts on the new version and says what's new. Otherwise it waits to be installed.
   let update: UpdateInfo | null = null
+  let autoInstalling = false
   const lookForUpdate = async (): Promise<void> => {
     const u = await checkUpdate()
     if (u && u.version !== update?.version) send('overlay:update', u)
     update = u
   }
+  const AWAY_S = 180
   if (!PREVIEW && app.isPackaged) {
     setTimeout(() => void lookForUpdate(), 20_000)
-    setInterval(() => void lookForUpdate(), 6 * 3_600_000)
+    setInterval(() => void lookForUpdate(), 3_600_000)
+    setInterval(() => {
+      if (!update || autoInstalling || !settings.autoUpdate || fsNow || isRecording()) return
+      if (powerMonitor.getSystemIdleTime() < AWAY_S) return
+      autoInstalling = true
+      void installUpdate().then((ok) => {
+        if (!ok) setTimeout(() => (autoInstalling = false), 3_600_000) // try again in an hour
+      })
+    }, 30_000)
   }
   ipcMain.handle('update:get', async (e, check: unknown) => {
     fromUi(e)

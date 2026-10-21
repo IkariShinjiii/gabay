@@ -32,6 +32,8 @@ export interface Settings {
   visibility: 'always' | 'auto'
   /** Turn on the Windows taskbar's auto-hide and show open apps in the notch instead. */
   hideTaskbar: boolean
+  /** Install updates by themselves while the person is away from the PC. */
+  autoUpdate: boolean
   /** Whether the taskbar was already auto-hiding before Gabay hid it (put back when hiding stops); null while not hiding.
    * Main's own bookkeeping: never taken from the renderer. */
   taskbarWasAutoHide: boolean | null
@@ -43,7 +45,7 @@ export const ACCENTS = ['mint', 'windows', 'blue', 'purple', 'pink', 'orange', '
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, welcomed: false, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarWasAutoHide: null }
+export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, welcomed: false, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarWasAutoHide: null, autoUpdate: true }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -77,7 +79,8 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
   const hideTaskbar = typeof r.hideTaskbar === 'boolean' ? r.hideTaskbar : base.hideTaskbar
   const taskbarWasAutoHide =
     r.taskbarWasAutoHide === null || typeof r.taskbarWasAutoHide === 'boolean' ? r.taskbarWasAutoHide : base.taskbarWasAutoHide
-  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, reserveTop, accent, place, lyrics, dndUntil, welcomed, seenVersion, visibility, hideTaskbar, taskbarWasAutoHide }
+  const autoUpdate = typeof r.autoUpdate === 'boolean' ? r.autoUpdate : base.autoUpdate
+  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, reserveTop, accent, place, lyrics, dndUntil, welcomed, seenVersion, visibility, hideTaskbar, taskbarWasAutoHide, autoUpdate }
 }
 
 export async function loadSettings(): Promise<Settings> {

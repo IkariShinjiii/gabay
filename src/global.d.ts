@@ -122,6 +122,7 @@ export interface Settings {
   seenVersion: string
   visibility: 'always' | 'auto'
   hideTaskbar: boolean
+  autoUpdate: boolean
   taskbarWasAutoHide: boolean | null
 }
 

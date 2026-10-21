@@ -1,6 +1,7 @@
 // What each release brought, in plain words. Shown once as a toast after updating, and in Settings > What's new.
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
+  ['1.2.0', ['Updates install by themselves while you are away from the PC (Settings > Install updates automatically)']],
   [
     '1.1.0',
     [
