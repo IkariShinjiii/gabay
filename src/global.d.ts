@@ -72,6 +72,11 @@ export interface OverlayApi {
   reportBug(description: string, how: 'github' | 'copy'): Promise<boolean>
   logError(msg: string): void
   onPrivacy(cb: (p: { mic: string[]; cam: string[] }) => void): () => void
+  /** Open windows, while "Hide the Windows taskbar" is on. */
+  onWindows(cb: (w: OpenWindow[]) => void): () => void
+  windowsGet(): Promise<OpenWindow[]>
+  /** Switch to an open window, or minimize it when it's the one in use. */
+  windowsClick(id: string): Promise<boolean>
   onDownload(cb: (d: DownloadState | null) => void): () => void
   onDownloadDone(cb: (name: string) => void): () => void
   listWifi(): Promise<{ networks: WifiNetwork[]; error: 'off' | 'location' | null }>
@@ -89,6 +94,18 @@ export interface OverlayApi {
   onFullscreen(cb: (fullscreen: boolean) => void): () => void
 }
 
+/** An open window, as the taskbar would show it. id is opaque; the program's path stays in main. */
+export interface OpenWindow {
+  id: string
+  title: string
+  icon: string | null
+  minimized: boolean
+  /** The window last in use before Gabay. */
+  active: boolean
+  /** Flashing for attention. */
+  attention: boolean
+}
+
 export interface Settings {
   hotkey: string
   collapseMs: number
@@ -104,6 +121,8 @@ export interface Settings {
   welcomed: boolean
   seenVersion: string
   visibility: 'always' | 'auto'
+  hideTaskbar: boolean
+  taskbarWasAutoHide: boolean | null
 }
 
 export interface SettingsSnapshot {

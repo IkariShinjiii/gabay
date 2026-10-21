@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { COLLAPSE_DELAY_MS, HIDE_DELAY_MS, NOTCH, REVEAL_DWELL_MS } from './constants'
-import type { DownloadState, LauncherItem, LiveMedia, PowerAction, Settings, Weather } from './global'
+import type { DownloadState, LauncherItem, LiveMedia, OpenWindow, PowerAction, Settings, Weather } from './global'
+import Dock from './Dock'
 import ClipboardPanel from './ClipboardPanel'
 import { parseCommand, type CommandActions } from './commands'
 import Launcher from './Launcher'
@@ -25,6 +26,13 @@ import { useFocusTimer } from './useFocusTimer'
 const TABS = ['Controls', 'Today', 'Notes', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
 type Tab = (typeof TABS)[number]
 
+const SAMPLE_WINS: OpenWindow[] = [
+  { id: '1', title: 'Inbox - Mail', icon: null, minimized: false, active: true, attention: false },
+  { id: '2', title: 'Project notes', icon: null, minimized: false, active: false, attention: false },
+  { id: '3', title: 'Music', icon: null, minimized: true, active: false, attention: false },
+  { id: '4', title: 'Chat', icon: null, minimized: false, active: false, attention: true }
+]
+
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
 
 export default function App(): React.JSX.Element {
@@ -35,6 +43,8 @@ export default function App(): React.JSX.Element {
   const previewTab = TABS.find((t) => t === previewParam)
   // Dev preview of the first-run tour: open on it with no pointer involved.
   const previewWelcome = previewParam === 'Welcome'
+  // Dev preview of the open-apps row, with made-up apps (never the person's real windows).
+  const previewDock = new URLSearchParams(location.hash.slice(1)).get('dock') === '1'
   const [expanded, setExpanded] = useState(previewTab !== undefined || previewWelcome)
   const [tab, setTab] = useState<Tab>(previewTab ?? 'Today')
   // One bar for everything: text that parses as a command is a command, anything else searches apps (or the clipboard).
@@ -130,11 +140,13 @@ export default function App(): React.JSX.Element {
   const announceUpdate = useRef<(version: string) => void>(() => undefined)
   accentRef.current = accentName
   const [place, setPlace] = useState<string | null>(null)
+  const [dockOn, setDockOn] = useState(false)
   const applySettings = useCallback((s: Settings): void => {
     collapseMs.current = s.collapseMs
     void resolveAccent(s.accent).then(applyAccent)
     setDndUntil(s.dndUntil)
     setPlace(s.place ? `${s.place.lat},${s.place.lon}` : null)
+    setDockOn(previewParam ? previewDock : s.hideTaskbar)
     // A preview of the collapsed pill must show it, whatever the saved visibility is.
     const v = previewParam ? 'always' : s.visibility
     visibilityRef.current = v
@@ -408,6 +420,17 @@ export default function App(): React.JSX.Element {
     return () => window.clearInterval(id)
   }, [place])
 
+  // --- open apps (while the Windows taskbar is hidden) ---
+  const [wins, setWins] = useState<OpenWindow[]>(previewDock ? SAMPLE_WINS : [])
+  useEffect(() => {
+    if (previewParam) return
+    return window.overlay.onWindows(setWins)
+  }, [])
+  useEffect(() => {
+    if (expanded && dockOn && !previewParam) void window.overlay.windowsGet().then(setWins, () => undefined)
+  }, [expanded, dockOn])
+  const attention = dockOn && wins.some((w) => w.attention)
+
   // --- camera / microphone dot, downloads ---
   const [privacy, setPrivacy] = useState({ mic: false, cam: false })
   const [download, setDownload] = useState<DownloadState | null>(null)
@@ -679,7 +702,7 @@ export default function App(): React.JSX.Element {
   const recording = recorder.startedAt !== null
   const live = !expanded && !showToast && onScreen && (!!media?.playing || !!download || recording)
   // The pill is as wide as its two sides need (they are equal, so the clock stays centred): about 12 px per icon.
-  const leftPx = 12 + (live && media?.playing ? 21 : 0) + (weather ? 41 : 0) + (dndOn ? 16 : 0)
+  const leftPx = 12 + (live && media?.playing ? 21 : 0) + (weather ? 41 : 0) + (dndOn ? 16 : 0) + (attention ? 12 : 0)
   const rightPx = (battery ? 34 : 0) + (live && download ? 52 : live && media?.playing ? 20 : 0) + (privacy.cam || privacy.mic ? 12 : 0)
   const pillWidth = Math.max(live ? NOTCH.live.width : NOTCH.collapsed.width, 2 * Math.max(leftPx, rightPx) + 104)
   const size = expanded
@@ -818,6 +841,7 @@ export default function App(): React.JSX.Element {
               {body}
             </motion.div>
           </AnimatePresence>
+          {dockOn && !welcome && wins.length > 0 && <Dock wins={wins} onClick={(id) => void window.overlay.windowsClick(id)} />}
           {hasBar && (
           <label className={parsed ? 'bar is-command' : 'bar'}>
             <Icon name={parsed ? 'command' : 'search'} size={16} />
@@ -867,6 +891,7 @@ export default function App(): React.JSX.Element {
             weather={weather}
             dnd={dndOn}
             privacy={privacy}
+            attention={attention}
             recordingMs={recording ? Date.now() - (recorder.startedAt ?? Date.now()) : null}
             stopwatchMs={timers.stopwatch.running ? timers.elapsedMs : null}
             countdown={soonest ? { leftMs: leftOf(soonest, timers.now), totalMs: soonest.totalMs } : null}

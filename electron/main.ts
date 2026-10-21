@@ -222,6 +222,27 @@ app.whenReady().then(async () => {
   // Whether Windows lets Gabay read notifications; null until the helper reports.
   let noteAccess: string | null = null
   let media: Record<string, unknown> | null = null
+  // Open windows for the dock row (only while the taskbar is hidden). Paths stay here; the renderer gets icons.
+  type Win = { id: string; title: string; path: string | null; minimized: boolean; active: boolean; attention: boolean }
+  let openWins: Win[] = []
+  const winIcons = new Map<string, string | null>()
+  const iconFor = async (path: string | null): Promise<string | null> => {
+    if (!path) return null
+    if (!winIcons.has(path)) {
+      if (winIcons.size > 200) winIcons.clear()
+      winIcons.set(path, await app.getFileIcon(path, { size: 'normal' }).then((i) => i.toDataURL(), () => null))
+    }
+    return winIcons.get(path) ?? null
+  }
+  const takeWins = (raw: unknown): Win[] =>
+    (Array.isArray(raw) ? raw : []).flatMap((w: Record<string, unknown>) =>
+      w && typeof w.h === 'string' && /^\d{1,20}$/.test(w.h)
+        ? [{ id: w.h, title: str(w.t, 200) ?? '', path: typeof w.p === 'string' ? w.p : null, minimized: w.min === true, active: w.fg === true, attention: w.flash === true }]
+        : []
+    ).slice(0, 40)
+  const winsForUi = async (): Promise<unknown[]> =>
+    Promise.all(openWins.map(async ({ path, ...w }) => ({ ...w, icon: await iconFor(path) })))
+  const pushWins = async (): Promise<void> => send('overlay:windows', await winsForUi())
   {
     void startNative({
       fullscreen: (r) => {
@@ -253,6 +274,10 @@ app.whenReady().then(async () => {
         }
         send('overlay:media', media)
       },
+      windows: (raw) => {
+        openWins = settings.hideTaskbar ? takeWins(raw) : []
+        void pushWins()
+      },
       noteAccess: (status) => {
         noteAccess = /^[A-Za-z]+$/.test(status) ? status : null
       },
@@ -271,8 +296,23 @@ app.whenReady().then(async () => {
     }, () => {
       void nativeCall('notes', settings.notifications && !PREVIEW ? 'on' : 'off')
       applyReserve()
+      void applyTaskbar()
     })
   }
+  ipcMain.handle('windows:get', async (e) => {
+    fromUi(e)
+    if (!settings.hideTaskbar) return []
+    // Asked when the panel opens: catches what no shell message reports (a switch of virtual desktop).
+    const raw = await nativeCall('windows')
+    if (raw) openWins = takeWins(raw)
+    return winsForUi()
+  })
+  ipcMain.handle('windows:click', async (e, id: unknown) => {
+    fromUi(e)
+    const w = openWins.find((x) => x.id === id) // only windows Gabay listed
+    if (!w) return false
+    return (await nativeCall(w.active && !w.minimized ? 'minimize' : 'focus', w.id)) === true
+  })
   ipcMain.handle('media:get', (e) => {
     fromUi(e)
     return media
@@ -503,6 +543,31 @@ app.whenReady().then(async () => {
     const h = Math.round(BAND_DIP * d.scaleFactor)
     void nativeCall('appbar', [px.x, px.y, px.x + px.width, px.y + px.height, h].map((n) => Math.round(n)).join(' '))
   }
+  // Hide the Windows taskbar: Windows' own auto-hide, so the real taskbar is still there at the bottom edge. The
+  // person's earlier choice is saved first and put back when this is turned off, when Gabay quits (the helper does it
+  // as it exits), or on the next start if Gabay was killed.
+  async function applyTaskbar(): Promise<void> {
+    if (PREVIEW) return
+    if (settings.hideTaskbar) {
+      if (settings.taskbarWasAutoHide === null) {
+        const was = await nativeCall('tbget')
+        if (typeof was !== 'boolean') return
+        settings = { ...settings, taskbarWasAutoHide: was }
+        await saveSettings(settings)
+      }
+      await nativeCall('tbset', `1 ${settings.taskbarWasAutoHide ? 1 : 0}`)
+      await nativeCall('wins', 'on')
+    } else {
+      await nativeCall('wins', 'off')
+      openWins = []
+      send('overlay:windows', [])
+      if (settings.taskbarWasAutoHide !== null) {
+        if ((await nativeCall('tbset', settings.taskbarWasAutoHide ? '1' : '0')) !== true) return
+        settings = { ...settings, taskbarWasAutoHide: null }
+        await saveSettings(settings)
+      }
+    }
+  }
   const placeNotch = (): void => {
     const d = targetDisplay(settings)
     placedOn = d.id
@@ -558,7 +623,9 @@ app.whenReady().then(async () => {
     const prevDisplay = settings.displayId
     const prevFollow = settings.followMouse
     const prevReserve = settings.reserveTop
-    const next: Settings = sanitize(patch, settings)
+    const prevHide = settings.hideTaskbar
+    // taskbarWasAutoHide is main's own record; a patch (or Reset's defaults) never overwrites it.
+    const next: Settings = { ...sanitize(patch, settings), taskbarWasAutoHide: settings.taskbarWasAutoHide }
     // Also retry when the same hotkey is picked again: the other app that held it may have exited since.
     const pickedHotkey = typeof patch === 'object' && patch !== null && 'hotkey' in patch
     if (next.hotkey !== settings.hotkey || (pickedHotkey && next.hotkey !== activeHotkey)) applyHotkey(next.hotkey)
@@ -568,6 +635,7 @@ app.whenReady().then(async () => {
     void nativeCall('notes', settings.notifications ? 'on' : 'off')
     if (next.reserveTop !== prevReserve) applyReserve()
     await saveSettings(settings)
+    if (next.hideTaskbar !== prevHide) await applyTaskbar()
     return snapshot()
   }
   ipcMain.handle('settings:set', (e, patch: unknown) => {
