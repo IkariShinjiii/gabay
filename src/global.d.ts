@@ -11,6 +11,8 @@ export interface OverlayApi {
   /** Opens a fixed Windows Settings page by key. */
   quickOpen(key: SettingsKey): Promise<boolean>
   networkKind(): Promise<'wifi' | 'ethernet' | 'offline'>
+  /** What this PC has; desktops often have no battery or Wi-Fi. */
+  hardware(): Promise<{ battery: boolean; wifi: boolean } | null>
   /** Win+P display mode: read the current one, or switch with Windows' DisplaySwitch. */
   projectGet(): Promise<ProjectMode>
   projectSet(mode: ProjectMode): Promise<boolean>

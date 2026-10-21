@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('overlay', {
   quickSlide: (kind: string, value: number) => ipcRenderer.invoke('quick:slide', kind, value),
   quickOpen: (key: string) => ipcRenderer.invoke('quick:open', key),
   networkKind: () => ipcRenderer.invoke('network:kind'),
+  hardware: () => ipcRenderer.invoke('hardware:get'),
   projectGet: () => ipcRenderer.invoke('project:get'),
   projectSet: (mode: string) => ipcRenderer.invoke('project:set', mode),
   getStats: () => ipcRenderer.invoke('stats:get'),

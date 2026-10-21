@@ -393,6 +393,8 @@ static class Native {
         return IsWindow(h) && Listable(h) && ShowWindowAsync(h, 6) ? "true" : "false"; // SW_MINIMIZE
       }
       case "tbget": return TaskbarAutoHide() ? "true" : "false";
+      case "net": return "\"" + Net() + "\"";
+      case "hw": return Hardware();
       case "tbset": {
         // tbset <0|1> [restore 0|1]: the restore value is put back if Gabay goes away without saying so.
         var a = arg.Split(' ');
@@ -863,6 +865,41 @@ static class Native {
       // app is in front (toasts don't show then anyway).
       Thread.Sleep(fsActive || IdleMs() > 60000 ? 5000 : 2000);
     }
+  }
+
+  // ---------- network and hardware ----------
+  static bool Virtual(System.Net.NetworkInformation.NetworkInterface n) {
+    var d = (n.Description + " " + n.Name).ToLowerInvariant();
+    foreach (var w in new[] { "virtual", "vmware", "hyper-v", "vethernet", "tap-", "tunnel", "vpn", "wsl", "docker", "tailscale", "wireguard", "loopback", "bluetooth" })
+      if (d.Contains(w)) return true;
+    return false;
+  }
+  /** The link the internet goes through: an up adapter with a default gateway, wired first (Windows prefers it too). */
+  static string Net() {
+    string best = "offline";
+    foreach (var n in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()) {
+      try {
+        if (n.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up || Virtual(n)) continue;
+        bool gw = false;
+        foreach (var g in n.GetIPProperties().GatewayAddresses) {
+          var a = g.Address.ToString();
+          if (a != "0.0.0.0" && a != "::") { gw = true; break; }
+        }
+        if (!gw) continue;
+        if (n.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Wireless80211) best = "wifi";
+        else return "ethernet";
+      } catch { }
+    }
+    return best;
+  }
+  /** What this PC has: a battery (laptops) and a Wi-Fi adapter. Desktops often have neither. */
+  static string Hardware() {
+    var bs = SystemInformation.PowerStatus.BatteryChargeStatus;
+    bool battery = (bs & BatteryChargeStatus.NoSystemBattery) == 0 && bs != BatteryChargeStatus.Unknown;
+    bool wifi = false;
+    foreach (var n in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+      try { if (n.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Wireless80211 && !Virtual(n)) wifi = true; } catch { }
+    return "{\"battery\":" + (battery ? "true" : "false") + ",\"wifi\":" + (wifi ? "true" : "false") + "}";
   }
 
   // ---------- paired Bluetooth devices ----------

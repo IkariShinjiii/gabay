@@ -27,6 +27,9 @@ const MORE: MoreTile[] = [
 ]
 
 /** A split tile like the reference: the main part acts, the chevron part opens the related Windows Settings page. */
+const ROW = ['', 'one', 'two', 'three'] as const
+const radioSeen = { wifi: false, bt: false }
+
 function SplitTile(props: {
   icon: IconName
   label: string
@@ -508,6 +511,13 @@ export default function QuickPanel(props: {
     : state.media
   const wifiOn = state.radios.wifi
   const btOn = state.radios.bluetooth
+  // Desktops often have no Wi-Fi or Bluetooth: those tiles (and airplane mode, with neither) are left out. Once seen,
+  // a radio stays shown, so one failed read doesn't make a tile blink away.
+  if (wifiOn !== undefined) radioSeen.wifi = true
+  if (btOn !== undefined) radioSeen.bt = true
+  const hasWifi = demo || radioSeen.wifi
+  const hasBt = demo || radioSeen.bt
+  const hasRadio = hasWifi || hasBt
   const volume = state.volume !== null ? Math.round(state.volume * 100) : null
   const brightness = state.brightness
   const volIcon: IconName = state.muted || volume === 0 ? 'volume-x' : (volume ?? 0) < 50 ? 'volume-1' : 'volume-2'
@@ -536,27 +546,31 @@ export default function QuickPanel(props: {
             exit={{ x: dir * -60, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 420, damping: 38 }}
           >
-            <div className="ct-row three">
-              <SplitTile
-                icon={wifiOn === false ? 'wifi-off' : 'wifi'}
-                label="Wi-Fi"
-                sub={wifiOn === undefined ? 'Unavailable' : wifiOn ? (demo ? 'Home Wi-Fi' : (state.wifi.ssid ?? 'On')) : 'Off'}
-                on={!!wifiOn}
-                disabled={wifiOn === undefined}
-                onMain={() => void act({ kind: 'radio', radio: 'wifi', on: !wifiOn })}
-                settings="network"
-                onMore={() => setView('wifi')}
-              />
-              <SplitTile
-                icon="bluetooth"
-                label="Bluetooth"
-                sub={btOn === undefined ? 'Unavailable' : btOn ? 'On' : 'Off'}
-                on={!!btOn}
-                disabled={btOn === undefined}
-                onMain={() => void act({ kind: 'radio', radio: 'bluetooth', on: !btOn })}
-                settings="bluetooth"
-                onMore={() => setView('bt')}
-              />
+            <div className={`ct-row ${ROW[1 + (hasWifi ? 1 : 0) + (hasBt ? 1 : 0)]}`}>
+              {hasWifi && (
+                <SplitTile
+                  icon={wifiOn === false ? 'wifi-off' : 'wifi'}
+                  label="Wi-Fi"
+                  sub={wifiOn === undefined ? 'Unavailable' : wifiOn ? (demo ? 'Home Wi-Fi' : (state.wifi.ssid ?? 'On')) : 'Off'}
+                  on={!!wifiOn}
+                  disabled={wifiOn === undefined}
+                  onMain={() => void act({ kind: 'radio', radio: 'wifi', on: !wifiOn })}
+                  settings="network"
+                  onMore={() => setView('wifi')}
+                />
+              )}
+              {hasBt && (
+                <SplitTile
+                  icon="bluetooth"
+                  label="Bluetooth"
+                  sub={btOn === undefined ? 'Unavailable' : btOn ? 'On' : 'Off'}
+                  on={!!btOn}
+                  disabled={btOn === undefined}
+                  onMain={() => void act({ kind: 'radio', radio: 'bluetooth', on: !btOn })}
+                  settings="bluetooth"
+                  onMore={() => setView('bt')}
+                />
+              )}
               <SplitTile
                 icon={state.muted ? 'volume-x' : 'volume-2'}
                 label="Audio"
@@ -570,16 +584,18 @@ export default function QuickPanel(props: {
                 moreTitle="Volume per app"
               />
             </div>
-            <div className="ct-row two">
-              <SplitTile
-                icon="plane"
-                label="Airplane mode"
-                sub={state.airplane === null ? 'Unavailable' : state.airplane ? 'On' : 'Off'}
-                on={!!state.airplane}
-                disabled={state.airplane === null}
-                onMain={() => void act({ kind: 'airplane' })}
-                settings="airplane"
-              />
+            <div className={`ct-row ${ROW[1 + (hasRadio ? 1 : 0)]}`}>
+              {hasRadio && (
+                <SplitTile
+                  icon="plane"
+                  label="Airplane mode"
+                  sub={state.airplane === null ? 'Unavailable' : state.airplane ? 'On' : 'Off'}
+                  on={!!state.airplane}
+                  disabled={state.airplane === null}
+                  onMain={() => void act({ kind: 'airplane' })}
+                  settings="airplane"
+                />
+              )}
               <SplitTile
                 icon="contrast"
                 label="Dark mode"
