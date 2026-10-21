@@ -34,6 +34,13 @@
   --body: 'Onest', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
   --radius: 22px;
+  /* A desktop wallpaper: Gabay's notch is black, so it only reads against a lit screen, like on a real PC. */
+  --wallpaper:
+    radial-gradient(70% 90% at 12% 0%, rgba(47, 214, 191, 0.55) 0%, transparent 62%),
+    radial-gradient(60% 100% at 88% 8%, rgba(110, 86, 230, 0.55) 0%, transparent 60%),
+    radial-gradient(80% 120% at 50% 110%, rgba(255, 140, 90, 0.28) 0%, transparent 60%),
+    linear-gradient(160deg, #123c3a 0%, #142243 55%, #1d1533 100%);
+  --star: #ffc94d;
   color-scheme: dark;
 }
 
@@ -96,7 +103,23 @@ code { font-family: var(--mono); font-size: 0.85em; color: var(--ink-2); }
 .sec-head { display: grid; gap: 12px; margin-bottom: 36px; max-width: 760px; }
 
 /* ---------- hero notch ---------- */
-.screen-top { position: relative; height: 112px; display: flex; justify-content: center; border-top: 1px solid var(--line); }
+.screen-top {
+  position: relative;
+  height: 150px;
+  display: flex;
+  justify-content: center;
+  max-width: 1120px;
+  margin: 4px max(16px, env(safe-area-inset-left, 0px)) 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 0;
+  border-radius: 22px 22px 0 0;
+  background: var(--wallpaper);
+  overflow: hidden;
+  /* the screen fades into the page below it */
+  -webkit-mask-image: linear-gradient(#000 55%, transparent);
+  mask-image: linear-gradient(#000 55%, transparent);
+}
+@media (min-width: 1152px) { .screen-top { margin-inline: auto; } }
 .island {
   --w: 216px; --h: 26px; --r: 14px;
   position: relative;
@@ -104,7 +127,7 @@ code { font-family: var(--mono); font-size: 0.85em; color: var(--ink-2); }
   height: var(--h);
   background: #000;
   border-radius: 0 0 var(--r) var(--r);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 14px 34px rgba(0, 0, 0, 0.55);
   transition: width 620ms cubic-bezier(0.32, 1.45, 0.52, 1), height 620ms cubic-bezier(0.32, 1.45, 0.52, 1), border-radius 620ms cubic-bezier(0.32, 1.45, 0.52, 1);
   overflow: hidden;
   margin-top: -1px;
@@ -169,16 +192,16 @@ code { font-family: var(--mono); font-size: 0.85em; color: var(--ink-2); }
 
 /* ---------- screenshots hang from a bezel ---------- */
 .shot {
-  position: relative; display: grid; justify-items: center; padding: 0 18px 22px;
+  position: relative; display: grid; justify-items: center; padding: 0 clamp(18px, 6%, 48px) clamp(22px, 5%, 40px);
   border-radius: 0 0 var(--radius) var(--radius);
-  background: radial-gradient(120% 90% at 50% 0%, #0f1d1b 0%, var(--panel) 55%);
-  border: 1px solid var(--line); border-top: 0; overflow: hidden;
+  background: var(--wallpaper);
+  border: 1px solid rgba(255, 255, 255, 0.08); border-top: 0; overflow: hidden;
 }
 .shot::before { content: ""; position: absolute; inset: 0 0 auto; height: 1px; background: #2a3533; }
-.shot img { display: block; width: 100%; height: auto; }
+.shot img { display: block; width: 100%; height: auto; filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.5)); }
 .shot.pills { gap: 14px; padding-block: 0 26px; }
 .shot.pills img { width: auto; }
-.cap { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); text-align: center; }
+.cap { font-family: var(--mono); font-size: 0.72rem; color: rgba(237, 243, 241, 0.75); text-align: center; }
 
 /* ---------- features ---------- */
 .feat-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 22px; }
@@ -219,6 +242,30 @@ code { font-family: var(--mono); font-size: 0.85em; color: var(--ink-2); }
 .rel-head time { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
 .rel p { color: var(--ink-2); white-space: pre-line; }
 
+/* ---------- reviews ---------- */
+.rv-top { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.rv-score { padding: 24px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line); display: grid; gap: 10px; }
+.rv-avg { font-family: var(--display); font-size: 3.4rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
+.rv-avg small { font-size: 1.1rem; color: var(--muted); font-weight: 600; }
+.stars { --pct: 0%; position: relative; display: inline-block; justify-self: start; font-size: 1.25rem; letter-spacing: 2px; line-height: 1; color: #2a3331; }
+.stars::before { content: "\2605\2605\2605\2605\2605"; }
+.stars::after { content: "\2605\2605\2605\2605\2605"; position: absolute; inset: 0; width: var(--pct); overflow: hidden; color: var(--star); white-space: nowrap; }
+.stars.sm { font-size: 0.95rem; letter-spacing: 1px; }
+.bars { display: grid; gap: 5px; margin-top: 4px; }
+.bar-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) 24px; gap: 8px; align-items: center; font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
+.bar-row span:last-child { text-align: right; }
+.bar { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--star); border-radius: 3px; }
+.rv-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.rv { padding: 20px 22px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); display: grid; gap: 10px; align-content: start; min-width: 0; }
+.rv p { color: var(--ink-2); white-space: pre-line; overflow-wrap: anywhere; }
+.rv-by { display: flex; align-items: center; gap: 10px; font-size: 0.88rem; color: var(--muted); }
+.rv-by img { width: 26px; height: 26px; border-radius: 50%; }
+.rv-by b { color: var(--ink); font-weight: 600; }
+.rv-empty { grid-column: 1 / -1; padding: 28px; border-radius: 18px; border: 1px dashed var(--line); color: var(--ink-2); display: grid; gap: 6px; }
+.rv-empty b { color: var(--ink); }
+.rv-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 18px; }
+
 /* ---------- faq ---------- */
 .faq { display: grid; gap: 10px; max-width: 820px; }
 details { border-radius: 16px; background: var(--panel); border: 1px solid var(--line); padding: 4px 18px; }
@@ -238,7 +285,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
   .hero-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .feat.w7, .feat.w5 { grid-column: span 12; }
   .more { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .steps, .priv, .soon { grid-template-columns: minmax(0, 1fr); }
+  .steps, .priv, .soon, .rv-top, .rv-list { grid-template-columns: minmax(0, 1fr); }
   .nav-links { display: none; }
 }
 @media (max-width: 520px) {
@@ -263,6 +310,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
   <nav class="nav-links" aria-label="Sections">
     <a href="#features">Features</a>
     <a href="#install">Install</a>
+    <a href="#reviews">Reviews</a>
     <a href="#privacy">Privacy</a>
     <a href="#changes">What's new</a>
     <a href="#faq">FAQ</a>
@@ -312,7 +360,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
     <div class="wrap">
       <div class="hero-grid">
         <div>
-          <p class="eyebrow">Gabay 1.0 · free for Windows 11 and 10</p>
+          <p class="eyebrow">Free for Windows 11 and 10</p>
           <h1>Gabay<span class="dot">.</span></h1>
           <p class="tagline">Your Windows taskbar, folded into an iPhone-style notch.</p>
           <p class="meaning"><b>Gabay</b> is Filipino for "guide". It sits at the top of your screen, shows what matters at a glance, and opens into quick settings, your day and your tools when you hover over it.</p>
@@ -445,6 +493,34 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
         <span class="chip">Built and tested on Windows 11</span>
       </div>
       <p class="small" style="margin-top:14px">To remove it: Windows Settings › Apps › Installed apps › Gabay › Uninstall.</p>
+    </div>
+  </section>
+
+  <section class="edge" id="reviews" aria-labelledby="r-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Reviews</p>
+        <h2 id="r-h">What people say.</h2>
+        <p class="lede">Reviews are written on GitHub, so each one comes from a real account. They appear here once checked for spam.</p>
+      </div>
+      <div class="rv-top">
+        <div class="rv-score" aria-live="polite">
+          <div class="rv-avg" id="rv-avg">&ndash;<small> / 5</small></div>
+          <span class="stars" id="rv-stars" role="img" aria-label="No ratings yet"></span>
+          <p class="small" id="rv-count">No reviews yet</p>
+          <div class="bars" id="rv-bars"></div>
+        </div>
+        <div class="rv-list" id="rv-list">
+          <div class="rv-empty"><b>Be the first to review Gabay.</b><span>Tried it? Give it a rating and say what you think.</span></div>
+        </div>
+      </div>
+      <div class="rv-cta">
+        <a class="btn primary" href="https://github.com/IkariShinjiii/gabay/issues/new?template=review.yml">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6L2.5 9.4l6.6-.8z"/></svg>
+          Rate and review
+        </a>
+        <span class="small">Needs a free GitHub account.</span>
+      </div>
     </div>
   </section>
 
@@ -620,6 +696,44 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
       document.getElementById('releases').innerHTML = html;
     })
     .catch(function () { /* offline or rate-limited: the static copy and the releases link stay */ });
+
+  // Reviews: GitHub issues from the review form that the maintainer labelled "approved". Everything shown is escaped.
+  var section = function (body, heading) {
+    var parts = String(body || '').split(/^###\s+/m);
+    for (var i = 0; i < parts.length; i++) if (parts[i].indexOf(heading) === 0) return parts[i].slice(heading.length).trim();
+    return '';
+  };
+  fetch('https://api.github.com/repos/IkariShinjiii/gabay/issues?labels=review,approved&state=all&per_page=100', { headers: { Accept: 'application/vnd.github+json' } })
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function (list) {
+      var reviews = (Array.isArray(list) ? list : []).map(function (i) {
+        var stars = parseInt((section(i.body, 'Rating').match(/[1-5]/) || [])[0], 10);
+        var text = section(i.body, 'Your review').replace(/^_No response_$/, '');
+        var user = i.user || {};
+        return { stars: stars, text: text.slice(0, 1200), login: String(user.login || ''), avatar: String(user.avatar_url || ''), date: i.created_at };
+      }).filter(function (r) { return r.stars >= 1 && r.stars <= 5; });
+      if (!reviews.length) return;
+      var sum = 0, counts = [0, 0, 0, 0, 0];
+      reviews.forEach(function (r) { sum += r.stars; counts[r.stars - 1]++; });
+      var avg = sum / reviews.length;
+      document.getElementById('rv-avg').innerHTML = esc(avg.toFixed(1)) + '<small> / 5</small>';
+      var st = document.getElementById('rv-stars');
+      st.style.setProperty('--pct', (avg / 5 * 100) + '%');
+      st.setAttribute('aria-label', avg.toFixed(1) + ' out of 5 stars');
+      document.getElementById('rv-count').textContent = reviews.length + (reviews.length === 1 ? ' review' : ' reviews');
+      var max = Math.max.apply(null, counts) || 1;
+      document.getElementById('rv-bars').innerHTML = [5, 4, 3, 2, 1].map(function (n) {
+        return '<div class="bar-row"><span>' + n + '&#9733;</span><span class="bar"><i style="width:' + (counts[n - 1] / max * 100) + '%"></i></span><span>' + counts[n - 1] + '</span></div>';
+      }).join('');
+      document.getElementById('rv-list').innerHTML = reviews.slice(0, 12).map(function (r) {
+        var avatar = /^https:\/\/avatars\.githubusercontent\.com\//.test(r.avatar) ? '<img src="' + esc(r.avatar + (r.avatar.indexOf('?') < 0 ? '?' : '&') + 's=52') + '" alt="" width="26" height="26" loading="lazy">' : '';
+        var d = new Date(r.date);
+        return '<article class="rv"><span class="stars sm" style="--pct:' + (r.stars * 20) + '%" role="img" aria-label="' + r.stars + ' out of 5 stars"></span>' +
+          (r.text ? '<p>' + esc(r.text) + '</p>' : '') +
+          '<div class="rv-by">' + avatar + '<b>' + esc(r.login) + '</b><span>' + esc(d.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })) + '</span></div></article>';
+      }).join('');
+    })
+    .catch(function () { /* offline or rate-limited: the empty state and the review button stay */ });
 })();
 </script>
 </body>

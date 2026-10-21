@@ -1,0 +1,27 @@
+name: Review Gabay
+description: Rate Gabay and say what you think. Approved reviews appear on the website.
+title: "Review"
+labels: ["review"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for trying Gabay! Your rating, review and GitHub name show on the website once approved.
+  - type: dropdown
+    id: rating
+    attributes:
+      label: Rating
+      options:
+        - "★★★★★ 5"
+        - "★★★★☆ 4"
+        - "★★★☆☆ 3"
+        - "★★☆☆☆ 2"
+        - "★☆☆☆☆ 1"
+    validations:
+      required: true
+  - type: textarea
+    id: review
+    attributes:
+      label: Your review
+      description: What do you like? What could be better? Please don't include personal details.
+    validations:
+      required: false
