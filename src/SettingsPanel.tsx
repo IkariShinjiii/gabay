@@ -340,6 +340,14 @@ function UpdateRow(): React.JSX.Element {
  */
 export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveHotkey }: Props): React.JSX.Element {
   const [snap, setSnap] = useState<SettingsSnapshot | null>(null)
+  // Windows' Do not disturb, re-read every few seconds while Settings is open (it's turned on outside Gabay).
+  const [winDnd, setWinDnd] = useState<boolean | null>(null)
+  useEffect(() => {
+    const read = (): void => void window.overlay.windowsDnd().then(setWinDnd, () => undefined)
+    read()
+    const id = window.setInterval(read, 4000)
+    return () => window.clearInterval(id)
+  }, [])
   const [delay, setDelay] = useState<number | null>(null)
   const saveTimer = useRef<number | undefined>(undefined)
 
@@ -502,7 +510,7 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
             )}
           </div>
         )}
-        {settings.notifications && snap.notificationAccess === 'Allowed' && (
+        {settings.notifications && snap.notificationAccess === 'Allowed' && winDnd === false && (
           <div className="set-tip">
             <span>
               Seeing every notification twice? Turn on <b>Do not disturb</b> in Windows: its pop-ups stop, and Gabay still
@@ -510,6 +518,19 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
             </span>
             <button className="chip" onClick={() => void window.overlay.quickOpen('notifications')}>
               Open Windows notifications
+            </button>
+          </div>
+        )}
+        {settings.notifications && winDnd && (
+          <div className="set-opts set-sub">
+            <span className="set-sub-label" title="Windows is silent while its Do not disturb is on">
+              Sound (Windows is on Do not disturb)
+            </span>
+            <button className={settings.noteSound ? 'chip on' : 'chip'} onClick={() => void save({ noteSound: true })}>
+              On
+            </button>
+            <button className={!settings.noteSound ? 'chip on' : 'chip'} onClick={() => void save({ noteSound: false })}>
+              Off
             </button>
           </div>
         )}

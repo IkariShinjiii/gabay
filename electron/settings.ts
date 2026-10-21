@@ -14,6 +14,8 @@ export interface Settings {
   notifications: boolean
   /** Include the sender and message text; off shows only the app name. */
   notePreview: boolean
+  /** Play a short sound with each notification while Windows' Do not disturb is on (Windows is silent then). */
+  noteSound: boolean
   /** Reserve a band at the top of the screen so maximized windows sit below the notch. */
   reserveTop: boolean
   /** Accent colour: a preset name, or 'windows' for the Windows accent. */
@@ -47,7 +49,7 @@ export const ACCENTS = ['mint', 'windows', 'blue', 'purple', 'pink', 'orange', '
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, welcomed: false, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarWasAutoHide: null, autoUpdate: true, updateChannel: 'stable' }
+export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, noteSound: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, welcomed: false, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarWasAutoHide: null, autoUpdate: true, updateChannel: 'stable' }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -65,6 +67,7 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
   const followMouse = typeof r.followMouse === 'boolean' ? r.followMouse : base.followMouse
   const notifications = typeof r.notifications === 'boolean' ? r.notifications : base.notifications
   const notePreview = typeof r.notePreview === 'boolean' ? r.notePreview : base.notePreview
+  const noteSound = typeof r.noteSound === 'boolean' ? r.noteSound : base.noteSound
   const reserveTop = typeof r.reserveTop === 'boolean' ? r.reserveTop : base.reserveTop
   const accent = typeof r.accent === 'string' && ACCENTS.includes(r.accent) ? r.accent : base.accent
   const p = r.place as Record<string, unknown> | null | undefined
@@ -83,7 +86,7 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
     r.taskbarWasAutoHide === null || typeof r.taskbarWasAutoHide === 'boolean' ? r.taskbarWasAutoHide : base.taskbarWasAutoHide
   const autoUpdate = typeof r.autoUpdate === 'boolean' ? r.autoUpdate : base.autoUpdate
   const updateChannel = r.updateChannel === 'stable' || r.updateChannel === 'preview' ? r.updateChannel : base.updateChannel
-  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, reserveTop, accent, place, lyrics, dndUntil, welcomed, seenVersion, visibility, hideTaskbar, taskbarWasAutoHide, autoUpdate, updateChannel }
+  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, noteSound, reserveTop, accent, place, lyrics, dndUntil, welcomed, seenVersion, visibility, hideTaskbar, taskbarWasAutoHide, autoUpdate, updateChannel }
 }
 
 export async function loadSettings(): Promise<Settings> {

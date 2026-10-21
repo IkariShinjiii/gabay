@@ -38,6 +38,32 @@ const SAMPLE_WINS: DockApp[] = [
 
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
 
+/** A soft two-note chime for notifications, made on the spot: no sound file, quiet, and short. */
+let noteCtx: AudioContext | null = null
+function noteChime(): void {
+  try {
+    noteCtx ??= new AudioContext()
+    const ctx = noteCtx
+    void ctx.resume()
+    const t0 = ctx.currentTime
+    ;[880, 1318.5].forEach((f, i) => {
+      const o = ctx.createOscillator()
+      const g = ctx.createGain()
+      const t = t0 + i * 0.11
+      o.type = 'sine'
+      o.frequency.value = f
+      g.gain.setValueAtTime(0, t)
+      g.gain.linearRampToValueAtTime(0.12, t + 0.015)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45)
+      o.connect(g).connect(ctx.destination)
+      o.start(t)
+      o.stop(t + 0.5)
+    })
+  } catch {
+    // no audio device: stay silent
+  }
+}
+
 export default function App(): React.JSX.Element {
   const notchRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -390,8 +416,9 @@ export default function App(): React.JSX.Element {
       lastTrack.current = m ? `${m.title}|${m.artist}` : ''
     })
     const offMedia = window.overlay.onMedia(take)
-    const offNote = window.overlay.onNote((n) =>
-      !dndRef.current &&
+    const offNote = window.overlay.onNote((n) => {
+      if (dndRef.current) return
+      if (n.sound) noteChime()
       pushToast({
         icon: 'message-square',
         label: n.app,
@@ -400,7 +427,7 @@ export default function App(): React.JSX.Element {
         tone: 'plain',
         ms: 5200
       })
-    )
+    })
     const offUpdate = window.overlay.onUpdate((u) =>
       pushToast({ icon: 'download', title: `Gabay ${u.version} is available`, sub: 'Install it from Settings', tone: 'accent', ms: 6000 })
     )
