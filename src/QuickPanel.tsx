@@ -677,7 +677,7 @@ export default function QuickPanel(props: {
             transition={{ type: 'spring', stiffness: 420, damping: 38 }}
           >
             <div className="more-grid">
-              {MORE.map((t) => {
+              {MORE.filter((t) => hasWifi || t.label !== 'Mobile hotspot').map((t) => {
                 const on = t.kind === 'airplane' ? !!state.airplane : false
                 return (
                   <motion.button

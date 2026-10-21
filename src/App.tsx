@@ -316,13 +316,17 @@ export default function App(): React.JSX.Element {
   // Desktops have no battery: Chromium then reports a full one that's always charging, so Gabay asks Windows instead.
   const rawBattery = useBattery()
   const [hasBattery, setHasBattery] = useState(true)
+  const [hasWifi, setHasWifi] = useState(true)
   useEffect(() => {
     let tries = 0
     let id = 0
     const ask = (): void => {
       void window.overlay.hardware().then(
         (hw) => {
-          if (hw) setHasBattery(hw.battery)
+          if (hw) {
+            setHasBattery(hw.battery)
+            setHasWifi(hw.wifi)
+          }
           else if (++tries < 10) id = window.setTimeout(ask, 3000)
         },
         () => undefined
@@ -941,6 +945,7 @@ export default function App(): React.JSX.Element {
             clock={clock}
             timer={focusTimer}
             battery={battery}
+            wired={!hasWifi}
             net={net}
             media={live ? media : null}
             weather={weather}

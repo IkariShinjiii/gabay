@@ -28,6 +28,8 @@ interface Props {
   timer: FocusTimer
   battery: BatteryInfo | null
   net: NetKind
+  /** The PC has no Wi-Fi (a desktop): offline shows an unplugged cable, not crossed-out Wi-Fi. */
+  wired?: boolean
   /** Playing media: art on the left, a moving level meter on the right. */
   media: LiveMedia | null
   weather: Weather | null
@@ -124,7 +126,7 @@ export default function NotchStatus(p: Props): React.JSX.Element {
           </span>
         )}
         <span title={NET_LABEL[net]} className="st-icon">
-          <Icon name={NET_ICON[net]} size={12} />
+          <Icon name={net === 'offline' && p.wired ? 'cable' : NET_ICON[net]} size={12} />
         </span>
         {look && weather && (
           <span className="st-weather" title={`${look.label}, ${weather.temp}° · ${weather.place}`}>

@@ -2,6 +2,14 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.3.2',
+    [
+      "Only Gabay pops up: turn on Windows' Do not disturb, and notifications still show in the notch",
+      'A soft sound with each notification while Windows is on Do not disturb (Settings to turn it off)',
+      'On PCs without Wi-Fi: no Mobile hotspot tile, and a cable icon when the network is down'
+    ]
+  ],
+  [
     '1.3.1',
     [
       'Works on desktop PCs: battery, Wi-Fi and Bluetooth only show when the PC has them',
