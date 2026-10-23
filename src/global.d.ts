@@ -60,6 +60,8 @@ export interface OverlayApi {
   volumeNudge(delta: number): Promise<{ volume: number; muted: boolean } | null>
   listBluetooth(): Promise<{ name: string; connected: boolean }[]>
   mediaSeek(seconds: number): Promise<boolean>
+  outputList(): Promise<OutputDevice[]>
+  outputSet(id: string): Promise<boolean>
   mixerList(): Promise<MixerApp[]>
   mixerIcon(pid: number): Promise<string | null>
   mixerSet(pid: number, volume: number): Promise<boolean>
@@ -291,6 +293,12 @@ export interface UpdateInfo {
   notes: string
 }
 
+export interface OutputDevice {
+  id: string
+  name: string
+  kind: 'speakers' | 'headphones' | 'display'
+  current: boolean
+}
 export interface MixerApp {
   pid: number
   name: string

@@ -2,6 +2,14 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.3.7',
+    [
+      'Pick your sound output right in Gabay: Controls › Audio › the arrow shows your speakers, headphones and monitors',
+      'The notch stays shut while you aim in a game, in full screen or in a window',
+      'Gabay waits for the match to end before installing an update'
+    ]
+  ],
+  [
     '1.3.6',
     [
       'No notification sound over a full-screen game or video, and the summon hotkey no longer pulls you out of a match',
