@@ -355,9 +355,103 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
   .island, .st, .btn { transition: none; }
   .eq i { animation: none; transform: scaleY(0.6); }
 }
+
+/* ---------- preloader: dots gather into Gabay's icon ---------- */
+html.pre-lock, html.pre-lock body { overflow: hidden; }
+#pre { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: grid; place-items: center; transition: opacity 650ms ease, visibility 0s linear 650ms; }
+#pre.done { opacity: 0; visibility: hidden; pointer-events: none; }
+#pre canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#pre .pre-meta { position: absolute; left: 0; right: 0; bottom: max(36px, env(safe-area-inset-bottom, 0px)); display: grid; justify-items: center; gap: 12px; font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+#pre .pre-bar { width: 140px; height: 2px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+#pre .pre-bar i { display: block; height: 100%; width: 100%; background: #2fd6bf; transform: scaleX(0); transform-origin: left; }
 </style>
 </head>
 <body>
+<noscript><style>#pre { display: none; }</style></noscript>
+<div id="pre" role="status" aria-label="Loading Gabay">
+  <canvas id="pre-c" aria-hidden="true"></canvas>
+  <div class="pre-meta"><span id="pre-t">Loading</span><span class="pre-bar"><i id="pre-b"></i></span></div>
+</div>
+<script>
+(function () {
+  var root = document.documentElement, pre = document.getElementById('pre'), cv = document.getElementById('pre-c');
+  var bar = document.getElementById('pre-b'), label = document.getElementById('pre-t');
+  var finished = false;
+  function finish() { if (finished) return; finished = true; pre.classList.add('done'); root.classList.remove('pre-lock'); setTimeout(function () { if (pre.parentNode) pre.parentNode.removeChild(pre); }, 900); }
+  root.classList.add('pre-lock');
+  setTimeout(finish, 7000); // never trap a visitor, whatever happens
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var ctx = cv.getContext && cv.getContext('2d');
+  var loaded = document.readyState === 'complete';
+  if (!loaded) window.addEventListener('load', function () { loaded = true; });
+  if (!ctx || reduce) { var go = function () { setTimeout(finish, reduce ? 250 : 0); }; if (loaded) go(); else window.addEventListener('load', go); return; }
+
+  // Gabay's icon (the mint notch and the compass), sampled into dots
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><path d="M136 52H376V117A69 69 0 0 1 307 186H205A69 69 0 0 1 136 117Z" fill="#2fd6bf"/><circle cx="256" cy="119" r="22" fill="#000"/><g transform="translate(138 242) scale(10)" fill="none" stroke="#e8e8ea" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></g></svg>';
+  var img = new Image();
+  img.onerror = function () { finish(); };
+  img.onload = function () {
+    var N = 256, off = document.createElement('canvas'); off.width = off.height = N;
+    var o = off.getContext('2d'); o.drawImage(img, 0, 0, N, N);
+    var px = o.getImageData(0, 0, N, N).data, pts = [];
+    var small = Math.min(window.innerWidth, window.innerHeight) < 600, step = small ? 3 : 2;
+    for (var y = 0; y < N; y += step) for (var x = 0; x < N; x += step) {
+      var i = (y * N + x) * 4;
+      if (px[i + 3] > 140 && px[i] + px[i + 1] + px[i + 2] > 90) pts.push([x / N, y / N, px[i], px[i + 1], px[i + 2]]);
+    }
+    var dpr = Math.min(window.devicePixelRatio || 1, 2), W = 0, H = 0, size = 0, dots = [];
+    var seed = 7, rnd = function () { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    function layout() {
+      W = window.innerWidth; H = window.innerHeight; cv.width = W * dpr; cv.height = H * dpr;
+      size = Math.max(190, Math.min(360, Math.min(W, H) * 0.42));
+      for (var k = 0; k < dots.length; k++) { var d = dots[k]; d.tx = W / 2 + (d.u - 0.5) * size; d.ty = H / 2 + (d.v - 0.5) * size - 24; }
+    }
+    pts.forEach(function (p) {
+      var a = rnd() * Math.PI * 2, r = (0.6 + rnd()) * Math.max(window.innerWidth, window.innerHeight) * 0.7;
+      dots.push({ u: p[0], v: p[1], c: 'rgb(' + p[2] + ',' + p[3] + ',' + p[4] + ')', x: window.innerWidth / 2 + Math.cos(a) * r, y: window.innerHeight / 2 + Math.sin(a) * r,
+        tx: 0, ty: 0, delay: rnd() * 0.7, s: 0.9 + rnd() * 1.1, ph: rnd() * 6.283, vx: 0, vy: 0, o: 0 });
+    });
+    layout(); window.addEventListener('resize', layout);
+    var mx = -999, my = -999;
+    window.addEventListener('pointermove', function (e) { mx = e.clientX; my = e.clientY; }, { passive: true });
+    var t0 = performance.now(), last = t0, leaving = 0, MIN = 2300;
+    function frame(now) {
+      if (finished) return;
+      var dt = Math.min(0.05, (now - last) / 1000); last = now;
+      var t = (now - t0) / 1000, p = Math.min(1, (now - t0) / MIN);
+      bar.style.transform = 'scaleX(' + (leaving ? 1 : Math.min(p, loaded ? 1 : 0.9)) + ')';
+      if (!leaving && p >= 1 && loaded) { leaving = now; label.textContent = 'Ready'; }
+      var out = leaving ? Math.min(1, (now - leaving) / 700) : 0;
+      if (out >= 1) { finish(); return; }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+      var cx = W / 2, cy = H / 2;
+      for (var k = 0; k < dots.length; k++) {
+        var d = dots[k], gate = Math.max(0, t - d.delay);
+        var ease = 1 - Math.exp(-gate * 2.6);
+        var tx = d.tx + Math.sin(t * 1.1 + d.ph) * 1.2, ty = d.ty + Math.cos(t * 0.9 + d.ph) * 1.2;
+        if (!leaving) {
+          var dx = d.x - mx, dy = d.y - my, dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 90 && dist > 0.1) { var f = (1 - dist / 90) * 380 * dt; d.vx += dx / dist * f; d.vy += dy / dist * f; }
+          d.vx *= 0.88; d.vy *= 0.88;
+          d.x += (tx - d.x) * Math.min(1, 6 * dt * (0.15 + ease)) + d.vx * dt * 12;
+          d.y += (ty - d.y) * Math.min(1, 6 * dt * (0.15 + ease)) + d.vy * dt * 12;
+          d.o = Math.min(1, gate * 2.2);
+        } else {
+          var ox = d.x - cx, oy = d.y - cy, ol = Math.sqrt(ox * ox + oy * oy) || 1, sp = (140 + d.s * 160) * dt * (0.4 + out * 2.2);
+          d.x += ox / ol * sp; d.y += oy / ol * sp;
+        }
+        var a = d.o * (1 - out);
+        if (a <= 0.01) continue;
+        ctx.globalAlpha = a; ctx.fillStyle = d.c;
+        ctx.beginPath(); ctx.arc(d.x, d.y, d.s * (size / 300) * (1 + out * 0.4), 0, 6.2832); ctx.fill();
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+})();
+</script>
 
 <div class="nav-bar wrap">
   <header class="nav">
