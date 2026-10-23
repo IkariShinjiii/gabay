@@ -1882,6 +1882,43 @@ button.big-icon {
   margin-bottom: 2px;
 }
 
+/* Foldable section header (Sound > Output): label, the device in use while folded, and a chevron. */
+.sub-fold {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 2px 0;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sub-fold-now {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  opacity: 0.8;
+  text-align: right;
+}
+
+.sub-fold-chev {
+  margin-left: auto;
+  display: grid;
+  transition: transform 160ms var(--ease-out);
+}
+
+.sub-fold-now + .sub-fold-chev {
+  margin-left: 0;
+}
+
 /* Media seek bar: grows a little while used, with a knob like iOS. */
 .media-bar {
   position: relative;
