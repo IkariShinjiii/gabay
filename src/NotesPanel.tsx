@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Icon from './Icon'
+import { tr } from './i18n'
 
 const SAVE_MS = 400
 const MAX_CHARS = 100_000
@@ -65,18 +66,18 @@ export default function NotesPanel({ onHold }: { onHold: (held: boolean) => void
     }
   }
 
-  if (text === null) return <div className="body body-center muted">Opening notes…</div>
+  if (text === null) return <div className="body body-center muted">{tr('Opening notes…')}</div>
 
   const words = text.trim() ? text.trim().split(/\s+/).length : 0
   return (
     <div className="body notes">
       <textarea
         className="notes-field"
-        placeholder="Jot something down. It saves as you type."
+        placeholder={tr('Jot something down. It saves as you type.')}
         spellCheck
         maxLength={MAX_CHARS}
         value={text}
-        aria-label="Quick notes"
+        aria-label={tr('Quick notes')}
         onChange={(e) => change(e.target.value)}
         onFocus={() => onHold(true)}
         onBlur={() => {
@@ -93,7 +94,7 @@ export default function NotesPanel({ onHold }: { onHold: (held: boolean) => void
         </span>
         {confirmClear ? (
           <span className="notes-actions">
-            <span className="notes-ask">Clear the whole note?</span>
+            <span className="notes-ask">{tr('Clear the whole note?')}</span>
             <button
               className="chip danger"
               onClick={() => {
@@ -101,20 +102,20 @@ export default function NotesPanel({ onHold }: { onHold: (held: boolean) => void
                 setConfirmClear(false)
               }}
             >
-              Clear
+              {tr('Clear')}
             </button>
             <button className="chip" onClick={() => setConfirmClear(false)}>
-              Keep
+              {tr('Keep')}
             </button>
           </span>
         ) : (
           <span className="notes-actions">
-            <button className="chip" disabled={!text} onClick={() => void copy()} title="Copy the whole note">
+            <button className="chip" disabled={!text} onClick={() => void copy()} title={tr('Copy the whole note')}>
               <Icon name={copied ? 'check' : 'copy'} size={13} />
               {copied ? 'Copied' : 'Copy'}
             </button>
             <button className="chip" disabled={!text} onClick={() => setConfirmClear(true)}>
-              Clear
+              {tr('Clear')}
             </button>
           </span>
         )}

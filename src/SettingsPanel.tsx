@@ -4,6 +4,7 @@ import { ACCENT_PRESETS } from './accent'
 import Icon from './Icon'
 import { notesFor } from './whatsNew'
 import { COLLAPSE_STEP_MS } from './constants'
+import { tr } from './i18n'
 
 interface Props {
   /** Tells the notch the new settings immediately, without a reload. */
@@ -19,7 +20,7 @@ interface Props {
 const previewFlags = new URLSearchParams(location.hash.slice(1))
 const PREVIEW_OPEN = previewFlags.has('open')
 
-const keysOf = (hotkey: string | null): string => (hotkey ? hotkey.replace('Control', 'Ctrl').split('+').join(' + ') : 'No hotkey')
+const keysOf = (hotkey: string | null): string => (hotkey ? hotkey.replace('Control', 'Ctrl').split('+').join(' + ') : tr('No hotkey'))
 
 /** Every hotkey, gesture and typed command in one place. */
 function ShortcutsRow({ hotkey }: { hotkey: string | null }): React.JSX.Element {
@@ -59,16 +60,16 @@ function ShortcutsRow({ hotkey }: { hotkey: string | null }): React.JSX.Element 
     <details className="set-row set-details" open={PREVIEW_OPEN || undefined}>
       <summary className="set-label">
         <Icon name="keyboard" size={14} />
-        Shortcuts and commands
+        {tr('Shortcuts and commands')}
       </summary>
       <div className="keys">
         {groups.map(([title, rows]) => (
           <div key={title} className="keys-group">
-            <div className="keys-title">{title}</div>
+            <div className="keys-title">{tr(title)}</div>
             {rows.map(([k, what]) => (
               <div key={k} className="keys-row">
-                <kbd>{k}</kbd>
-                <span>{what}</span>
+                <kbd>{tr(k)}</kbd>
+                <span>{tr(what)}</span>
               </div>
             ))}
           </div>
@@ -100,10 +101,10 @@ function ResetRow({ onReset }: { onReset: () => Promise<void> }): React.JSX.Elem
   const [done, setDone] = useState(false)
   return (
     <div className="set-row">
-      <div className="set-label">Reset settings</div>
+      <div className="set-label">{tr('Reset settings')}</div>
       {asking ? (
         <div className="set-opts">
-          <span className="set-ask">Reset every setting to its default? To-dos, notes, pinned clips and your calendar stay.</span>
+          <span className="set-ask">{tr('Reset every setting to its default? To-dos, notes, pinned clips and your calendar stay.')}</span>
           <button
             className="chip danger"
             onClick={() =>
@@ -113,10 +114,10 @@ function ResetRow({ onReset }: { onReset: () => Promise<void> }): React.JSX.Elem
               })
             }
           >
-            Reset
+            {tr('Reset')}
           </button>
           <button className="chip" onClick={() => setAsking(false)}>
-            Cancel
+            {tr('Cancel')}
           </button>
         </div>
       ) : (
@@ -129,9 +130,9 @@ function ResetRow({ onReset }: { onReset: () => Promise<void> }): React.JSX.Elem
             }}
           >
             <Icon name="rotate-ccw" size={13} />
-            Reset to defaults
+            {tr('Reset to defaults')}
           </button>
-          {done && <span className="set-note muted">Done. Everything is back to how it started.</span>}
+          {done && <span className="set-note muted">{tr('Done. Everything is back to how it started.')}</span>}
         </div>
       )}
     </div>
@@ -159,12 +160,12 @@ function CalendarRow({ onHold }: { onHold: (held: boolean) => void }): React.JSX
   return (
     <div className="set-row">
       <div className="set-label">
-        Calendar {connected && <span className="set-val">connected</span>}
+        {tr('Calendar')} {connected && <span className="set-val">{tr('connected')}</span>}
       </div>
       {connected ? (
         <div className="set-opts">
           <button className="chip" onClick={() => void save('')}>
-            Disconnect
+            {tr('Disconnect')}
           </button>
         </div>
       ) : (
@@ -173,7 +174,7 @@ function CalendarRow({ onHold }: { onHold: (held: boolean) => void }): React.JSX
             <input
               className="field"
               type="password"
-              placeholder="Paste your calendar's secret iCal address"
+              placeholder={tr("Paste your calendar's secret iCal address")}
               spellCheck={false}
               autoComplete="off"
               value={draft}
@@ -189,13 +190,13 @@ function CalendarRow({ onHold }: { onHold: (held: boolean) => void }): React.JSX
               onBlur={() => onHold(false)}
             />
             <button className="chip on" disabled={!draft.trim() || state === 'saving'} onClick={() => void save(draft)}>
-              {state === 'saving' ? 'Saving…' : 'Connect'}
+              {state === 'saving' ? tr('Saving…') : tr('Connect')}
             </button>
           </div>
           <div className="set-note muted">
             {state === 'bad'
-              ? 'That address did not work. It should start with https:// or webcal://.'
-              : "Google Calendar: Settings › your calendar › Integrate calendar › Secret address in iCal format. It's stored encrypted on this PC."}
+              ? tr('That address did not work. It should start with https:// or webcal://.')
+              : tr("Google Calendar: Settings › your calendar › Integrate calendar › Secret address in iCal format. It's stored encrypted on this PC.")}
           </div>
         </>
       )}
@@ -219,12 +220,12 @@ function WeatherRow({ place, onHold, onSaved }: { place: string | null; onHold: 
   return (
     <div className="set-row">
       <div className="set-label">
-        Weather {place && <span className="set-val">{place}</span>}
+        {tr('Weather')} {place && <span className="set-val">{place}</span>}
       </div>
       <div className="set-inline">
         <input
           className="field"
-          placeholder={place ? 'Change city' : 'Your city, e.g. Iloilo'}
+          placeholder={place ? tr('Change city') : tr('Your city, e.g. Iloilo')}
           spellCheck={false}
           autoComplete="off"
           maxLength={100}
@@ -241,10 +242,10 @@ function WeatherRow({ place, onHold, onSaved }: { place: string | null; onHold: 
           onBlur={() => onHold(false)}
         />
         <button className="chip on" disabled={!draft.trim() || state === 'finding'} onClick={() => void find()}>
-          {state === 'finding' ? 'Finding…' : place ? 'Change' : 'Set'}
+          {state === 'finding' ? tr('Finding…') : place ? tr('Change') : tr('Set')}
         </button>
       </div>
-      {state === 'none' && <div className="set-note">Couldn't find that place. Try the city name only.</div>}
+      {state === 'none' && <div className="set-note">{tr('Couldn\'t find that place. Try the city name only.')}</div>}
     </div>
   )
 }
@@ -262,10 +263,10 @@ function ReportRow({ onHold }: { onHold: (h: boolean) => void }): React.JSX.Elem
   }
   return (
     <div className="set-row">
-      <div className="set-label">Report a bug</div>
+      <div className="set-label">{tr('Report a bug')}</div>
       <textarea
         className="field report-field"
-        placeholder="What went wrong, and what were you doing?"
+        placeholder={tr('What went wrong, and what were you doing?')}
         spellCheck
         maxLength={2000}
         rows={3}
@@ -278,19 +279,19 @@ function ReportRow({ onHold }: { onHold: (h: boolean) => void }): React.JSX.Elem
         onBlur={() => onHold(false)}
       />
       <div className="set-opts">
-        <button className="chip on" disabled={!text.trim()} onClick={() => void send('github')} title="Opens a prefilled issue on GitHub (needs a GitHub account)">
-          Send on GitHub
+        <button className="chip on" disabled={!text.trim()} onClick={() => void send('github')} title={tr('Opens a prefilled issue on GitHub (needs a GitHub account)')}>
+          {tr('Send on GitHub')}
         </button>
-        <button className="chip" disabled={!text.trim()} onClick={() => void send('copy')} title="Copies the report so you can paste it in a chat">
-          Copy report
+        <button className="chip" disabled={!text.trim()} onClick={() => void send('copy')} title={tr('Copies the report so you can paste it in a chat')}>
+          {tr('Copy report')}
         </button>
       </div>
       <div className="set-note muted">
         {sent === 'copy'
-          ? 'Copied. Paste it in a message to the developer.'
+          ? tr('Copied. Paste it in a message to the developer.')
           : sent === 'github'
-            ? 'Opened in your browser. Press Submit there to send it.'
-            : 'Adds your Gabay and Windows versions, screen setup and recent errors. Nothing personal: no names, files, clipboard or messages.'}
+            ? tr('Opened in your browser. Press Submit there to send it.')
+            : tr('Adds your Gabay and Windows versions, screen setup and recent errors. Nothing personal: no names, files, clipboard or messages.')}
       </div>
     </div>
   )
@@ -315,21 +316,21 @@ function UpdateRow(): React.JSX.Element {
   return (
     <div className="set-row">
       <div className="set-label">
-        Version <span className="set-val">{info.current}</span>
+        {tr('Version')} <span className="set-val">{info.current}</span>
       </div>
       <div className="set-opts">
         {info.available ? (
           <button className="chip on" disabled={state === 'installing'} onClick={() => void install()}>
-            {state === 'installing' ? 'Downloading…' : `Install ${info.available.version}`}
+            {state === 'installing' ? tr('Downloading…') : tr('Install {0}', info.available.version)}
           </button>
         ) : (
           <button className="chip" disabled={!info.packaged || state === 'checking'} onClick={() => void check()}>
-            {state === 'checking' ? 'Checking…' : 'Check for updates'}
+            {state === 'checking' ? tr('Checking…') : tr('Check for updates')}
           </button>
         )}
       </div>
-      {state === 'failed' && <div className="set-note">The update couldn't be downloaded or didn't check out. Try again later.</div>}
-      {!info.packaged && <div className="set-note muted">Updates work in the installed app.</div>}
+      {state === 'failed' && <div className="set-note">{tr('The update couldn\'t be downloaded or didn\'t check out. Try again later.')}</div>}
+      {!info.packaged && <div className="set-note muted">{tr('Updates work in the installed app.')}</div>}
     </div>
   )
 }
@@ -377,7 +378,7 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
   }
   useEffect(() => () => window.clearTimeout(saveTimer.current), [])
 
-  if (!snap || delay === null) return <div className="body body-center">Loading…</div>
+  if (!snap || delay === null) return <div className="body body-center">{tr('Loading…')}</div>
 
   const { settings, activeHotkey, hotkeys, displays, collapseRange } = snap
   const hotkeyTaken = activeHotkey !== settings.hotkey
@@ -391,7 +392,7 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
       }}
     >
       <div className="set-row">
-        <div className="set-label">Hotkey</div>
+        <div className="set-label">{tr('Hotkey')}</div>
         <div className="set-opts">
           {hotkeys.map((k) => (
             <button
@@ -405,15 +406,15 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
         </div>
         {hotkeyTaken && (
           <div className="set-note">
-            {settings.hotkey.replace('Control', 'Ctrl')} is taken by another app.{' '}
-            {activeHotkey ? `Using ${activeHotkey.replace('Control', 'Ctrl')} instead.` : 'No hotkey is active.'}
+            {tr('{0} is taken by another app.', settings.hotkey.replace('Control', 'Ctrl'))}{' '}
+            {activeHotkey ? tr('Using {0} instead.', activeHotkey.replace('Control', 'Ctrl')) : tr('No hotkey is active.')}
           </div>
         )}
       </div>
 
       <div className="set-row">
         <div className="set-label">
-          Collapse delay <span className="set-val">{delay} ms</span>
+          {tr('Collapse delay')} <span className="set-val">{delay} ms</span>
         </div>
         <input
           type="range"
@@ -427,41 +428,41 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
       </div>
 
       <div className="set-row">
-        <div className="set-label">Notch visibility</div>
+        <div className="set-label">{tr('Notch visibility')}</div>
         <div className="set-opts">
           <button
             className={settings.visibility === 'always' ? 'chip on' : 'chip'}
-            title="Steps aside while a video, game or other window is full screen"
+            title={tr('Steps aside while a video, game or other window is full screen')}
             onClick={() => void save({ visibility: 'always' })}
           >
-            Always shown
+            {tr('Always shown')}
           </button>
           <button
             className={settings.visibility === 'auto' ? 'chip on' : 'chip'}
-            title="Hidden until you rest the pointer on the top edge, so it never covers a tab or button"
+            title={tr('Hidden until you rest the pointer on the top edge, so it never covers a tab or button')}
             onClick={() => void save({ visibility: 'auto' })}
           >
-            Auto-hide
+            {tr('Auto-hide')}
           </button>
         </div>
       </div>
 
       <div className="set-row">
-        <div className="set-label">Show on</div>
+        <div className="set-label">{tr('Show on')}</div>
         <div className="set-opts">
           <button
             className={settings.followMouse ? 'chip on' : 'chip'}
-            title="Moves to whichever screen the mouse is on"
+            title={tr('Moves to whichever screen the mouse is on')}
             onClick={() => void save({ followMouse: true })}
           >
-            Follow mouse
+            {tr('Follow mouse')}
           </button>
           <button
             className={!settings.followMouse && shownDisplay === null ? 'chip on' : 'chip'}
-            title="Windows' main display"
+            title={tr("Windows' main display")}
             onClick={() => void save({ displayId: null, followMouse: false })}
           >
-            Main display
+            {tr('Main display')}
           </button>
           {displays.map((d) => (
             <button
@@ -476,22 +477,22 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
         </div>
       </div>
       <div className="set-row">
-        <div className="set-label">Notifications in the notch</div>
+        <div className="set-label">{tr('Notifications in the notch')}</div>
         <div className="set-opts">
           <button className={settings.notifications ? 'chip on' : 'chip'} onClick={() => void save({ notifications: true })}>
-            On
+            {tr('On')}
           </button>
           <button className={!settings.notifications ? 'chip on' : 'chip'} onClick={() => void save({ notifications: false })}>
-            Off
+            {tr('Off')}
           </button>
           {settings.notifications && (
             <>
               <span className="set-sep" />
-              <button className={settings.notePreview ? 'chip on' : 'chip'} title="Sender and message" onClick={() => void save({ notePreview: true })}>
-                Show text
+              <button className={settings.notePreview ? 'chip on' : 'chip'} title={tr('Sender and message')} onClick={() => void save({ notePreview: true })}>
+                {tr('Show text')}
               </button>
-              <button className={!settings.notePreview ? 'chip on' : 'chip'} title="Only which app it came from" onClick={() => void save({ notePreview: false })}>
-                App name only
+              <button className={!settings.notePreview ? 'chip on' : 'chip'} title={tr('Only which app it came from')} onClick={() => void save({ notePreview: false })}>
+                {tr('App name only')}
               </button>
             </>
           )}
@@ -500,12 +501,12 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
           <div className="set-warn">
             <span>
               {snap.notificationAccess === 'Unavailable'
-                ? "This version of Windows doesn't let apps read notifications, so they won't show in the notch."
-                : 'Windows is blocking Gabay from reading notifications. Turn on "Notification access" for apps, then come back: Gabay notices by itself.'}
+                ? tr("This version of Windows doesn't let apps read notifications, so they won't show in the notch.")
+                : tr('Windows is blocking Gabay from reading notifications. Turn on "Notification access" for apps, then come back: Gabay notices by itself.')}
             </span>
             {snap.notificationAccess !== 'Unavailable' && (
               <button className="chip on" onClick={() => void window.overlay.quickOpen('notifyaccess')}>
-                Open privacy settings
+                {tr('Open privacy settings')}
               </button>
             )}
           </div>
@@ -513,38 +514,37 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
         {settings.notifications && snap.notificationAccess === 'Allowed' && winDnd === false && (
           <div className="set-tip">
             <span>
-              Seeing every notification twice? Turn on <b>Do not disturb</b> in Windows: its pop-ups stop, and Gabay still
-              shows each one in the notch.
+              {tr('Seeing every notification twice? Turn on Do not disturb in Windows: its pop-ups stop, and Gabay still shows each one in the notch.')}
             </span>
             <button className="chip" onClick={() => void window.overlay.quickOpen('notifications')}>
-              Open Windows notifications
+              {tr('Open Windows notifications')}
             </button>
           </div>
         )}
         {settings.notifications && winDnd && (
           <div className="set-opts set-sub">
-            <span className="set-sub-label" title="Windows is silent while its Do not disturb is on">
-              Sound (Windows is on Do not disturb)
+            <span className="set-sub-label" title={tr('Windows is silent while its Do not disturb is on')}>
+              {tr('Sound (Windows is on Do not disturb)')}
             </span>
             <button className={settings.noteSound ? 'chip on' : 'chip'} onClick={() => void save({ noteSound: true })}>
-              On
+              {tr('On')}
             </button>
             <button className={!settings.noteSound ? 'chip on' : 'chip'} onClick={() => void save({ noteSound: false })}>
-              Off
+              {tr('Off')}
             </button>
           </div>
         )}
       </div>
 
       <div className="set-row">
-        <div className="set-label">Accent colour</div>
+        <div className="set-label">{tr('Accent colour')}</div>
         <div className="set-opts swatches">
           {Object.entries(ACCENT_PRESETS).map(([key, a]) => (
             <button
               key={key}
               className={settings.accent === key ? 'swatch on' : 'swatch'}
-              title={a.label}
-              aria-label={`${a.label} accent`}
+              title={tr(a.label)}
+              aria-label={tr('{0} accent', tr(a.label))}
               aria-pressed={settings.accent === key}
               style={a.hex ? { background: a.hex } : undefined}
               onClick={() => void save({ accent: key })}
@@ -555,61 +555,73 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
         </div>
       </div>
 
+      <div className="set-row">
+        <div className="set-label">{tr('Language')}</div>
+        <div className="set-opts">
+          <button className={settings.language === 'en' ? 'chip on' : 'chip'} onClick={() => void save({ language: 'en' })}>
+            English
+          </button>
+          <button className={settings.language === 'fil' ? 'chip on' : 'chip'} onClick={() => void save({ language: 'fil' })}>
+            Filipino
+          </button>
+        </div>
+      </div>
+
       <WeatherRow place={settings.place?.name ?? null} onHold={onHold} onSaved={() => void window.overlay.getSettings().then((r) => { setSnap(r); onSettings(r.settings) })} />
 
       <div className="set-row">
-        <div className="set-label">Lyrics in Now playing</div>
+        <div className="set-label">{tr('Lyrics in Now playing')}</div>
         <div className="set-opts">
           <button className={settings.lyrics ? 'chip on' : 'chip'} onClick={() => void save({ lyrics: true })}>
-            On
+            {tr('On')}
           </button>
           <button className={!settings.lyrics ? 'chip on' : 'chip'} onClick={() => void save({ lyrics: false })}>
-            Off
+            {tr('Off')}
           </button>
         </div>
-        <div className="set-note muted">Looks up the song's title and artist on lrclib.net (free, open lyrics).</div>
+        <div className="set-note muted">{tr('Looks up the song\'s title and artist on lrclib.net (free, open lyrics).')}</div>
       </div>
 
       <CalendarRow onHold={onHold} />
       <UpdateRow />
       <div className="set-row">
-        <div className="set-label">Install updates automatically</div>
+        <div className="set-label">{tr('Install updates automatically')}</div>
         <div className="set-opts">
           <button
             className={settings.autoUpdate ? 'chip on' : 'chip'}
-            title="While you're away from the PC for a few minutes, Gabay updates and restarts by itself"
+            title={tr("While you're away from the PC for a few minutes, Gabay updates and restarts by itself")}
             onClick={() => void save({ autoUpdate: true })}
           >
-            On
+            {tr('On')}
           </button>
           <button className={!settings.autoUpdate ? 'chip on' : 'chip'} onClick={() => void save({ autoUpdate: false })}>
-            Off
+            {tr('Off')}
           </button>
         </div>
       </div>
       <div className="set-row">
-        <div className="set-label">Update channel</div>
+        <div className="set-label">{tr('Update channel')}</div>
         <div className="set-opts">
           <button className={settings.updateChannel === 'stable' ? 'chip on' : 'chip'} onClick={() => void save({ updateChannel: 'stable' })}>
-            Stable
+            {tr('Stable')}
           </button>
           <button
             className={settings.updateChannel === 'preview' ? 'chip on' : 'chip'}
-            title="Get new versions before everyone else. They may have rough edges."
+            title={tr('Get new versions before everyone else. They may have rough edges.')}
             onClick={() => void save({ updateChannel: 'preview' })}
           >
-            Preview
+            {tr('Preview')}
           </button>
         </div>
-        {settings.updateChannel === 'preview' && <div className="set-note muted">You get new versions first, before they go out to everyone.</div>}
+        {settings.updateChannel === 'preview' && <div className="set-note muted">{tr('You get new versions first, before they go out to everyone.')}</div>}
       </div>
       <WhatsNewRow version={snap.version} />
       <ShortcutsRow hotkey={liveHotkey ?? activeHotkey} />
       <div className="set-row">
-        <div className="set-label">Welcome tour</div>
+        <div className="set-label">{tr('Welcome tour')}</div>
         <div className="set-opts">
           <button className="chip" onClick={onShowWelcome}>
-            Show it again
+            {tr('Show it again')}
           </button>
         </div>
       </div>
@@ -623,41 +635,40 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
         }}
       />
 
-      <div className="set-section">Experiments</div>
+      <div className="set-section">{tr('Experiments')}</div>
       <div className="set-row">
-        <div className="set-label">Reserve space at the top</div>
+        <div className="set-label">{tr('Reserve space at the top')}</div>
         <div className="set-opts">
           <button
             className={settings.reserveTop ? 'chip on' : 'chip'}
-            title="Maximized and snapped windows fit below the notch, like they do above the taskbar"
+            title={tr('Maximized and snapped windows fit below the notch, like they do above the taskbar')}
             onClick={() => void save({ reserveTop: true })}
           >
-            On
+            {tr('On')}
           </button>
           <button className={!settings.reserveTop ? 'chip on' : 'chip'} onClick={() => void save({ reserveTop: false })}>
-            Off
+            {tr('Off')}
           </button>
         </div>
-        {settings.reserveTop && <div className="set-note muted">Maximized windows now start below the notch. Full screen still uses the whole screen.</div>}
+        {settings.reserveTop && <div className="set-note muted">{tr('Maximized windows now start below the notch. Full screen still uses the whole screen.')}</div>}
       </div>
       <div className="set-row">
-        <div className="set-label">Hide the Windows taskbar</div>
+        <div className="set-label">{tr('Hide the Windows taskbar')}</div>
         <div className="set-opts">
           <button
             className={settings.hideTaskbar ? 'chip on' : 'chip'}
-            title="Auto-hides the taskbar and shows your open apps at the bottom of this panel"
+            title={tr('Auto-hides the taskbar and shows your open apps at the bottom of this panel')}
             onClick={() => void save({ hideTaskbar: true })}
           >
-            On
+            {tr('On')}
           </button>
           <button className={!settings.hideTaskbar ? 'chip on' : 'chip'} onClick={() => void save({ hideTaskbar: false })}>
-            Off
+            {tr('Off')}
           </button>
         </div>
         {settings.hideTaskbar && (
           <div className="set-note muted">
-            Your open apps are at the bottom of this panel: click one to switch to it, or the one you're using to minimize it.
-            The taskbar is still there if you push the pointer to the bottom edge. Turning this off or quitting Gabay puts it back.
+            {tr('Your open apps are at the bottom of this panel: click one to switch to it, or the one you\'re using to minimize it. The taskbar is still there if you push the pointer to the bottom edge. Turning this off or quitting Gabay puts it back.')}
           </div>
         )}
       </div>

@@ -5,6 +5,7 @@ import type { IconName } from './icons'
 import type { MediaInfo, MixerApp, ProjectMode, QuickAction, QuickState, SettingsKey, WifiNetwork } from './global'
 import type { BatteryInfo } from './useBattery'
 import { batteryIcon } from './NotchStatus'
+import { tr } from './i18n'
 
 const POLL_MS = 3000
 const PRESS = { whileTap: { scale: 0.96 }, transition: { type: 'spring', stiffness: 600, damping: 32 } } as const
@@ -66,8 +67,8 @@ function SplitTile(props: {
       {(props.onMore || props.settings) && (
         <button
           className="ct-chev"
-          aria-label={props.moreTitle ?? (props.onMore ? `${props.label} options` : `${props.label} settings`)}
-          title={props.moreTitle ?? (props.onMore ? `${props.label} options` : `${props.label} settings`)}
+          aria-label={props.moreTitle ?? (props.onMore ? tr('{0} options', props.label) : tr('{0} settings', props.label))}
+          title={props.moreTitle ?? (props.onMore ? tr('{0} options', props.label) : tr('{0} settings', props.label))}
           onClick={() => (props.onMore ? props.onMore() : props.settings && void window.overlay.quickOpen(props.settings))}
         >
           <Icon name="chevron-right" size={14} />
@@ -325,19 +326,19 @@ function MediaCard({
           <div className="media-artist" title={media.artist}>{media.artist}</div>
         </div>
         <div className="media-ctl">
-          <motion.button {...PRESS} className="media-btn" aria-label="Previous" title="Previous" onClick={() => onCommand('prev')}>
+          <motion.button {...PRESS} className="media-btn" aria-label={tr('Previous')} title={tr('Previous')} onClick={() => onCommand('prev')}>
             <Icon name="skip-back" size={15} />
           </motion.button>
           <motion.button
             {...PRESS}
             className="media-play"
-            aria-label={media.playing ? 'Pause' : 'Play'}
-            title={media.playing ? 'Pause' : 'Play'}
+            aria-label={media.playing ? tr('Pause') : tr('Play')}
+            title={media.playing ? tr('Pause') : tr('Play')}
             onClick={() => onCommand('toggle')}
           >
             <Icon name={media.playing ? 'pause' : 'play'} size={16} />
           </motion.button>
-          <motion.button {...PRESS} className="media-btn" aria-label="Next" title="Next" onClick={() => onCommand('next')}>
+          <motion.button {...PRESS} className="media-btn" aria-label={tr('Next')} title={tr('Next')} onClick={() => onCommand('next')}>
             <Icon name="skip-forward" size={15} />
           </motion.button>
         </div>
@@ -349,7 +350,7 @@ function MediaCard({
             ref={barRef}
             className={seekTo !== null ? 'media-bar seeking' : 'media-bar'}
             role="slider"
-            aria-label="Position"
+            aria-label={tr('Position')}
             aria-valuemin={0}
             aria-valuemax={Math.round(media.duration)}
             aria-valuenow={Math.round(pos)}
@@ -497,7 +498,7 @@ export default function QuickPanel(props: {
     void done
   }
 
-  if (!state) return <div className="body body-center">Loading…</div>
+  if (!state) return <div className="body body-center">{tr('Loading…')}</div>
   if (view === 'project') return <ProjectView onBack={() => setView('main')} />
   if (view === 'wifi') return <WifiView onBack={() => setView('main')} />
   if (view === 'bt') return <BluetoothView onBack={() => setView('main')} />
@@ -550,8 +551,8 @@ export default function QuickPanel(props: {
               {hasWifi && (
                 <SplitTile
                   icon={wifiOn === false ? 'wifi-off' : 'wifi'}
-                  label="Wi-Fi"
-                  sub={wifiOn === undefined ? 'Unavailable' : wifiOn ? (demo ? 'Home Wi-Fi' : (state.wifi.ssid ?? 'On')) : 'Off'}
+                  label={tr('Wi-Fi')}
+                  sub={wifiOn === undefined ? tr('Unavailable') : wifiOn ? (demo ? tr('Home Wi-Fi') : (state.wifi.ssid ?? tr('On'))) : tr('Off')}
                   on={!!wifiOn}
                   disabled={wifiOn === undefined}
                   onMain={() => void act({ kind: 'radio', radio: 'wifi', on: !wifiOn })}
@@ -562,8 +563,8 @@ export default function QuickPanel(props: {
               {hasBt && (
                 <SplitTile
                   icon="bluetooth"
-                  label="Bluetooth"
-                  sub={btOn === undefined ? 'Unavailable' : btOn ? 'On' : 'Off'}
+                  label={tr('Bluetooth')}
+                  sub={btOn === undefined ? tr('Unavailable') : btOn ? tr('On') : tr('Off')}
                   on={!!btOn}
                   disabled={btOn === undefined}
                   onMain={() => void act({ kind: 'radio', radio: 'bluetooth', on: !btOn })}
@@ -573,23 +574,23 @@ export default function QuickPanel(props: {
               )}
               <SplitTile
                 icon={state.muted ? 'volume-x' : 'volume-2'}
-                label="Audio"
-                sub={state.muted ? 'Muted' : (state.audioName ?? 'Output')}
+                label={tr('Audio')}
+                sub={state.muted ? tr('Muted') : (state.audioName ?? tr('Output'))}
                 on={state.volume !== null && !state.muted}
                 disabled={state.volume === null}
-                mainTitle={state.muted ? 'Unmute' : 'Mute'}
+                mainTitle={state.muted ? tr('Unmute') : tr('Mute')}
                 onMain={() => void act({ kind: 'mute' })}
                 settings="sound"
                 onMore={() => setView('mixer')}
-                moreTitle="Volume per app"
+                moreTitle={tr('Volume per app')}
               />
             </div>
             <div className={`ct-row ${ROW[1 + (hasRadio ? 1 : 0)]}`}>
               {hasRadio && (
                 <SplitTile
                   icon="plane"
-                  label="Airplane mode"
-                  sub={state.airplane === null ? 'Unavailable' : state.airplane ? 'On' : 'Off'}
+                  label={tr('Airplane mode')}
+                  sub={state.airplane === null ? tr('Unavailable') : state.airplane ? tr('On') : tr('Off')}
                   on={!!state.airplane}
                   disabled={state.airplane === null}
                   onMain={() => void act({ kind: 'airplane' })}
@@ -598,8 +599,8 @@ export default function QuickPanel(props: {
               )}
               <SplitTile
                 icon="contrast"
-                label="Dark mode"
-                sub={state.dark === null ? 'Unavailable' : state.dark ? 'On' : 'Off'}
+                label={tr('Dark mode')}
+                sub={state.dark === null ? tr('Unavailable') : state.dark ? tr('On') : tr('Off')}
                 on={!!state.dark}
                 disabled={state.dark === null}
                 onMain={() => void act({ kind: 'dark', on: !state.dark })}
@@ -609,30 +610,30 @@ export default function QuickPanel(props: {
             <div className="ct-row three">
               <SplitTile
                 icon="moon-star"
-                label="Focus"
-                sub={props.dndOn ? (props.dndUntil === -1 ? 'Silenced' : `Until ${new Date(props.dndUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`) : 'Off'}
+                label={tr('Focus')}
+                sub={props.dndOn ? (props.dndUntil === -1 ? tr('Silenced') : tr('Until {0}', new Date(props.dndUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))) : tr('Off')}
                 on={props.dndOn}
-                mainTitle={props.dndOn ? 'Turn off' : 'Silence notifications until you turn it off'}
+                mainTitle={props.dndOn ? tr('Turn off') : tr('Silence notifications until you turn it off')}
                 onMain={() => props.onDnd(props.dndOn ? 0 : -1)}
                 onMore={() => setView('dnd')}
-                moreTitle="Silence notifications for a while"
+                moreTitle={tr('Silence notifications for a while')}
               />
               <SplitTile
                 icon="camera"
-                label="Screenshot"
-                sub="Whole screen"
+                label={tr('Screenshot')}
+                sub={tr('Whole screen')}
                 on={false}
-                mainTitle="Save a screenshot and copy it"
+                mainTitle={tr('Save a screenshot and copy it')}
                 onMain={props.onShot}
                 onMore={() => void window.overlay.snip()}
-                moreTitle="Snip part of the screen"
+                moreTitle={tr('Snip part of the screen')}
               />
               <SplitTile
                 icon={props.recording ? 'square' : 'video'}
-                label={props.recording ? 'Stop' : 'Record'}
-                sub={props.recording ? 'Recording…' : 'Screen + sound'}
+                label={props.recording ? tr('Stop') : tr('Record')}
+                sub={props.recording ? tr('Recording…') : tr('Screen + sound')}
                 on={props.recording}
-                mainTitle={props.recording ? 'Stop and save the recording' : 'Record the screen to Videos › Gabay'}
+                mainTitle={props.recording ? tr('Stop and save the recording') : tr('Record the screen to Videos › Gabay')}
                 onMain={props.onRecord}
               />
             </div>
@@ -640,18 +641,18 @@ export default function QuickPanel(props: {
             {volume !== null && (
               <BigSlider
                 icon={volIcon}
-                label="Volume"
+                label={tr('Volume')}
                 value={state.muted ? 0 : volume}
                 format={(v) => (state.muted ? 'Muted' : `${v}%`)}
                 onSlide={(v, done) => slide('volume', v, done)}
                 onIcon={() => void act({ kind: 'mute' })}
-                iconLabel={state.muted ? 'Unmute' : 'Mute'}
+                iconLabel={state.muted ? tr('Unmute') : tr('Mute')}
               />
             )}
             {brightness !== null && (
               <BigSlider
                 icon="sun"
-                label="Brightness"
+                label={tr('Brightness')}
                 value={brightness}
                 format={(v) => `${v}%`}
                 onSlide={(v, done) => slide('brightness', v, done)}
@@ -686,7 +687,7 @@ export default function QuickPanel(props: {
                     className={on ? 'more-tile on' : 'more-tile'}
                     aria-pressed={t.kind === 'airplane' ? on : undefined}
                     disabled={t.kind === 'airplane' && state.airplane === null}
-                    title={t.kind === 'link' ? `Open ${t.label} settings` : t.label}
+                    title={t.kind === 'link' ? tr('Open {0} settings', tr(t.label)) : tr(t.label)}
                     onClick={() => {
                       if (t.kind === 'airplane') void act({ kind: 'airplane' })
                       else if (t.kind === 'view') setView('project')
@@ -696,7 +697,7 @@ export default function QuickPanel(props: {
                     <span className="ct-well">
                       <Icon name={t.icon} size={16} />
                     </span>
-                    <span className="ct-label">{t.label}</span>
+                    <span className="ct-label">{tr(t.label)}</span>
                     {t.kind === 'view' && <Icon name="chevron-right" size={13} />}
                   </motion.button>
                 )
@@ -716,10 +717,10 @@ export default function QuickPanel(props: {
         {state.layout && <span className="q-layout">{state.layout}</span>}
         <span className="q-dots">
           {[0, 1].map((i) => (
-            <button key={i} className={i === page ? 'q-dot on' : 'q-dot'} aria-label={i === 0 ? 'Controls' : 'More'} onClick={() => goPage(i)} />
+            <button key={i} className={i === page ? 'q-dot on' : 'q-dot'} aria-label={i === 0 ? tr('Controls') : tr('More')} onClick={() => goPage(i)} />
           ))}
         </span>
-        <button className="q-icon-btn" title="Open Windows Settings" aria-label="Open Windows Settings" onClick={() => void window.overlay.quickOpen('settings')}>
+        <button className="q-icon-btn" title={tr('Open Windows Settings')} aria-label={tr('Open Windows Settings')} onClick={() => void window.overlay.quickOpen('settings')}>
           <Icon name="settings" size={16} />
         </button>
       </div>
@@ -762,12 +763,12 @@ function ProjectView({ onBack }: { onBack: () => void }): React.JSX.Element {
       transition={{ type: 'spring', stiffness: 420, damping: 38 }}
     >
       <div className="sub-head">
-        <button className="q-icon-btn" aria-label="Back" title="Back" onClick={onBack}>
+        <button className="q-icon-btn" aria-label={tr('Back')} title={tr('Back')} onClick={onBack}>
           <Icon name="arrow-left" size={16} />
         </button>
-        <span>Project</span>
+        <span>{tr('Project')}</span>
       </div>
-      <div className="proj-list" role="radiogroup" aria-label="Display mode">
+      <div className="proj-list" role="radiogroup" aria-label={tr('Display mode')}>
         {PROJECT_MODES.map((p) => (
           <motion.button
             key={p.mode}
@@ -780,12 +781,12 @@ function ProjectView({ onBack }: { onBack: () => void }): React.JSX.Element {
           >
             {mode === p.mode && <motion.span layoutId="proj-marker" className="proj-marker" />}
             <Icon name={p.icon} size={18} />
-            <span>{busy === p.mode ? `${p.label}…` : p.label}</span>
+            <span>{busy === p.mode ? `${tr(p.label)}…` : tr(p.label)}</span>
           </motion.button>
         ))}
       </div>
       <button className="sub-link" onClick={() => void window.overlay.quickOpen('display')}>
-        More display settings
+        {tr('More display settings')}
       </button>
     </motion.div>
   )
@@ -794,12 +795,12 @@ function ProjectView({ onBack }: { onBack: () => void }): React.JSX.Element {
 function SubHead({ title, onBack, onRefresh, busy }: { title: string; onBack: () => void; onRefresh?: () => void; busy?: boolean }): React.JSX.Element {
   return (
     <div className="sub-head">
-      <button className="q-icon-btn" aria-label="Back" title="Back" onClick={onBack}>
+      <button className="q-icon-btn" aria-label={tr('Back')} title={tr('Back')} onClick={onBack}>
         <Icon name="arrow-left" size={16} />
       </button>
       <span>{title}</span>
       {onRefresh && (
-        <button className={busy ? 'q-icon-btn sub-refresh spin' : 'q-icon-btn sub-refresh'} aria-label="Refresh" title="Scan again" onClick={onRefresh}>
+        <button className={busy ? 'q-icon-btn sub-refresh spin' : 'q-icon-btn sub-refresh'} aria-label={tr('Refresh')} title={tr('Scan again')} onClick={onRefresh}>
           <Icon name="refresh-cw" size={14} />
         </button>
       )}
@@ -850,9 +851,9 @@ function WifiView({ onBack }: { onBack: () => void }): React.JSX.Element {
 
   return (
     <motion.div className="body quick-sub" initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 38 }}>
-      <SubHead title="Wi-Fi" onBack={onBack} onRefresh={() => void scan()} busy={busy} />
+      <SubHead title={tr('Wi-Fi')} onBack={onBack} onRefresh={() => void scan()} busy={busy} />
       {data === null ? (
-        <div className="sub-empty">Scanning…</div>
+        <div className="sub-empty">{tr('Scanning…')}</div>
       ) : data.networks.length === 0 ? (
         <div className="sub-empty">
           {data.error === 'location' ? 'Windows needs Location turned on to list networks.' : 'No networks found. Is Wi-Fi on?'}
@@ -864,7 +865,7 @@ function WifiView({ onBack }: { onBack: () => void }): React.JSX.Element {
               key={n.ssid}
               whileTap={{ scale: 0.98 }}
               className={n.connected ? 'net-row on' : 'net-row'}
-              title={n.connected ? 'Connected' : n.known ? 'Connect' : 'Join in Windows Settings'}
+              title={n.connected ? tr('Connected') : n.known ? tr('Connect') : tr('Join in Windows Settings')}
               onClick={() => void pick(n)}
             >
               <Bars level={n.signal} />
@@ -880,11 +881,11 @@ function WifiView({ onBack }: { onBack: () => void }): React.JSX.Element {
       <div className="sub-links">
         {data?.networks.some((n) => n.connected) && (
           <button className="sub-link" onClick={() => void window.overlay.disconnectWifi().then(() => window.setTimeout(() => void scan(), 1200))}>
-            Disconnect
+            {tr('Disconnect')}
           </button>
         )}
         <button className="sub-link" onClick={() => void window.overlay.quickOpen('wifi')}>
-          More Wi-Fi settings
+          {tr('More Wi-Fi settings')}
         </button>
       </div>
     </motion.div>
@@ -907,15 +908,15 @@ function BluetoothView({ onBack }: { onBack: () => void }): React.JSX.Element {
   const sorted = (list ?? []).slice().sort((a, b) => Number(b.connected) - Number(a.connected) || a.name.localeCompare(b.name))
   return (
     <motion.div className="body quick-sub" initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 38 }}>
-      <SubHead title="Bluetooth" onBack={onBack} onRefresh={() => void load()} busy={busy} />
+      <SubHead title={tr('Bluetooth')} onBack={onBack} onRefresh={() => void load()} busy={busy} />
       {list === null ? (
-        <div className="sub-empty">Looking for devices…</div>
+        <div className="sub-empty">{tr('Looking for devices…')}</div>
       ) : sorted.length === 0 ? (
-        <div className="sub-empty">No paired devices, or Bluetooth is off.</div>
+        <div className="sub-empty">{tr('No paired devices, or Bluetooth is off.')}</div>
       ) : (
         <div className="net-list">
           {sorted.map((d) => (
-            <button key={d.name} className={d.connected ? 'net-row on' : 'net-row'} onClick={() => void window.overlay.quickOpen('bluetooth')} title="Manage in Windows Settings">
+            <button key={d.name} className={d.connected ? 'net-row on' : 'net-row'} onClick={() => void window.overlay.quickOpen('bluetooth')} title={tr('Manage in Windows Settings')}>
               <span className="ct-well small">
                 <Icon name="bluetooth" size={13} />
               </span>
@@ -927,7 +928,7 @@ function BluetoothView({ onBack }: { onBack: () => void }): React.JSX.Element {
       )}
       <div className="sub-links">
         <button className="sub-link" onClick={() => void window.overlay.quickOpen('bluetooth')}>
-          Add or connect a device
+          {tr('Add or connect a device')}
         </button>
       </div>
     </motion.div>
@@ -982,11 +983,11 @@ function MixerView({ onBack }: { onBack: () => void }): React.JSX.Element {
 
   return (
     <motion.div className="body quick-sub" initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 38 }}>
-      <SubHead title="Volume per app" onBack={onBack} />
+      <SubHead title={tr('Volume per app')} onBack={onBack} />
       {apps === null ? (
-        <div className="sub-empty">Looking for apps…</div>
+        <div className="sub-empty">{tr('Looking for apps…')}</div>
       ) : apps.length === 0 ? (
-        <div className="sub-empty">No apps are playing sound.</div>
+        <div className="sub-empty">{tr('No apps are playing sound.')}</div>
       ) : (
         <div className="mixer">
           {apps.map((a) => (
@@ -1001,7 +1002,7 @@ function MixerView({ onBack }: { onBack: () => void }): React.JSX.Element {
               </div>
               <BigSlider
                 icon={a.volume === 0 ? 'volume-x' : a.volume < 50 ? 'volume-1' : 'volume-2'}
-                label={`${a.name} volume`}
+                label={tr('{0} volume', a.name)}
                 value={a.volume}
                 format={(v) => `${v}%`}
                 onSlide={(v) => {
@@ -1015,7 +1016,7 @@ function MixerView({ onBack }: { onBack: () => void }): React.JSX.Element {
       )}
       <div className="sub-links">
         <button className="sub-link" onClick={() => void window.overlay.quickOpen('sound')}>
-          Sound settings
+          {tr('Sound settings')}
         </button>
       </div>
     </motion.div>
@@ -1042,13 +1043,13 @@ function DndView({ on, until, onPick, onBack }: { on: boolean; until: number; on
   }
   return (
     <motion.div className="body quick-sub" initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 38 }}>
-      <SubHead title="Focus · do not disturb" onBack={onBack} />
+      <SubHead title={tr('Focus · do not disturb')} onBack={onBack} />
       <div className="sub-note">
         {on
           ? until === -1
-            ? 'On until you turn it off.'
-            : `On until ${new Date(until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`
-          : 'Notifications stay out of the notch. Charging, timers and calendar alerts still show.'}
+            ? tr('On until you turn it off.')
+            : tr('On until {0}.', new Date(until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))
+          : tr('Notifications stay out of the notch. Charging, timers and calendar alerts still show.')}
       </div>
       <div className="net-list">
         {options.map((o) => (
@@ -1056,7 +1057,7 @@ function DndView({ on, until, onPick, onBack }: { on: boolean; until: number; on
             <span className="ct-well small">
               <Icon name="moon" size={13} />
             </span>
-            <span className="net-name">{o.label}</span>
+            <span className="net-name">{tr(o.label)}</span>
           </motion.button>
         ))}
         {on && (
@@ -1064,7 +1065,7 @@ function DndView({ on, until, onPick, onBack }: { on: boolean; until: number; on
             <span className="ct-well small">
               <Icon name="x" size={13} />
             </span>
-            <span className="net-name">Turn off</span>
+            <span className="net-name">{tr('Turn off')}</span>
           </motion.button>
         )}
       </div>

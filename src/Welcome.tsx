@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import Icon from './Icon'
 import { ACCENT_PRESETS, applyAccent, resolveAccent } from './accent'
+import { tr } from './i18n'
 
 interface Props {
   /** The global hotkey that is actually registered (it can differ from the saved one), or null. */
@@ -43,19 +44,19 @@ export default function Welcome({ hotkey, accent, onAccent, onDone }: Props): Re
         </span>
       </div>
     )
-    title = "Hi, I'm Gabay."
-    text = <>Your taskbar, folded into the notch at the top of the screen. Hover the notch to open it; move away and it closes.</>
+    title = tr("Hi, I'm Gabay.")
+    text = <>{tr('Your taskbar, folded into the notch at the top of the screen. Hover the notch to open it; move away and it closes.')}</>
   } else if (step === 1) {
     art = (
       <div className="wl-art wl-keys">
-        {keys.length ? keys.map((k) => <kbd key={k}>{k}</kbd>) : <kbd>Hover</kbd>}
+        {keys.length ? keys.map((k) => <kbd key={k}>{k}</kbd>) : <kbd>{tr('Hover')}</kbd>}
       </div>
     )
-    title = 'Everything is one hover away.'
+    title = tr('Everything is one hover away.')
     text = (
       <>
         Controls, your day, apps, clipboard and power live in these tabs.{' '}
-        {keys.length ? <>Press {keys.join(' + ')} any time to search your apps.</> : 'Pick a search hotkey in Settings.'}
+        {keys.length ? <>{tr('Press {0} any time to search your apps.', keys.join(' + '))}</> : tr('Pick a search hotkey in Settings.')}
       </>
     )
   } else if (step === 2) {
@@ -65,18 +66,18 @@ export default function Welcome({ hotkey, accent, onAccent, onDone }: Props): Re
         <Icon name="arrow-left" size={16} />
       </div>
     )
-    title = 'I step aside for full screen.'
-    text = <>When a video or game fills the screen, I hide. Rest the pointer on the very top edge to bring me back.</>
+    title = tr('I step aside for full screen.')
+    text = <>{tr('When a video or game fills the screen, I hide. Rest the pointer on the very top edge to bring me back.')}</>
   } else {
     art = (
-      <div className="wl-art wl-swatches" role="radiogroup" aria-label="Accent colour">
+      <div className="wl-art wl-swatches" role="radiogroup" aria-label={tr('Accent colour')}>
         {Object.entries(ACCENT_PRESETS).map(([key, a]) => (
           <button
             key={key}
             role="radio"
             aria-checked={picked === key}
-            aria-label={`${a.label} accent`}
-            title={a.label}
+            aria-label={tr('{0} accent', tr(a.label))}
+            title={tr(a.label)}
             className={picked === key ? 'swatch on' : 'swatch'}
             style={a.hex ? { background: a.hex } : undefined}
             onClick={() => pick(key)}
@@ -86,14 +87,14 @@ export default function Welcome({ hotkey, accent, onAccent, onDone }: Props): Re
         ))}
       </div>
     )
-    title = 'Make it yours.'
-    text = <>Pick an accent colour. Settings has the rest: weather, your calendar, Focus, and which screen I sit on.</>
+    title = tr('Make it yours.')
+    text = <>{tr('Pick an accent colour. Settings has the rest: weather, your calendar, Focus, and which screen I sit on.')}</>
   }
 
   return (
     <div className="body welcome">
       <button className="wl-skip" onClick={onDone}>
-        Skip
+        {tr('Skip')}
       </button>
       <AnimatePresence mode="popLayout" initial={false} custom={dir}>
         <motion.div
@@ -118,11 +119,11 @@ export default function Welcome({ hotkey, accent, onAccent, onDone }: Props): Re
         <span className="wl-buttons">
           {step > 0 && (
             <button className="btn small" onClick={() => go(step - 1)}>
-              Back
+              {tr('Back')}
             </button>
           )}
           <button className="btn small wl-next" onClick={() => (step === STEPS - 1 ? onDone() : go(step + 1))}>
-            {step === STEPS - 1 ? 'Start using Gabay' : 'Next'}
+            {step === STEPS - 1 ? tr('Start using Gabay') : tr('Next')}
           </button>
         </span>
       </div>

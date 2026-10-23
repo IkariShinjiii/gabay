@@ -5,6 +5,7 @@ import type { BatteryInfo } from './useBattery'
 import { formatMs, type FocusTimer } from './useFocusTimer'
 import { formatClock } from './useTimers'
 import { weatherLook } from './weatherIcon'
+import { tr } from './i18n'
 
 const R = 8
 const C = 2 * Math.PI * R
@@ -109,10 +110,10 @@ export default function NotchStatus(p: Props): React.JSX.Element {
 
   const privacy = p.privacy.cam.length ? 'cam' : p.privacy.mic.length ? 'mic' : null
   const list = (names: string[]): string =>
-    names.length <= 1 ? (names[0] ?? 'An app') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+    names.length <= 1 ? (names[0] ?? tr('An app')) : tr('{0} and {1}', names.slice(0, -1).join(', '), names[names.length - 1])
   const privacyTip = [
-    p.privacy.cam.length ? `${list(p.privacy.cam)} ${p.privacy.cam.length > 1 ? 'are' : 'is'} using the camera` : '',
-    p.privacy.mic.length ? `${list(p.privacy.mic)} ${p.privacy.mic.length > 1 ? 'are' : 'is'} using the microphone` : ''
+    p.privacy.cam.length ? (p.privacy.cam.length > 1 ? tr('{0} are using the camera', list(p.privacy.cam)) : tr('{0} is using the camera', list(p.privacy.cam))) : '',
+    p.privacy.mic.length ? (p.privacy.mic.length > 1 ? tr('{0} are using the microphone', list(p.privacy.mic)) : tr('{0} is using the microphone', list(p.privacy.mic))) : ''
   ]
     .filter(Boolean)
     .join('. ')
@@ -125,7 +126,7 @@ export default function NotchStatus(p: Props): React.JSX.Element {
             {live.art ? <img src={live.art} alt="" draggable={false} /> : <Icon name="music" size={10} />}
           </span>
         )}
-        <span title={NET_LABEL[net]} className="st-icon">
+        <span title={tr(NET_LABEL[net])} className="st-icon">
           <Icon name={net === 'offline' && p.wired ? 'cable' : NET_ICON[net]} size={12} />
         </span>
         {look && weather && (
@@ -134,9 +135,9 @@ export default function NotchStatus(p: Props): React.JSX.Element {
             {weather.temp}°
           </span>
         )}
-        {p.attention && <span className="st-attn" title="An app wants your attention" />}
+        {p.attention && <span className="st-attn" title={tr('An app wants your attention')} />}
         {p.dnd && (
-          <span className="st-icon st-dnd" title="Do not disturb">
+          <span className="st-icon st-dnd" title={tr('Do not disturb')}>
             <Icon name="moon" size={11} />
           </span>
         )}

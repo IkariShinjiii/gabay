@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import type { SystemStats } from './global'
 import { STATS_POLL_MS } from './constants'
+import { tr } from './i18n'
 
 const GB = 1024 ** 3
 
@@ -59,22 +60,22 @@ export default function StatsPanel(): React.JSX.Element {
     }
   }, [])
 
-  if (!stats) return <div className="body body-center muted">Measuring…</div>
+  if (!stats) return <div className="body body-center muted">{tr('Measuring…')}</div>
 
   const ramPercent = (stats.ramUsedBytes / stats.ramTotalBytes) * 100
   return (
     <div className="body stats">
-      <Gauge label="CPU" percent={stats.cpuPercent} detail="Processor" />
+      <Gauge label={tr('CPU')} percent={stats.cpuPercent} detail="Processor" />
       <Gauge
-        label="Memory"
+        label={tr('Memory')}
         percent={ramPercent}
-        detail={`${(stats.ramUsedBytes / GB).toFixed(1)} of ${(stats.ramTotalBytes / GB).toFixed(0)} GB`}
+        detail={tr('{0} of {1} GB', (stats.ramUsedBytes / GB).toFixed(1), (stats.ramTotalBytes / GB).toFixed(0))}
       />
       {stats.diskTotalBytes > 0 && (
         <Gauge
-          label="Disk"
+          label={tr('Disk')}
           percent={(stats.diskUsedBytes / stats.diskTotalBytes) * 100}
-          detail={`${((stats.diskTotalBytes - stats.diskUsedBytes) / GB).toFixed(0)} GB free`}
+          detail={tr('{0} GB free', ((stats.diskTotalBytes - stats.diskUsedBytes) / GB).toFixed(0))}
         />
       )}
     </div>

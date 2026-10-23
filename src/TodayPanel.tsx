@@ -4,6 +4,7 @@ import type { CalEvent, Todo, Weather } from './global'
 import { formatClock, leftOf, MAX_TIMERS, type Timers } from './useTimers'
 import { weatherLook } from './weatherIcon'
 import { formatMs, type FocusTimer } from './useFocusTimer'
+import { tr } from './i18n'
 
 interface Props {
   timer: FocusTimer
@@ -23,9 +24,9 @@ const time = (t: number): string => new Date(t).toLocaleTimeString([], { hour: '
 /** "Now", "9:30 AM", or "Tomorrow" for events after today. */
 function when(ev: CalEvent, now: number): string {
   const startOfTomorrow = new Date(new Date(now).setHours(24, 0, 0, 0)).getTime()
-  if (ev.start >= startOfTomorrow) return ev.allDay ? 'Tomorrow' : `Tmrw ${time(ev.start)}`
-  if (ev.allDay) return 'All day'
-  if (ev.start <= now && ev.end > now) return 'Now'
+  if (ev.start >= startOfTomorrow) return ev.allDay ? tr('Tomorrow') : tr('Tmrw {0}', time(ev.start))
+  if (ev.allDay) return tr('All day')
+  if (ev.start <= now && ev.end > now) return tr('Now')
   return time(ev.start)
 }
 
@@ -36,7 +37,7 @@ function Agenda({ now }: { now: number }): React.JSX.Element | null {
     void window.overlay.calendarGet(false).then(setAgenda, () => undefined)
   }, [])
   if (!agenda) return null
-  if (!agenda.connected) return <div className="agenda-hint">Add your calendar in Settings to see what's next.</div>
+  if (!agenda.connected) return <div className="agenda-hint">{tr('Add your calendar in Settings to see what\'s next.')}</div>
   const next = agenda.events.filter((e) => e.end > now).slice(0, 3)
   return (
     <div className="agenda">
@@ -115,7 +116,7 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
               {running ? 'Pause' : timer.status === 'paused' ? 'Resume' : 'Start'}
             </button>
             <button className="btn small" onClick={timer.reset}>
-              Reset
+              {tr('Reset')}
             </button>
           </div>
           <div className="timer-presets">
@@ -132,7 +133,7 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
         <Agenda now={now.getTime()} />
         <input
           className="field todo-field"
-          placeholder="Add a to-do…"
+          placeholder={tr('Add a to-do…')}
           spellCheck={false}
           autoComplete="off"
           maxLength={200}
@@ -146,21 +147,21 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
           onBlur={() => onHold(false)}
         />
         <div className="todos">
-          {todos.length === 0 && <div className="todo-empty">Nothing to do. Nice.</div>}
+          {todos.length === 0 && <div className="todo-empty">{tr('Nothing to do. Nice.')}</div>}
           {todos.map((t) => (
             <div key={t.id} className="todo">
               <button
                 className={t.done ? 'check on' : 'check'}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => void window.overlay.toggleTodo(t.id).then(setTodos)}
-                aria-label={t.done ? 'Mark not done' : 'Mark done'}
+                aria-label={t.done ? tr('Mark not done') : tr('Mark done')}
               >
                 {t.done && <Icon name="check" size={12} />}
               </button>
               <span className={t.done ? 'todo-text done' : 'todo-text'}>{t.text}</span>
               <button
                 className="star"
-                title="Delete"
+                title={tr('Delete')}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => void window.overlay.removeTodo(t.id).then(setTodos)}
               >
@@ -175,7 +176,7 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
         <div className="card sw">
           <div className="card-head">
             <Icon name="timer" size={13} />
-            Stopwatch
+            {tr('Stopwatch')}
           </div>
           <div className={timers.stopwatch.running ? 'sw-time running' : 'sw-time'}>{formatClock(timers.elapsedMs, true)}</div>
           <div className="timer-buttons">
@@ -184,12 +185,12 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
             </button>
             {timers.stopwatch.running ? (
               <button className="btn small" onClick={timers.swLap}>
-                Lap
+                {tr('Lap')}
               </button>
             ) : (
               timers.elapsedMs > 0 && (
                 <button className="btn small" onClick={timers.swReset}>
-                  Reset
+                  {tr('Reset')}
                 </button>
               )
             )}
@@ -217,17 +218,17 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
             </span>
           </div>
           {timers.countdowns.length === 0 ? (
-            <div className="tm-empty">Tap +5m to start one. It keeps running when the notch closes.</div>
+            <div className="tm-empty">{tr('Tap +5m to start one. It keeps running when the notch closes.')}</div>
           ) : (
             <div className="tm-list">
               {timers.countdowns.slice(0, 3).map((c) => (
                 <div key={c.id} className={c.endAt === null ? 'tm-row paused' : 'tm-row'}>
                   <span className="tm-left">{formatClock(leftOf(c, timers.now) + 999)}</span>
                   <span className="tm-label">{c.label}</span>
-                  <button className="tm-btn" onClick={() => timers.toggle(c.id)} title={c.endAt === null ? 'Resume' : 'Pause'} aria-label={c.endAt === null ? 'Resume' : 'Pause'}>
+                  <button className="tm-btn" onClick={() => timers.toggle(c.id)} title={c.endAt === null ? tr('Resume') : tr('Pause')} aria-label={c.endAt === null ? tr('Resume') : tr('Pause')}>
                     <Icon name={c.endAt === null ? 'play' : 'pause'} size={11} />
                   </button>
-                  <button className="tm-btn" onClick={() => timers.remove(c.id)} title="Cancel" aria-label="Cancel timer">
+                  <button className="tm-btn" onClick={() => timers.remove(c.id)} title={tr('Cancel')} aria-label={tr('Cancel timer')}>
                     <Icon name="x" size={11} />
                   </button>
                 </div>

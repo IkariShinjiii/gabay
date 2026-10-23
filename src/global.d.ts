@@ -146,6 +146,7 @@ export interface Settings {
   hideTaskbar: boolean
   autoUpdate: boolean
   updateChannel: 'stable' | 'preview'
+  language: 'en' | 'fil'
   taskbarWasAutoHide: boolean | null
 }
 
