@@ -136,6 +136,7 @@ The taskbar's system-tray features, built into the notch.
 - **Live activity:** while music or a video plays, the pill shows the album art and a moving level meter; while a browser
   download runs (Chrome, Edge, Brave, Firefox), how much has arrived; while recording, a red dot and the time. The middle
   shows a running stopwatch or the next timer instead of the clock.
+- **Notification actions:** point at a Windows notification in the notch and two buttons appear: open its app, or dismiss it (removes it from Windows' list too). The panel doesn't open while you do.
 - **Toasts:** the collapsed notch grows for a few seconds, like an iPhone's Dynamic Island, for:
   - **Windows notifications** (app, sender and message). Settings can switch this off, or show only the app name.
     The text is shown, never stored or logged. Windows shows its own banner too; turn on Windows' **Do not disturb** to
@@ -180,6 +181,7 @@ The taskbar's system-tray features, built into the notch.
   25 MB, no measurable CPU) compiled once from `electron/nativeSource.ts` with the C# compiler built into Windows, against
   the Windows Runtime metadata in `System32\WinMetadata`, and cached in `%APPDATA%\gabay\bin`. Without that compiler
   those features quietly go away and the notch simply stays visible.
+- **Language** (Settings): English or Filipino. The text lives in `src/fil.ts` (the English sentence is the key; anything missing shows in English), looked up with `tr()` from `src/i18n.ts`. Release notes and the Windows-provided names stay in English.
 - **Settings tab:** global hotkey, how long the pointer must stay away before the panel collapses (200-1500 ms), which
   display the notch sits on (or Follow mouse), notifications, accent colour (mint, your Windows accent, or six others),
   weather city, lyrics, calendar, updates, **Report a bug**, and Experiments.

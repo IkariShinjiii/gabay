@@ -1,5 +1,6 @@
 import type { DockApp } from './global'
 import Icon from './Icon'
+import { tr } from './i18n'
 
 /**
  * The dock, at the foot of the panel while the Windows taskbar is hidden: pinned (starred) apps first, then other
@@ -29,7 +30,7 @@ export default function Dock({ apps, onHold }: { apps: DockApp[]; onHold: (held:
     <div
       className="dock"
       role="toolbar"
-      aria-label="Dock"
+      aria-label={tr('Dock')}
       onWheel={(e) => {
         // A plain wheel scrolls the row sideways when there are more apps than fit.
         e.currentTarget.scrollLeft += e.deltaY + e.deltaX
@@ -41,8 +42,8 @@ export default function Dock({ apps, onHold }: { apps: DockApp[]; onHold: (held:
         const attention = a.wins.some((w) => w.attention)
         const allMin = open && a.wins.every((w) => w.minimized)
         const tip =
-          (a.wins.length === 1 ? a.wins[0].title : a.wins.length > 1 ? `${a.name} (${a.wins.length} windows)` : a.name) +
-          (attention ? ' · wants your attention' : '')
+          (a.wins.length === 1 ? a.wins[0].title : a.wins.length > 1 ? tr('{0} ({1} windows)', a.name, a.wins.length) : a.name) +
+          (attention ? tr(' · wants your attention') : '')
         return (
           <button
             key={a.key}

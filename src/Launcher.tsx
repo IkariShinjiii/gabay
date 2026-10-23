@@ -2,6 +2,7 @@ import Empty from './Empty'
 import AppIcon from './AppIcon'
 import Icon from './Icon'
 import type { LauncherItem } from './global'
+import { tr } from './i18n'
 
 interface Props {
   items: LauncherItem[]
@@ -13,7 +14,7 @@ interface Props {
 }
 
 export default function Launcher({ items, selected, emptyHint, onHover, onLaunch, onToggleStar }: Props): React.JSX.Element {
-  if (items.length === 0) return <Empty icon="search" title={emptyHint} hint={emptyHint.startsWith('No') ? 'Try fewer letters, or part of the name.' : undefined} />
+  if (items.length === 0) return <Empty icon="search" title={emptyHint} hint={emptyHint.startsWith(tr('No')) ? tr('Try fewer letters, or part of the name.') : undefined} />
 
   return (
     <div className="body results">
@@ -30,7 +31,7 @@ export default function Launcher({ items, selected, emptyHint, onHover, onLaunch
           <span className="row-name">{it.name}</span>
           <button
             className={it.starred ? 'star on' : 'star'}
-            title={it.starred ? 'Unstar' : 'Star'}
+            title={it.starred ? tr('Unstar') : tr('Star')}
             onMouseDown={(e) => e.preventDefault()}
             onClick={(e) => {
               e.stopPropagation()

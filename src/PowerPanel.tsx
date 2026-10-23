@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import Icon from './Icon'
 import type { IconName } from './icons'
 import type { PowerAction } from './global'
+import { tr } from './i18n'
 
 interface Props {
   /** A restart/shutdown asked for by the command bar: open its confirmation (never runs directly). */
@@ -67,15 +68,15 @@ export default function PowerPanel({ request, onRequestHandled, onConfirming, on
               <Icon name={pendingAction.icon} size={18} />
             </span>
             <div className="power-confirm-text">
-              <div className="confirm-text">{`${pendingAction.label} now?`}</div>
-              <div className="confirm-sub">Unsaved work in open apps may be lost.</div>
+              <div className="confirm-text">{tr('{0} now?', tr(pendingAction.label))}</div>
+              <div className="confirm-sub">{tr('Unsaved work in open apps may be lost.')}</div>
             </div>
             {/* Cancel is first and autofocused so a stray Enter never powers the machine off. */}
             <button className="btn" autoFocus onClick={() => confirming(null)}>
-              Cancel
+              {tr('Cancel')}
             </button>
             <button className="btn danger" onClick={() => void run(pendingAction.action)}>
-              {pendingAction.label}
+              {tr(pendingAction.label)}
             </button>
           </motion.div>
         ) : (

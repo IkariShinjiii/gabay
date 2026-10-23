@@ -22,18 +22,19 @@ import Welcome from './Welcome'
 import NotesPanel from './NotesPanel'
 import { notesFor } from './whatsNew'
 import { useFocusTimer } from './useFocusTimer'
+import { tr, setLanguage, type Language } from './i18n'
 
 const TABS = ['Controls', 'Today', 'Notes', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
 type Tab = (typeof TABS)[number]
 
 const SAMPLE_WINS: DockApp[] = [
-  { key: 'a', name: 'Mail', icon: null, pinned: true, wins: [{ id: '1', title: 'Inbox - Mail', minimized: false, active: true, attention: false }] },
+  { key: 'a', name: 'Mail', icon: null, pinned: true, wins: [{ id: '1', title: tr('Inbox - Mail'), minimized: false, active: true, attention: false }] },
   { key: 'b', name: 'Browser', icon: null, pinned: true, wins: [
-    { id: '2', title: 'Project notes', minimized: false, active: false, attention: false },
-    { id: '3', title: 'Recipes', minimized: true, active: false, attention: false }
+    { id: '2', title: tr('Project notes'), minimized: false, active: false, attention: false },
+    { id: '3', title: tr('Recipes'), minimized: true, active: false, attention: false }
   ] },
   { key: 'c', name: 'Files', icon: null, pinned: true, wins: [] },
-  { key: 'd', name: 'Chat', icon: null, pinned: false, wins: [{ id: '4', title: 'Chat', minimized: false, active: false, attention: true }] }
+  { key: 'd', name: 'Chat', icon: null, pinned: false, wins: [{ id: '4', title: tr('Chat'), minimized: false, active: false, attention: true }] }
 ]
 
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
@@ -152,6 +153,8 @@ export default function App(): React.JSX.Element {
   }, [setInteractive])
 
   const [dndUntil, setDndUntil] = useState(0)
+  const [language, setLang] = useState<Language>('en')
+  setLanguage(language)
   const [activeHotkey, setActiveHotkey] = useState<string | null>(null)
   const [accentName, setAccentName] = useState('mint')
 
@@ -179,6 +182,7 @@ export default function App(): React.JSX.Element {
     collapseMs.current = s.collapseMs
     void resolveAccent(s.accent).then(applyAccent)
     setDndUntil(s.dndUntil)
+    setLang((new URLSearchParams(location.hash.slice(1)).get('lang') as Language | null) ?? s.language)
     setPlace(s.place ? `${s.place.lat},${s.place.lon}` : null)
     setDockOn(previewParam ? previewDock : s.hideTaskbar)
     // A preview of the collapsed pill must show it, whatever the saved visibility is.
@@ -393,9 +397,9 @@ export default function App(): React.JSX.Element {
     const items = notesFor(version)
     pushToast({
       icon: 'sparkles',
-      label: `Updated to Gabay ${version}`,
+      label: tr('Updated to Gabay {0}', version),
       title: items[0],
-      sub: items.length > 1 ? `And ${items.length - 1} more in Settings › What's new` : undefined,
+      sub: items.length > 1 ? tr("And {0} more in Settings › What's new", items.length - 1) : undefined,
       tone: 'accent',
       ms: 7000
     })
@@ -409,22 +413,22 @@ export default function App(): React.JSX.Element {
       setMedia(m)
       const key = m ? `${m.title}|${m.artist}` : null
       if (m?.playing && key && lastTrack.current !== null && key !== lastTrack.current && m.title)
-        pushToast({ icon: 'music', art: m.art || undefined, title: m.title, sub: m.artist, label: 'Now playing', ms: 3200 })
+        pushToast({ icon: 'music', art: m.art || undefined, title: m.title, sub: m.artist, label: tr('Now playing'), ms: 3200 })
       if (key) lastTrack.current = key
     }
     // Dev preview of the grown pill: sample data, never real events.
     if (previewParam === 'Toast')
-      setToast({ id: 0, icon: 'zap', title: 'Charging', sub: '76%', ring: 0.76, tone: 'accent', ms: 60_000 })
+      setToast({ id: 0, icon: 'zap', title: tr('Charging'), sub: '76%', ring: 0.76, tone: 'accent', ms: 60_000 })
     if (previewParam === 'WhatsNew')
-      setToast({ id: 0, icon: 'sparkles', label: 'Updated to Gabay 0.32.0', title: notesFor('0.32.0')[0], sub: "And 3 more in Settings › What's new", tone: 'accent', ms: 60_000 })
+      setToast({ id: 0, icon: 'sparkles', label: tr('Updated to Gabay 0.32.0'), title: notesFor('0.32.0')[0], sub: tr('And 3 more in Settings › What\'s new'), tone: 'accent', ms: 60_000 })
     if (previewParam === 'Note')
       {
         // &hover shows the buttons that normally appear when the pointer is over the toast
         if (new URLSearchParams(location.hash.slice(1)).has('hover')) document.documentElement.setAttribute('data-preview-hover', '')
-        setToast({ id: 0, icon: 'message-square', noteId: 1, label: 'Messenger', title: 'Kevin', sub: 'are you coming tonight? we are at the usual place', ms: 60_000 })
+        setToast({ id: 0, icon: 'message-square', noteId: 1, label: tr('Messenger'), title: tr('Kevin'), sub: tr('are you coming tonight? we are at the usual place'), ms: 60_000 })
       }
     if (previewParam === 'Live')
-      setMedia({ title: 'Weightless', artist: 'Marconi Union', app: 'Spotify.exe', playing: true, duration: 480, art: '' })
+      setMedia({ title: tr('Weightless'), artist: 'Marconi Union', app: 'Spotify.exe', playing: true, duration: 480, art: '' })
     // &demo (dev preview only): a running timer and stopwatch and sample weather, for screenshots.
     if (new URLSearchParams(location.hash.slice(1)).has('demo')) {
       setWeather({ place: 'Iloilo City', temp: 31, code: 2, day: true, high: 33, low: 26, at: 0 })
@@ -458,7 +462,7 @@ export default function App(): React.JSX.Element {
       })
     })
     const offUpdate = window.overlay.onUpdate((u) =>
-      pushToast({ icon: 'download', title: `Gabay ${u.version} is available`, sub: 'Install it from Settings', tone: 'accent', ms: 6000 })
+      pushToast({ icon: 'download', title: tr('Gabay {0} is available', u.version), sub: tr('Install it from Settings'), tone: 'accent', ms: 6000 })
     )
     return () => {
       offMedia()
@@ -517,7 +521,7 @@ export default function App(): React.JSX.Element {
     const offPriv = window.overlay.onPrivacy(setPrivacy)
     const offDl = window.overlay.onDownload(setDownload)
     const offDone = window.overlay.onDownloadDone((name) =>
-      pushToast({ icon: 'download', label: 'Download complete', title: name, sub: 'In your Downloads folder', tone: 'accent' })
+      pushToast({ icon: 'download', label: tr('Download complete'), title: name, sub: tr('In your Downloads folder'), tone: 'accent' })
     )
     return () => {
       offPriv()
@@ -529,13 +533,13 @@ export default function App(): React.JSX.Element {
   // --- timers, stopwatch, focus timer: a chime and a toast when one ends ---
   const timers = useTimers((c) => {
     chime()
-    pushToast({ icon: 'timer', label: 'Timer done', title: c.label, tone: 'accent', ms: 8000 })
+    pushToast({ icon: 'timer', label: tr('Timer done'), title: c.label, tone: 'accent', ms: 8000 })
   })
   const focusDone = useRef(false)
   useEffect(() => {
     if (focusTimer.status === 'done' && !focusDone.current) {
       chime()
-      pushToast({ icon: 'timer', label: 'Focus timer', title: 'Time is up', sub: 'Take a short break', tone: 'accent', ms: 8000 })
+      pushToast({ icon: 'timer', label: tr('Focus timer'), title: tr('Time is up'), sub: tr('Take a short break'), tone: 'accent', ms: 8000 })
     }
     focusDone.current = focusTimer.status === 'done'
   }, [focusTimer.status, pushToast])
@@ -544,8 +548,8 @@ export default function App(): React.JSX.Element {
   const recorder = useRecorder((ok) =>
     pushToast(
       ok
-        ? { icon: 'video', label: 'Recording saved', title: 'Videos › Gabay', tone: 'accent' }
-        : { icon: 'video', title: "Couldn't record the screen", sub: 'Try again in a moment', tone: 'warn' }
+        ? { icon: 'video', label: tr('Recording saved'), title: tr('Videos › Gabay'), tone: 'accent' }
+        : { icon: 'video', title: tr('Couldn\'t record the screen'), sub: tr('Try again in a moment'), tone: 'warn' }
     )
   )
   const [recTick, setRecTick] = useState(0)
@@ -559,8 +563,8 @@ export default function App(): React.JSX.Element {
     const r = await window.overlay.screenshot().catch(() => null)
     pushToast(
       r
-        ? { icon: 'image', art: r.thumb, label: 'Screenshot saved', title: 'Copied to the clipboard', sub: 'Pictures › Screenshots', tone: 'accent' }
-        : { icon: 'image', title: "Couldn't take a screenshot", tone: 'warn' }
+        ? { icon: 'image', art: r.thumb, label: tr('Screenshot saved'), title: tr('Copied to the clipboard'), sub: tr('Pictures › Screenshots'), tone: 'accent' }
+        : { icon: 'image', title: tr('Couldn\'t take a screenshot'), tone: 'warn' }
     )
   }, [pushToast])
 
@@ -573,13 +577,13 @@ export default function App(): React.JSX.Element {
     if (!prev) return
     const pct = Math.round(battery.level * 100)
     if (battery.charging && !prev.charging)
-      pushToast({ icon: 'zap', title: 'Charging', sub: `${pct}%`, ring: battery.level, tone: 'accent', ms: 3200 })
+      pushToast({ icon: 'zap', title: tr('Charging'), sub: `${pct}%`, ring: battery.level, tone: 'accent', ms: 3200 })
     else if (battery.charging && battery.level >= 1 && prev.level < 1)
-      pushToast({ icon: 'battery-full', title: 'Fully charged', sub: 'You can unplug', tone: 'accent' })
+      pushToast({ icon: 'battery-full', title: tr('Fully charged'), sub: tr('You can unplug'), tone: 'accent' })
     else if (!battery.charging)
       for (const at of [0.2, 0.1])
         if (battery.level <= at && prev.level > at)
-          pushToast({ icon: 'battery-warning', title: 'Low battery', sub: `${pct}% left · plug in soon`, ring: battery.level, tone: 'warn', ms: 6000 })
+          pushToast({ icon: 'battery-warning', title: tr('Low battery'), sub: tr('{0}% left · plug in soon', pct), ring: battery.level, tone: 'warn', ms: 6000 })
   }, [battery, pushToast])
 
   // --- calendar heads-up: once per event, 10 minutes before it starts ---
@@ -596,7 +600,7 @@ export default function App(): React.JSX.Element {
         warned.current.add(key)
         pushToast({
           icon: 'calendar',
-          label: mins <= 0 ? 'Starting now' : `In ${mins} min`,
+          label: mins <= 0 ? tr('Starting now') : tr('In {0} min', mins),
           title: ev.title,
           sub: ev.location || new Date(ev.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           tone: 'accent',
@@ -807,7 +811,7 @@ export default function App(): React.JSX.Element {
       <Launcher
         items={items}
         selected={selected}
-        emptyHint={input.trim() ? 'No matching apps' : 'Type to search apps. Star one to pin it here.'}
+        emptyHint={input.trim() ? tr('No matching apps') : tr('Type to search apps. Star one to pin it here.')}
         onHover={setSelected}
         onLaunch={(it) => void launch(it)}
         onToggleStar={(it) => void toggleStar(it)}
@@ -846,7 +850,7 @@ export default function App(): React.JSX.Element {
       />
     )
   } else {
-    body = <div className="body body-center">{tab}</div>
+    body = <div className="body body-center">{tr(tab)}</div>
   }
 
   return (
@@ -878,18 +882,18 @@ export default function App(): React.JSX.Element {
           style={{ pointerEvents: expanded ? 'auto' : 'none', maxHeight: panelCap }}
         >
           {!welcome && (
-          <div className="tabs" role="tablist" aria-label="Sections" onWheel={onTabsWheel}>
+          <div className="tabs" role="tablist" aria-label={tr('Sections')} onWheel={onTabsWheel}>
             {TABS.map((t, i) => (
               <button
                 key={t}
                 role="tab"
                 aria-selected={t === tab}
-                title={`${t} (Ctrl+${i + 1})`}
+                title={`${tr(t)} (Ctrl+${i + 1})`}
                 className={t === tab ? 'tab on' : 'tab'}
                 tabIndex={expanded ? 0 : -1}
                 onClick={() => selectTab(t)}
               >
-                {t}
+                {tr(t)}
                 {/* One marker shared by all tabs: Motion slides it from the old tab to the new one. */}
                 {t === tab && <motion.span layoutId="tab-marker" className="tab-marker" transition={SPRING} />}
               </button>
@@ -931,8 +935,8 @@ export default function App(): React.JSX.Element {
             <Icon name={parsed ? 'command' : 'search'} size={16} />
             <input
               ref={inputRef}
-              placeholder={tab === 'Clipboard' ? 'Search clipboard' : 'Search apps, or type a command'}
-              aria-label="Search or command"
+              placeholder={tab === 'Clipboard' ? tr('Search clipboard') : tr('Search apps, or type a command')}
+              aria-label={tr('Search or command')}
               spellCheck={false}
               autoComplete="off"
               value={input}
@@ -953,7 +957,7 @@ export default function App(): React.JSX.Element {
             {parsed ? (
               <span className="bar-hint on">{parsed.hint} · Enter</span>
             ) : (
-              !input && barFocused && <span className="bar-hint">lock · focus 25 · todo … · open …</span>
+              !input && barFocused && <span className="bar-hint">{tr('lock · focus 25 · todo … · open …')}</span>
             )}
           </label>
           )}

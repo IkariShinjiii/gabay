@@ -2,6 +2,7 @@ import Empty from './Empty'
 import { useEffect, useState } from 'react'
 import Icon from './Icon'
 import type { ClipItem } from './global'
+import { tr } from './i18n'
 
 const REFRESH_MS = 1000
 
@@ -51,9 +52,9 @@ export default function ClipboardPanel({ query, onCopied }: Props): React.JSX.El
   if (items.length === 0) {
     return (
       query.trim() ? (
-        <Empty icon="search" title="No matching clips" />
+        <Empty icon="search" title={tr('No matching clips')} />
       ) : (
-        <Empty icon="copy" title="Nothing copied yet" hint="Text and images you copy show up here. Pin text to keep it." />
+        <Empty icon="copy" title={tr('Nothing copied yet')} hint="Text and images you copy show up here. Pin text to keep it." />
       )
     )
   }
@@ -61,7 +62,7 @@ export default function ClipboardPanel({ query, onCopied }: Props): React.JSX.El
   return (
     <div className="body results">
       <button className="clear" onMouseDown={(e) => e.preventDefault()} onClick={() => void clear()}>
-        Clear history (keeps pinned)
+        {tr('Clear history (keeps pinned)')}
       </button>
       {items.map((it, i) => (
         <div
@@ -76,7 +77,7 @@ export default function ClipboardPanel({ query, onCopied }: Props): React.JSX.El
           {!it.image && (
           <button
             className={it.pinned ? 'star on' : 'star'}
-            title={it.pinned ? 'Unpin' : 'Pin (kept across restarts)'}
+            title={it.pinned ? tr('Unpin') : tr('Pin (kept across restarts)')}
             onMouseDown={(e) => e.preventDefault()}
             onClick={(e) => {
               e.stopPropagation()

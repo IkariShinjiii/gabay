@@ -1,6 +1,7 @@
 import { motion } from 'motion/react'
 import Icon from './Icon'
 import type { IconName } from './icons'
+import { tr } from './i18n'
 
 export interface Toast {
   id: number
@@ -66,10 +67,10 @@ export default function NotchToast({ toast, actions }: { toast: Toast; actions?:
       </span>
       {toast.noteId !== undefined && actions && (
         <span className="toast-actions">
-          <button type="button" className="toast-act" aria-label="Open the app" title="Open the app" onClick={actions.onOpen}>
+          <button type="button" className="toast-act" aria-label={tr('Open the app')} title={tr('Open the app')} onClick={actions.onOpen}>
             <Icon name="app-window" size={15} />
           </button>
-          <button type="button" className="toast-act" aria-label="Dismiss" title="Dismiss" onClick={actions.onDismiss}>
+          <button type="button" className="toast-act" aria-label={tr('Dismiss')} title={tr('Dismiss')} onClick={actions.onDismiss}>
             <Icon name="x" size={15} />
           </button>
         </span>
