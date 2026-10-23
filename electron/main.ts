@@ -329,7 +329,8 @@ app.whenReady().then(async () => {
         const appName = str(n.app, 80) ?? 'Notification'
         // Windows is silent while its Do not disturb is on, so Gabay plays the sound instead (if wanted).
         const sound = settings.noteSound && (await nativeCall('dnd').catch(() => null)) === true
-        send('overlay:note', settings.notePreview ? { app: appName, title: str(n.title, 120), body: str(n.body, 240), sound } : { app: appName, title: null, body: null, sound })
+        const id = typeof n.id === 'number' && Number.isInteger(n.id) && n.id >= 0 ? n.id : undefined
+        send('overlay:note', settings.notePreview ? { id, app: appName, title: str(n.title, 120), body: str(n.body, 240), sound } : { id, app: appName, title: null, body: null, sound })
       }
     }, () => {
       void nativeCall('notes', settings.notifications && !PREVIEW ? 'on' : 'off')
@@ -835,6 +836,14 @@ app.whenReady().then(async () => {
   })
   // The helper knows which adapter carries the internet (wired wins when Wi-Fi is also connected); the interface list is
   // the fallback while it starts.
+  // Notification actions: the renderer sends only an id; the app to open is looked up in the helper, which made the id.
+  for (const [channel, cmd] of [['note:dismiss', 'notedismiss'], ['note:open', 'noteopen']] as const) {
+    ipcMain.handle(channel, async (e, id: unknown) => {
+      fromUi(e)
+      if (typeof id !== 'number' || !Number.isInteger(id) || id < 0 || id > 0xffffffff) return false
+      return (await nativeCall(cmd, String(id)).catch(() => null)) === true
+    })
+  }
   ipcMain.handle('windows:dnd', async (e) => {
     fromUi(e)
     return (await nativeCall('dnd').catch(() => null)) === true

@@ -6,6 +6,7 @@
 //   pushes   fs 0 | fs 1 L T R B        full screen on some monitor (physical pixels)
 //            media <json|null>          now playing, on change (art only when the track changes)
 //            note <json>                a new Windows notification (only while notes are on)
+//            notedismiss <id> | noteopen <id>   remove a notification from Windows, or open the app it came from
 //            noteaccess <status>        whether Windows lets Gabay read notifications (Allowed, Denied, ...)
 //   requests <id> <command> [args]  ->  r <id> <json>
 //            vol <0-100> | volget | media toggle|next|prev | bt | notes on|off
@@ -371,6 +372,16 @@ static class Native {
       case "media": return MediaCommand(arg) ? "true" : "false";
       case "bt": return Bluetooth();
       case "notes": notesOn = arg == "on"; return "true";
+      case "notedismiss": {
+        try { noteListener.RemoveNotification(uint.Parse(arg)); return "true"; } catch { return "false"; }
+      }
+      case "noteopen": {
+        string aumid = null;
+        lock (noteApps) { noteApps.TryGetValue(uint.Parse(arg), out aumid); }
+        // only an app id made of the characters app ids use, so nothing else can reach the command line
+        if (aumid == null || !System.Text.RegularExpressions.Regex.IsMatch(aumid, @"^[A-Za-z0-9._!\-]{1,200}$")) return "false";
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "shell:AppsFolder\\" + aumid) { UseShellExecute = false }); return "true"; } catch { return "false"; }
+      }
       case "appbar": return AppBar(arg);
       case "clipok": return ClipOk() ? "true" : "false";
       case "clipseq": return GetClipboardSequenceNumber().ToString();
@@ -824,9 +835,11 @@ static class Native {
   // Access depends on Windows' privacy settings (Settings > Privacy > Notifications), which differ between PCs. It is
   // reported to Gabay and re-checked (every 10 s while blocked, every 30 s while allowed), so turning access on later
   // works without restarting Gabay.
+  static UserNotificationListener noteListener;
+  static readonly Dictionary<uint, string> noteApps = new Dictionary<uint, string>(); // id -> the app's id only, never text
   static void NotesLoop() {
     UserNotificationListener l;
-    try { l = UserNotificationListener.Current; } catch { Send("noteaccess Unavailable"); return; }
+    try { l = UserNotificationListener.Current; noteListener = l; } catch { Send("noteaccess Unavailable"); return; }
     var seen = new HashSet<uint>();
     bool primed = false;
     string access = null;
@@ -847,6 +860,7 @@ static class Native {
           if (!primed || seen.Contains(n.Id)) continue; // what was already there when notes turned on is old news
           string app = null, title = null, body = null;
           try { app = n.AppInfo.DisplayInfo.DisplayName; } catch { }
+          try { lock (noteApps) { if (noteApps.Count > 40) noteApps.Clear(); noteApps[n.Id] = n.AppInfo.AppUserModelId; } } catch { }
           try {
             var b = n.Notification.Visual.GetBinding(KnownNotificationBindings.ToastGeneric);
             if (b != null) {
@@ -856,7 +870,7 @@ static class Native {
             }
           } catch { }
           if (title == null && body == null) continue;
-          Send("note {\"app\":" + J(app) + ",\"title\":" + J(title) + ",\"body\":" + J(body) + "}");
+          Send("note {\"id\":" + n.Id + ",\"app\":" + J(app) + ",\"title\":" + J(title) + ",\"body\":" + J(body) + "}");
         }
         seen = now;
         primed = true;

@@ -15,13 +15,15 @@ export interface Toast {
   /** 0..1 ring around the icon (battery level while charging). */
   ring?: number
   ms?: number
+  /** A Windows notification: it can be dismissed or its app opened. */
+  noteId?: number
 }
 
 const R = 17
 const C = 2 * Math.PI * R
 
 /** What the notch shows while it is briefly grown for a toast, like an iPhone's Dynamic Island alert. */
-export default function NotchToast({ toast }: { toast: Toast }): React.JSX.Element {
+export default function NotchToast({ toast, actions }: { toast: Toast; actions?: { onDismiss: () => void; onOpen: () => void } }): React.JSX.Element {
   const tone = toast.tone ?? 'plain'
   return (
     <motion.div
@@ -57,11 +59,21 @@ export default function NotchToast({ toast }: { toast: Toast }): React.JSX.Eleme
           </svg>
         )}
       </span>
-      <span className="toast-text">
+      <span className="toast-text" data-acts={toast.noteId !== undefined ? '1' : undefined}>
         {toast.label && <span className="toast-label">{toast.label}</span>}
         <span className="toast-title">{toast.title}</span>
         {toast.sub && <span className="toast-sub">{toast.sub}</span>}
       </span>
+      {toast.noteId !== undefined && actions && (
+        <span className="toast-actions">
+          <button type="button" className="toast-act" aria-label="Open the app" title="Open the app" onClick={actions.onOpen}>
+            <Icon name="app-window" size={15} />
+          </button>
+          <button type="button" className="toast-act" aria-label="Dismiss" title="Dismiss" onClick={actions.onDismiss}>
+            <Icon name="x" size={15} />
+          </button>
+        </span>
+      )}
     </motion.div>
   )
 }

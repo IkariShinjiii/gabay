@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('overlay', {
   networkKind: () => ipcRenderer.invoke('network:kind'),
   hardware: () => ipcRenderer.invoke('hardware:get'),
   windowsDnd: () => ipcRenderer.invoke('windows:dnd'),
+  noteDismiss: (id: number) => ipcRenderer.invoke('note:dismiss', id),
+  noteOpen: (id: number) => ipcRenderer.invoke('note:open', id),
   projectGet: () => ipcRenderer.invoke('project:get'),
   projectSet: (mode: string) => ipcRenderer.invoke('project:set', mode),
   getStats: () => ipcRenderer.invoke('stats:get'),

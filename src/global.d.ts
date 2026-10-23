@@ -15,6 +15,9 @@ export interface OverlayApi {
   hardware(): Promise<{ battery: boolean; wifi: boolean } | null>
   /** Whether Windows' own Do not disturb is on. */
   windowsDnd(): Promise<boolean>
+  /** Remove a Windows notification (by the id Gabay was given), or open the app it came from. */
+  noteDismiss(id: number): Promise<boolean>
+  noteOpen(id: number): Promise<boolean>
   /** Win+P display mode: read the current one, or switch with Windows' DisplaySwitch. */
   projectGet(): Promise<ProjectMode>
   projectSet(mode: ProjectMode): Promise<boolean>
@@ -257,6 +260,8 @@ export interface LiveMedia {
 }
 
 export interface NoteInfo {
+  /** Identifies the notification for dismiss and open. */
+  id?: number
   app: string
   title: string | null
   body: string | null
