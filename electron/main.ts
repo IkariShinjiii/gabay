@@ -136,12 +136,14 @@ app.whenReady().then(async () => {
   if (!gotLock) return
   let settings = await loadSettings()
   const win = createOverlay(targetDisplay(settings))
+  let mouseLocked = false
 
   // Renderer reports whether the pointer is over the notch.
   // true  -> window captures the mouse (interactive)
   // false -> mouse passes through to whatever is underneath (click-through)
   ipcMain.on('overlay:set-interactive', (event, interactive: unknown) => {
     if (event.sender !== win.webContents || typeof interactive !== 'boolean') return
+    if (mouseLocked) return // a game has the mouse: nothing on the notch may take it
     if (interactive) win.setIgnoreMouseEvents(false)
     else {
       win.setIgnoreMouseEvents(true, { forward: true })
@@ -283,6 +285,13 @@ app.whenReady().then(async () => {
     void startNative({
       fullscreen: (r) => {
         let fs = false
+        // A game holding the mouse (hidden or locked pointer): the window stops listening to the pointer altogether.
+        const locked = !!r?.captured
+        if (locked !== mouseLocked) {
+          mouseLocked = locked
+          if (locked) win.setIgnoreMouseEvents(true)
+          else win.setIgnoreMouseEvents(true, { forward: true })
+        }
         if (r) {
           // Physical pixels -> DIP, then: is the full-screen monitor the one the notch is on?
           const dip = screen.screenToDipRect(null, { x: r.l, y: r.t, width: r.r - r.l, height: r.b - r.t })

@@ -71,7 +71,7 @@ async function removeStale(dir: string, keep: string): Promise<void> {
 }
 
 export interface NativeEvents {
-  fullscreen: (rect: { l: number; t: number; r: number; b: number } | null) => void
+  fullscreen: (rect: { l: number; t: number; r: number; b: number; captured: boolean } | null) => void
   media: (raw: unknown) => void
   note: (raw: unknown) => void
   privacy: (raw: unknown) => void
@@ -106,9 +106,9 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
       const rest = sp < 0 ? '' : line.slice(sp + 1)
       try {
         if (kind === 'fs') {
-          const m = /^1 (-?\d+) (-?\d+) (-?\d+) (-?\d+)$/.exec(rest)
+          const m = /^1 (-?\d+) (-?\d+) (-?\d+) (-?\d+)(?: ([01]))?$/.exec(rest)
           fsOn = !!m
-          on.fullscreen(m ? { l: +m[1], t: +m[2], r: +m[3], b: +m[4] } : null)
+          on.fullscreen(m ? { l: +m[1], t: +m[2], r: +m[3], b: +m[4], captured: m[5] === '1' } : null)
         } else if (kind === 'media') on.media(JSON.parse(rest))
         else if (kind === 'note') on.note(JSON.parse(rest))
         else if (kind === 'priv') on.privacy(JSON.parse(rest))

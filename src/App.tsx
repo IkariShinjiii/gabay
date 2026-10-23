@@ -276,6 +276,11 @@ export default function App(): React.JSX.Element {
       fullscreenRef.current = fs
       setFullscreen(fs)
       if (fs && revealedRef.current) scheduleHide()
+      if (fs) {
+        // The pointer may be what held the panel open; a full-screen app in front means it no longer is.
+        pointerInside.current = false
+        evaluate()
+      }
     })
     // The hotkey opens Launch with the caret in its search field.
     const offSummon = window.overlay.onSummon(() => {
