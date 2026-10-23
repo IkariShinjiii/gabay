@@ -2,11 +2,16 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
-    '1.3.5',
+    '1.3.6',
     [
-      'Fixed Gabay popping open while you play: it now ignores the mouse while a game has it locked',
       'No notification sound over a full-screen game or video, and the summon hotkey no longer pulls you out of a match',
       'Gabay runs at a lower priority so it never competes with a game for the CPU'
+    ]
+  ],
+  [
+    '1.3.5',
+    [
+      'Fixed Gabay popping open while you play: it now ignores the mouse while a game has it locked'
     ]
   ],
   [
