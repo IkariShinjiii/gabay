@@ -72,7 +72,7 @@ async function removeStale(dir: string, keep: string): Promise<void> {
 }
 
 export interface NativeEvents {
-  fullscreen: (rect: { l: number; t: number; r: number; b: number; captured: boolean } | null) => void
+  fullscreen: (rect: { l: number; t: number; r: number; b: number } | null, captured: boolean) => void
   media: (raw: unknown) => void
   note: (raw: unknown) => void
   privacy: (raw: unknown) => void
@@ -114,7 +114,8 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
         if (kind === 'fs') {
           const m = /^1 (-?\d+) (-?\d+) (-?\d+) (-?\d+)(?: ([01]))?$/.exec(rest)
           fsOn = !!m
-          on.fullscreen(m ? { l: +m[1], t: +m[2], r: +m[3], b: +m[4], captured: m[5] === '1' } : null)
+          // "0 1": not full screen, but a game in a window is aiming (pointer hidden and locked)
+          on.fullscreen(m ? { l: +m[1], t: +m[2], r: +m[3], b: +m[4] } : null, m ? m[5] === '1' : rest === '0 1')
         } else if (kind === 'media') on.media(JSON.parse(rest))
         else if (kind === 'note') on.note(JSON.parse(rest))
         else if (kind === 'priv') on.privacy(JSON.parse(rest))
@@ -143,7 +144,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
       w.resolve(null)
     }
     pending.clear()
-    if (fsOn) on.fullscreen(null) // never leave the notch hidden because the helper went away
+    if (fsOn) on.fullscreen(null, false) // never leave the notch hidden because the helper went away
     on.media(null)
     on.windows([])
     on.privacy({ mic: [], cam: [] }) // never leave a camera or mic dot lit for a helper that's gone
@@ -159,7 +160,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
 }
 
 /** One request. `arg` must already be validated by the caller: it is passed on as part of a single line. */
-export function nativeCall(cmd: 'vol' | 'volget' | 'media' | 'bt' | 'notes' | 'appbar' | 'clipok' | 'clipseq' | 'mixer' | 'appvol' | 'seek' | 'wins' | 'windows' | 'focus' | 'minimize' | 'close' | 'tbget' | 'tbset' | 'net' | 'hw' | 'dnd' | 'notedismiss' | 'noteopen', arg = ''): Promise<unknown> {
+export function nativeCall(cmd: 'vol' | 'volget' | 'outlist' | 'outset' | 'media' | 'bt' | 'notes' | 'appbar' | 'clipok' | 'clipseq' | 'mixer' | 'appvol' | 'seek' | 'wins' | 'windows' | 'focus' | 'minimize' | 'close' | 'tbget' | 'tbset' | 'net' | 'hw' | 'dnd' | 'notedismiss' | 'noteopen', arg = ''): Promise<unknown> {
   const p = child
   if (!p?.stdin || /[\r\n]/.test(arg)) return Promise.resolve(null)
   const id = nextId++

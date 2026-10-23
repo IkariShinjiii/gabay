@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import Icon from './Icon'
 import type { IconName } from './icons'
-import type { MediaInfo, MixerApp, ProjectMode, QuickAction, QuickState, SettingsKey, WifiNetwork } from './global'
+import type { MediaInfo, MixerApp, OutputDevice, ProjectMode, QuickAction, QuickState, SettingsKey, WifiNetwork } from './global'
 import type { BatteryInfo } from './useBattery'
 import { batteryIcon } from './NotchStatus'
 import { tr } from './i18n'
@@ -942,11 +942,21 @@ function MixerView({ onBack }: { onBack: () => void }): React.JSX.Element {
   const [icons, setIcons] = useState<Record<number, string | null>>({})
   const busy = useRef(new Map<number, boolean>())
   const pending = useRef(new Map<number, number>())
+  const [outs, setOuts] = useState<OutputDevice[]>([])
+  const loadOuts = useCallback(async (): Promise<void> => {
+    setOuts(await window.overlay.outputList().catch(() => []))
+  }, [])
+  const pickOut = async (d: OutputDevice): Promise<void> => {
+    if (d.current) return
+    setOuts((l) => l.map((o) => ({ ...o, current: o.id === d.id }))) // show the change at once; the list re-reads below
+    await window.overlay.outputSet(d.id).catch(() => false)
+    await loadOuts()
+  }
 
   useEffect(() => {
     let stale = false
     const load = async (): Promise<void> => {
-      const list = await window.overlay.mixerList().catch(() => [])
+      const [list] = await Promise.all([window.overlay.mixerList().catch(() => []), loadOuts()])
       if (stale) return
       setApps(list)
       for (const a of list) {
@@ -983,13 +993,30 @@ function MixerView({ onBack }: { onBack: () => void }): React.JSX.Element {
 
   return (
     <motion.div className="body quick-sub" initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 38 }}>
-      <SubHead title={tr('Volume per app')} onBack={onBack} />
+      <SubHead title={tr('Sound')} onBack={onBack} />
+      {outs.length > 1 && (
+        <>
+          <div className="sub-note">{tr('Output')}</div>
+          <div className="net-list">
+            {outs.map((d) => (
+              <motion.button key={d.id} whileTap={{ scale: 0.98 }} className={d.current ? 'net-row on' : 'net-row'} title={d.current ? tr('In use') : tr('Play sound here')} onClick={() => void pickOut(d)}>
+                <span className="ct-well small">
+                  <Icon name={d.kind === 'display' ? 'monitor' : 'volume-2'} size={13} />
+                </span>
+                <span className="net-name">{d.name}</span>
+                <span className="net-state">{d.current ? <Icon name="check" size={12} /> : null}</span>
+              </motion.button>
+            ))}
+          </div>
+          <div className="sub-note">{tr('Volume per app')}</div>
+        </>
+      )}
       {apps === null ? (
         <div className="sub-empty">{tr('Looking for apps…')}</div>
       ) : apps.length === 0 ? (
         <div className="sub-empty">{tr('No apps are playing sound.')}</div>
       ) : (
-        <div className="mixer">
+        <div className="mixer" style={{ maxHeight: Math.max(110, 320 - (outs.length > 1 ? outs.length * 38 + 52 : 0)) }}>
           {apps.map((a) => (
             <div key={a.pid} className="mix-row">
               <div className="mix-head">

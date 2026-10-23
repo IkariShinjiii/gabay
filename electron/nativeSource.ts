@@ -61,6 +61,26 @@ interface IMMDeviceEnumeratorAny {
   void EnumAudioEndpoints(int dataFlow, int stateMask, out IMMDeviceCollection devices);
   void GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDeviceAny endpoint);
 }
+// Sound output: the playback devices Windows lists, and which one is the default.
+[ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMMDeviceFull {
+  void Activate(ref Guid id, int clsCtx, IntPtr activationParams, [MarshalAs(UnmanagedType.IUnknown)] out object o);
+  void OpenPropertyStore(int access, out IPropertyStore store);
+  void GetId([MarshalAs(UnmanagedType.LPWStr)] out string id);
+}
+[ComImport, Guid("886d8eeb-8cf2-4446-8d02-cdba1dbdcf99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IPropertyStore {
+  void GetCount(out uint n); void GetAt(uint i, out PROPKEY k);
+  void GetValue(ref PROPKEY k, out PROPVAR v);
+}
+[StructLayout(LayoutKind.Sequential)] struct PROPKEY { public Guid fmtid; public uint pid; }
+[StructLayout(LayoutKind.Sequential)] struct PROPVAR { public ushort vt, r1, r2, r3; public IntPtr p; public IntPtr q; }
+[ComImport, Guid("f8679f50-850a-41cf-9c72-430f290290c8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IPolicyConfig {
+  void a(); void b(); void c(); void d(); void e(); void f(); void g(); void h(); void i(); void j();
+  void SetDefaultEndpoint([MarshalAs(UnmanagedType.LPWStr)] string id, int role);
+}
+[ComImport, Guid("870af99c-171d-4f9e-af0d-e63df40c2bc9")] class PolicyConfigComObject { }
 [ComImport, Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 interface IMMDeviceCollection { void GetCount(out uint n); void Item(uint i, out IMMDeviceAny device); }
 [ComImport, Guid("77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -321,6 +341,27 @@ static class Native {
 
   // ---------- full screen: the foreground window covers its monitor and has no title bar ----------
   static string FullScreen() {
+    string r = FullScreenOnly();
+    // A game in a regular window that is aiming (pointer hidden and locked) also holds the mouse.
+    if (r == "fs 0" && WindowedGameAiming()) return "fs 0 1";
+    return r;
+  }
+  static bool WindowedGameAiming() {
+    try {
+      IntPtr h = GetForegroundWindow();
+      if (h == IntPtr.Zero || h == GetShellWindow() || h == GetDesktopWindow()) return false;
+      uint pid; GetWindowThreadProcessId(h, out pid);
+      if (pid == self) return false;
+      var mi = new MONITORINFO(); mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+      if (!GetMonitorInfo(MonitorFromWindow(h, 2), ref mi)) return false;
+      var ci = new CURSORINFO(); ci.cbSize = Marshal.SizeOf(typeof(CURSORINFO));
+      bool hidden = GetCursorInfo(ref ci) && ((ci.flags & 1) == 0 || ci.hCursor == IntPtr.Zero);
+      RECT c;
+      bool locked = GetClipCursor(out c) && c.R - c.L > 0 && (c.L > mi.rcMonitor.L || c.T > mi.rcMonitor.T || c.R < mi.rcMonitor.R || c.B < mi.rcMonitor.B);
+      return hidden && locked;
+    } catch { return false; }
+  }
+  static string FullScreenOnly() {
     IntPtr h = GetForegroundWindow();
     if (h == IntPtr.Zero || h == GetShellWindow() || h == GetDesktopWindow() || !IsWindowVisible(h)) return "fs 0";
     uint pid; GetWindowThreadProcessId(h, out pid);
@@ -384,6 +425,8 @@ static class Native {
         return VolGet();
       }
       case "volget": return VolGet();
+      case "outlist": return OutList();
+      case "outset": return OutSet(arg) ? "true" : "false";
       case "media": return MediaCommand(arg) ? "true" : "false";
       case "bt": return Bluetooth();
       case "notes": notesOn = arg == "on"; return "true";
@@ -649,6 +692,60 @@ static class Native {
     } finally { CloseClipboard(); }
   }
 
+  // ---------- sound output ----------
+  [DllImport("ole32.dll")] static extern int PropVariantClear(ref PROPVAR v);
+  static string DevString(IPropertyStore ps, string fmt, uint pid) {
+    var k = new PROPKEY { fmtid = new Guid(fmt), pid = pid }; PROPVAR v;
+    ps.GetValue(ref k, out v);
+    try { return v.vt == 31 && v.p != IntPtr.Zero ? Marshal.PtrToStringUni(v.p) : null; } finally { PropVariantClear(ref v); }
+  }
+  static int DevFormFactor(IPropertyStore ps) {
+    var k = new PROPKEY { fmtid = new Guid("1da5d803-d492-4edd-8c23-e0c0ffee7f0e"), pid = 0 }; PROPVAR v;
+    ps.GetValue(ref k, out v);
+    try { return v.vt == 19 ? (int)(uint)(long)v.p : -1; } finally { PropVariantClear(ref v); }
+  }
+  static List<string[]> OutDevices() {
+    var list = new List<string[]>(); // id, name, kind
+    var en = new MMDeviceEnumeratorComObject() as IMMDeviceEnumeratorAny;
+    IMMDeviceCollection col; en.EnumAudioEndpoints(0 /* render */, 1 /* active */, out col);
+    uint n; col.GetCount(out n);
+    for (uint i = 0; i < n; i++) {
+      try {
+        IMMDeviceAny any; col.Item(i, out any);
+        var dev = (IMMDeviceFull)any;
+        string id; dev.GetId(out id);
+        IPropertyStore ps; dev.OpenPropertyStore(0 /* STGM_READ */, out ps);
+        string name = DevString(ps, "a45c254e-df1c-4efd-8020-67d146a850e0", 14) ?? "Speakers";
+        int ff = DevFormFactor(ps);
+        list.Add(new[] { id, name, ff == 9 ? "display" : ff == 3 || ff == 5 ? "headphones" : "speakers" });
+      } catch { }
+    }
+    return list;
+  }
+  static string OutList() {
+    string cur = null;
+    try { var en = new MMDeviceEnumeratorComObject() as IMMDeviceEnumeratorAny; IMMDeviceAny d; en.GetDefaultAudioEndpoint(0, 1, out d); ((IMMDeviceFull)d).GetId(out cur); } catch { }
+    var sb = new StringBuilder("[");
+    bool first = true;
+    foreach (var d in OutDevices()) {
+      if (!first) sb.Append(',');
+      first = false;
+      sb.Append("{\"id\":").Append(J(d[0])).Append(",\"name\":").Append(J(d[1])).Append(",\"kind\":").Append(J(d[2]))
+        .Append(",\"current\":").Append(d[0] == cur ? "true" : "false").Append('}');
+    }
+    return sb.Append(']').ToString();
+  }
+  // Only an id from the live list can be made the default; the same call the Windows sound menu makes (all three roles).
+  static bool OutSet(string id) {
+    foreach (var d in OutDevices()) {
+      if (d[0] != id) continue;
+      var pc = (IPolicyConfig)new PolicyConfigComObject();
+      for (int role = 0; role < 3; role++) pc.SetDefaultEndpoint(id, role);
+      return true;
+    }
+    return false;
+  }
+
   // ---------- volume ----------
   static IAudioEndpointVolume Vol() {
     var en = new MMDeviceEnumeratorComObject() as IMMDeviceEnumerator;
@@ -795,7 +892,7 @@ static class Native {
         string now = MediaJson();
         if (now != last) { Send("media " + now); last = now; }
       } catch { }
-      Thread.Sleep(1000);
+      Thread.Sleep(fsActive ? 3000 : 1000); // slower while a game or video is in front
     }
   }
 

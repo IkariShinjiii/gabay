@@ -284,10 +284,10 @@ app.whenReady().then(async () => {
   const pushWins = async (): Promise<void> => send('overlay:windows', await winsForUi())
   {
     void startNative({
-      fullscreen: (r) => {
+      fullscreen: (r, captured) => {
         let fs = false
         // A game holding the mouse (hidden or locked pointer): the window stops listening to the pointer altogether.
-        const locked = !!r?.captured
+        const locked = captured
         if (locked !== mouseLocked) {
           mouseLocked = locked
           if (locked) win.setIgnoreMouseEvents(true)
@@ -431,6 +431,23 @@ app.whenReady().then(async () => {
   ipcMain.handle('media:seek', (e, seconds: unknown) => {
     fromUi(e)
     return typeof seconds === 'number' && Number.isFinite(seconds) && seconds >= 0 ? nativeCall('seek', seconds.toFixed(2)) : false
+  })
+
+  // Sound output: the playback devices, and switching the default. Ids are Windows' own endpoint ids (checked again by the helper).
+  ipcMain.handle('output:list', async (e) => {
+    fromUi(e)
+    const raw = await nativeCall('outlist')
+    if (!Array.isArray(raw)) return []
+    return raw.flatMap((d: Record<string, unknown>) =>
+      typeof d.id === 'string' && /^\{[0-9A-Fa-f.]+\}\.\{[0-9A-Fa-f-]+\}$/.test(d.id)
+        ? [{ id: d.id, name: str(d.name, 120) ?? 'Speakers', kind: d.kind === 'headphones' || d.kind === 'display' ? d.kind : 'speakers', current: d.current === true }]
+        : []
+    )
+  })
+  ipcMain.handle('output:set', async (e, id: unknown) => {
+    fromUi(e)
+    if (typeof id !== 'string' || !/^\{[0-9A-Fa-f.]+\}\.\{[0-9A-Fa-f-]+\}$/.test(id)) return false
+    return (await nativeCall('outset', id)) === true
   })
 
   // Per-app volume. Ids are process ids from the last listing; exe paths stay here (for icons).
@@ -598,7 +615,7 @@ app.whenReady().then(async () => {
     setTimeout(() => void lookForUpdate(), 20_000)
     setInterval(() => void lookForUpdate(), 3_600_000)
     setInterval(() => {
-      if (!update || autoInstalling || !settings.autoUpdate || fsNow || isRecording()) return
+      if (!update || autoInstalling || !settings.autoUpdate || fsNow || mouseLocked || isRecording()) return
       if (powerMonitor.getSystemIdleTime() < AWAY_S) return
       autoInstalling = true
       void installUpdate().then((ok) => {

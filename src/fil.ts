@@ -332,4 +332,7 @@ export const FIL: Record<string, string> = {
   "Make it yours.": "Gawing iyo.",
   "Pick an accent colour. Settings has the rest: weather, your calendar, Focus, and which screen I sit on.": "Pumili ng kulay ng accent. Nasa Settings ang iba: panahon, kalendaryo, Focus, at kung saang screen ako nakalagay.",
   "Start using Gabay": "Simulan ang paggamit ng Gabay",
+  "Sound": "Tunog",
+  "In use": "Ginagamit",
+  "Play sound here": "Dito patugtugin ang tunog",
 }

@@ -41,6 +41,8 @@ contextBridge.exposeInMainWorld('overlay', {
   volumeNudge: (delta: number) => ipcRenderer.invoke('volume:nudge', delta),
   listBluetooth: () => ipcRenderer.invoke('bt:list'),
   mediaSeek: (seconds: number) => ipcRenderer.invoke('media:seek', seconds),
+  outputList: () => ipcRenderer.invoke('output:list'),
+  outputSet: (id: string) => ipcRenderer.invoke('output:set', id),
   mixerList: () => ipcRenderer.invoke('mixer:list'),
   mixerIcon: (pid: number) => ipcRenderer.invoke('mixer:icon', pid),
   mixerSet: (pid: number, volume: number) => ipcRenderer.invoke('mixer:set', pid, volume),
