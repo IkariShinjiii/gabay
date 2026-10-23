@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://gabay-site-plum.vercel.app/sitemap.xml
