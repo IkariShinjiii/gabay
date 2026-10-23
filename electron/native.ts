@@ -3,6 +3,7 @@ import { execFile, spawn, type ChildProcess } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, readdir, rm, writeFile } from 'node:fs/promises'
+import os from 'node:os'
 import { join } from 'node:path'
 import { NATIVE_SOURCE } from './nativeSource'
 import { logError } from './diagnostics'
@@ -92,6 +93,11 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
   if (!exe || stopped) return
   const p = spawn(exe, [String(process.pid)], { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] })
   child = p
+  try {
+    if (p.pid) os.setPriority(p.pid, os.constants.priority.PRIORITY_BELOW_NORMAL) // never compete with a game for CPU
+  } catch {
+    /* priority is a courtesy */
+  }
   let buf = ''
   let fsOn = false
   p.stdout?.setEncoding('utf8')

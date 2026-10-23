@@ -455,7 +455,7 @@ export default function App(): React.JSX.Element {
     const offMedia = window.overlay.onMedia(take)
     const offNote = window.overlay.onNote((n) => {
       if (dndRef.current) return
-      if (n.sound) noteChime()
+      if (n.sound && !fullscreenRef.current) noteChime() // a toast is held back over a game or video, and so is its sound
       pushToast({
         icon: 'message-square',
         noteId: n.id,
