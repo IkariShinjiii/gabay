@@ -1361,6 +1361,14 @@ button.big-icon {
 }
 
 /* ---------- toast: the collapsed notch grown for a moment ---------- */
+.toast-actions { margin-left: auto; display: inline-flex; gap: 6px; opacity: 0; transition: opacity 140ms ease; pointer-events: none; }
+.toast:hover .toast-actions, .toast-actions:focus-within, html[data-preview-hover] .toast-actions { opacity: 1; pointer-events: auto; }
+.toast-act {
+  width: 28px; height: 28px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer;
+  background: rgba(255, 255, 255, 0.1); color: var(--text, #edf3f1);
+}
+.toast-act:hover { background: rgba(255, 255, 255, 0.2); }
+.toast:hover .toast-text[data-acts], html[data-preview-hover] .toast-text[data-acts] { max-width: 210px; }
 .toast {
   position: absolute;
   inset: 0;

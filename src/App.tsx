@@ -86,6 +86,11 @@ export default function App(): React.JSX.Element {
   // ('search', 'command', 'todo') or an on-screen confirmation ('power-confirm').
   // `evaluate` is the single place that decides open vs. start-the-collapse-timer.
   const pointerInside = useRef(false)
+  // While a Windows notification is showing, the pointer over it reveals Dismiss and Open instead of opening the panel.
+  const toastNoteRef = useRef(false)
+  const toastHoverRef = useRef(false)
+  const showNextRef = useRef<() => void>(() => undefined)
+  const toastTimerRef = useRef<number | undefined>(undefined)
   const holds = useRef(new Set<string>())
   const isOpen = useRef(previewTab !== undefined || previewWelcome)
   const collapseMs = useRef(COLLAPSE_DELAY_MS) // replaced by the saved setting once it loads
@@ -216,9 +221,21 @@ export default function App(): React.JSX.Element {
     const onMove = (e: MouseEvent): void => {
       const r = notchRef.current?.getBoundingClientRect()
       if (!r) return
-      pointerInside.current =
-        e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom
-      evaluate()
+      const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom
+      if (toastNoteRef.current && !isOpen.current) {
+        // over a notification toast: show its buttons (the window must take clicks), and keep the toast up
+        pointerInside.current = false
+        if (inside !== toastHoverRef.current) {
+          toastHoverRef.current = inside
+          setInteractive(inside)
+          window.clearTimeout(toastTimerRef.current)
+          window.clearTimeout(toastTimer.current)
+          if (!inside) toastTimerRef.current = window.setTimeout(() => showNextRef.current(), 1800)
+        }
+      } else {
+        pointerInside.current = inside
+        evaluate()
+      }
 
       if (visibilityRef.current !== 'auto' && !fullscreenRef.current) return
       if (!revealedRef.current) {
@@ -349,12 +366,15 @@ export default function App(): React.JSX.Element {
   expandedRef.current = expanded
   const showNext = useCallback((): void => {
     window.clearTimeout(toastTimer.current)
+    if (toastHoverRef.current) { toastHoverRef.current = false; window.overlay.setInteractive(false) }
     // While the panel is open a toast would be hidden; keep the queue until it closes.
     const next = expandedRef.current ? null : (queue.current.shift() ?? null)
     showing.current = next !== null
+    toastNoteRef.current = next?.noteId !== undefined
     setToast(next)
-    if (next) toastTimer.current = window.setTimeout(showNext, next.ms ?? 4200)
+    if (next) toastTimer.current = window.setTimeout(() => (toastHoverRef.current ? undefined : showNext()), next.ms ?? 4200)
   }, [])
+  showNextRef.current = showNext
   const pushToast = useCallback(
     (t: Omit<Toast, 'id'>): void => {
       // Nothing pops over a full-screen video or game; the newest few wait their turn, older ones drop.
@@ -398,7 +418,11 @@ export default function App(): React.JSX.Element {
     if (previewParam === 'WhatsNew')
       setToast({ id: 0, icon: 'sparkles', label: 'Updated to Gabay 0.32.0', title: notesFor('0.32.0')[0], sub: "And 3 more in Settings › What's new", tone: 'accent', ms: 60_000 })
     if (previewParam === 'Note')
-      setToast({ id: 0, icon: 'message-square', label: 'Messenger', title: 'Kevin', sub: 'are you coming tonight? we are at the usual place', ms: 60_000 })
+      {
+        // &hover shows the buttons that normally appear when the pointer is over the toast
+        if (new URLSearchParams(location.hash.slice(1)).has('hover')) document.documentElement.setAttribute('data-preview-hover', '')
+        setToast({ id: 0, icon: 'message-square', noteId: 1, label: 'Messenger', title: 'Kevin', sub: 'are you coming tonight? we are at the usual place', ms: 60_000 })
+      }
     if (previewParam === 'Live')
       setMedia({ title: 'Weightless', artist: 'Marconi Union', app: 'Spotify.exe', playing: true, duration: 480, art: '' })
     // &demo (dev preview only): a running timer and stopwatch and sample weather, for screenshots.
@@ -425,6 +449,7 @@ export default function App(): React.JSX.Element {
       if (n.sound) noteChime()
       pushToast({
         icon: 'message-square',
+        noteId: n.id,
         label: n.app,
         title: n.title ?? n.app,
         sub: n.body ?? (n.title ? undefined : 'New notification'),
@@ -958,7 +983,26 @@ export default function App(): React.JSX.Element {
             download={live ? download : null}
           />
         </motion.div>
-        <AnimatePresence>{showToast && toast && <NotchToast key={toast.id} toast={toast} />}</AnimatePresence>
+        <AnimatePresence>{showToast && toast && (
+            <NotchToast
+              key={toast.id}
+              toast={toast}
+              actions={
+                toast.noteId !== undefined
+                  ? {
+                      onDismiss: () => {
+                        void window.overlay.noteDismiss(toast.noteId as number)
+                        showNext()
+                      },
+                      onOpen: () => {
+                        void window.overlay.noteOpen(toast.noteId as number)
+                        showNext()
+                      }
+                    }
+                  : undefined
+              }
+            />
+          )}</AnimatePresence>
       </div>
     </motion.div>
   )
