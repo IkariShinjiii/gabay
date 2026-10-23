@@ -4,8 +4,26 @@ Your Windows taskbar, folded into an iPhone-style notch: a strip at the top of t
 your day and your tools. Built and tested on Windows 11; Windows 10 version 1809 or later should work.
 Electron + React + TypeScript + electron-vite, with a small C# helper for the Windows parts (see CHANGELOG.md for history).
 
-**Website and download:** https://ikarishinjiii.github.io/gabay/ (source in `site/`, deployed by `.github/workflows/pages.yml`).
-The showcase video there is made with Remotion in a separate `gabay-video` project.
+## Download
+
+**Website:** https://gabay-site-plum.vercel.app
+
+Get the installer from the website or from [GitHub releases](https://github.com/IkariShinjiii/gabay/releases/latest).
+It's free, installs for your account only, and updates itself. Windows may say "Windows protected your PC" the first
+time, because the installer isn't code-signed yet: choose **More info**, then **Run anyway**.
+Works on laptops and desktop PCs: on a PC without a battery, Wi-Fi or Bluetooth, those controls are hidden and a wired
+connection shows as Ethernet.
+
+**Reviews:** rate Gabay with the [review form](https://github.com/IkariShinjiii/gabay/issues/new?template=review.yml).
+Approved reviews (label `approved`) appear on the website, and approving one closes it automatically.
+
+## Website
+
+The site is the single static page in `site/`. It deploys to **Vercel** (project root `site/`, settings in
+`site/vercel.json`: caching for media, fonts and images, plus security headers) on every push to `main`, and to GitHub
+Pages (https://ikarishinjiii.github.io/gabay/) through `.github/workflows/pages.yml`. The showcase video is made with
+Remotion in a separate `gabay-video` project (`src/Showcase.tsx`); re-encode it for the web at 1600 px with a capped
+bitrate so it streams without stalling.
 
 ## Setup
 
@@ -64,7 +82,7 @@ Dev-only: `GABAY_DRY_RUN=1 npm run dev` logs the command instead of running it (
 Text clipboard history (polled every second by the main process), newest first with pinned items on top. Type in the
 search field to filter, click a row to copy it back, star to pin, "Clear history" to forget everything unpinned.
 
-- Cap: 50 unpinned + 50 pinned items, 10,000 characters each. Images and files are ignored.
+- Cap: 50 unpinned + 50 pinned items, 10,000 characters each. The last 10 images are kept too (memory only); files are ignored.
 - **Privacy:** unpinned history is memory-only and gone when Gabay quits. Only pinned items are written to disk
   (`clipboard-pinned.json` in `%APPDATA%\gabay`, plain text), so don't pin secrets.
 - **Skips private copies:** text that a password manager or private window marks as "don't keep in clipboard history"
@@ -78,7 +96,7 @@ search field to filter, click a row to copy it back, star to pin, "Clear history
 - **Collapsed pill:** shows the clock; while a focus timer exists it shows a progress ring and countdown instead
   (display only; control it from the Today tab or the command bar). The timer keeps running while the panel is closed.
 - **The bar** (bottom field, one input for everything): text that is a command runs it on Enter (a live hint shows what
-  will happen); anything else searches apps, or filters the clipboard on the Clipboard tab. Ctrl+1 to Ctrl+6 switch tabs.
+  will happen); anything else searches apps, or filters the clipboard on the Clipboard tab. Ctrl+1 to Ctrl+8 switch tabs.
   Commands:
   `lock`, `sleep`, `restart`, `shutdown`, `focus [minutes]` / `timer` / `start`, `pause`, `reset`, `todo <text>`,
   `open <app>`, `clear clipboard`, `go <tab>`. `restart` and `shutdown` never run from the command bar: they open the Power
@@ -120,7 +138,8 @@ The taskbar's system-tray features, built into the notch.
   shows a running stopwatch or the next timer instead of the clock.
 - **Toasts:** the collapsed notch grows for a few seconds, like an iPhone's Dynamic Island, for:
   - **Windows notifications** (app, sender and message). Settings can switch this off, or show only the app name.
-    The text is shown, never stored or logged.
+    The text is shown, never stored or logged. Windows shows its own banner too; turn on Windows' **Do not disturb** to
+    hide it (notifications still reach Gabay), and Gabay then plays a soft sound with each one (Settings can turn it off).
   - **A new track** (art, title, artist).
   - **Charging** (a ring fills to the battery level), **fully charged**, and **low battery** at 20% and 10% (in red).
   - **Calendar:** a heads-up 10 minutes before an event.
@@ -179,7 +198,7 @@ The taskbar's system-tray features, built into the notch.
 
 ## Where the window behavior lives
 
-Everything non-obvious is in `electron/main.ts`, commented per setting. Window is 560x440, never resized.
+Everything non-obvious is in `electron/main.ts`, commented per setting. Window is 560x700, never resized.
 
 ## Kill-test checklist
 
