@@ -5,296 +5,350 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Gabay · your taskbar, in a notch</title>
 <meta name="description" content="Gabay turns the top of your Windows screen into an iPhone-style notch: quick settings, now playing, notifications, timers, weather and more, one hover away. Free for Windows 11 and 10.">
-<meta name="theme-color" content="#060807">
+<meta name="theme-color" content="#0b0c0b">
 <meta property="og:title" content="Gabay: your Windows taskbar, in a notch">
 <meta property="og:description" content="Quick settings, now playing, notifications, timers and weather, one hover away. Free for Windows.">
 <meta property="og:image" content="https://ikarishinjiii.github.io/gabay/media/poster.jpg">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" href="img/icon.png">
 <style>
-/* Layout: the page hangs from a notch. Each section is a panel that drops from a hairline "screen edge", the way Gabay
-   hangs from the top of the display. The live notch in the hero is the page's one moving part. */
+/* Dark glass. The page is near-black and monochrome; the only colour is soft light behind the hero and the
+   screenshots, which is also what lets Gabay's black notch read, as it would against a real wallpaper. */
 @font-face { font-family: 'Bricolage Grotesque'; font-style: normal; font-weight: 500 800; font-display: swap; src: url(fonts/bricolage-grotesque.woff2) format('woff2'); }
 @font-face { font-family: 'Onest'; font-style: normal; font-weight: 400 600; font-display: swap; src: url(fonts/onest.woff2) format('woff2'); }
 @font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400 500; font-display: swap; src: url(fonts/jetbrains-mono.woff2) format('woff2'); }
 
 :root {
-  --ground: #060807;
-  --panel: #0d1110;
-  --panel-2: #141a19;
-  --line: #1f2826;
-  --ink: #edf3f1;
-  --ink-2: #b9c5c2;
-  --muted: #869391;
-  --mint: #2fd6bf;
-  --mint-ink: #03231e;
-  --mint-soft: rgba(47, 214, 191, 0.12);
-  --mint-line: rgba(47, 214, 191, 0.35);
+  --bg: #0b0c0b;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-2: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-2: rgba(255, 255, 255, 0.14);
+  --text: #f2f3f1;
+  --text-2: #c4c9c3;
+  --muted: #9aa09a;
+  --accent: #c9d3c4;
+  --radius-card: 22px;
+  --radius-pill: 999px;
   --display: 'Bricolage Grotesque', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
   --body: 'Onest', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
-  --radius: 22px;
-  /* A desktop wallpaper: Gabay's notch is black, so it only reads against a lit screen, like on a real PC. */
-  --wallpaper:
-    radial-gradient(70% 90% at 12% 0%, rgba(47, 214, 191, 0.55) 0%, transparent 62%),
-    radial-gradient(60% 100% at 88% 8%, rgba(110, 86, 230, 0.55) 0%, transparent 60%),
-    radial-gradient(80% 120% at 50% 110%, rgba(255, 140, 90, 0.28) 0%, transparent 60%),
-    linear-gradient(160deg, #123c3a 0%, #142243 55%, #1d1533 100%);
+  /* soft light in sage and off-white, used behind the notch and the screenshots */
+  --glow:
+    radial-gradient(55% 75% at 72% 18%, rgba(236, 240, 232, 0.55) 0%, transparent 65%),
+    radial-gradient(50% 70% at 18% 90%, rgba(170, 190, 165, 0.38) 0%, transparent 65%),
+    linear-gradient(160deg, #262b26 0%, #141714 60%, #0f110f 100%);
   --star: #ffc94d;
   color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 88px; }
 body {
   margin: 0;
-  background: var(--ground);
-  color: var(--ink);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--body);
   font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
-  padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  overflow-x: hidden;
 }
 img { max-width: 100%; }
-
 .wrap {
-  max-width: 1120px;
+  max-width: 1160px;
   margin: 0 auto;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-
-a { color: var(--mint); text-underline-offset: 3px; }
-a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; border-radius: 6px; }
-
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; border-radius: 8px; }
 h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.02em; }
-h2 { font-size: clamp(1.7rem, 3.4vw, 2.5rem); line-height: 1.1; font-weight: 700; }
+h2 { font-size: clamp(1.8rem, 3.6vw, 2.75rem); line-height: 1.08; font-weight: 700; letter-spacing: -0.03em; }
 h3 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
 p { margin: 0; }
-code { font-family: var(--mono); font-size: 0.85em; color: var(--ink-2); }
-
-.eyebrow { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-.lede { color: var(--ink-2); max-width: 62ch; }
+code { font-family: var(--mono); font-size: 0.85em; color: var(--text-2); }
+.eyebrow { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.lede { color: var(--text-2); max-width: 62ch; }
 .small { font-size: 0.85rem; color: var(--muted); }
+.card { border-radius: var(--radius-card); border: 1px solid var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02)); }
 
-/* ---------- top bar ---------- */
-.nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 14px; }
-.brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 1.1rem; color: var(--ink); text-decoration: none; }
-.brand img { width: 28px; height: 28px; border-radius: 7px; }
-.nav-links { display: flex; gap: 20px; flex-wrap: wrap; }
-.nav-links a { color: var(--ink-2); text-decoration: none; font-size: 0.92rem; }
-.nav-links a:hover { color: var(--ink); }
-
-/* ---------- the screen edge every section hangs from ---------- */
-.edge { position: relative; border-top: 1px solid var(--line); padding-block: 72px 24px; }
-.edge::before {
-  content: "";
-  position: absolute;
-  top: -1px;
-  left: 50%;
-  width: 92px;
-  height: 10px;
-  transform: translateX(-50%);
-  background: var(--line);
-  border-radius: 0 0 8px 8px;
+/* ---------- floating pill nav ---------- */
+.nav-bar { position: sticky; top: 0; z-index: 20; padding-top: max(12px, env(safe-area-inset-top, 0px)); pointer-events: none; }
+.nav {
+  pointer-events: auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  max-width: 760px; margin: 0 auto; padding: 6px 6px 6px 14px;
+  border-radius: var(--radius-pill); border: 1px solid var(--border-2);
+  background: rgba(16, 18, 16, 0.62);
+  -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
-.sec-head { display: grid; gap: 12px; margin-bottom: 36px; max-width: 760px; }
+.brand { display: inline-flex; align-items: center; gap: 9px; font-family: var(--display); font-weight: 700; font-size: 1.02rem; color: var(--text); text-decoration: none; min-height: 40px; }
+.brand img { width: 24px; height: 24px; border-radius: 6px; }
+.nav-links { display: flex; gap: 2px; }
+.nav-links a { color: var(--text-2); text-decoration: none; font-size: 0.86rem; padding: 8px 12px; border-radius: var(--radius-pill); }
+.nav-links a:hover { color: var(--text); background: var(--surface-2); }
+.nav-cta { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: var(--radius-pill); background: var(--text); color: #0b0c0b; font-weight: 600; font-size: 0.86rem; text-decoration: none; white-space: nowrap; }
+.menu { display: none; position: relative; }
+.menu summary { list-style: none; cursor: pointer; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--text); }
+.menu summary::-webkit-details-marker { display: none; }
+.menu[open] summary { background: var(--surface-2); }
+.menu-list { position: absolute; right: 0; top: 52px; display: grid; min-width: 200px; padding: 8px; border-radius: 18px; border: 1px solid var(--border-2); background: rgba(16, 18, 16, 0.96); box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
+.menu-list a { color: var(--text); text-decoration: none; padding: 12px 14px; border-radius: 12px; }
+.menu-list a:hover { background: var(--surface-2); }
 
-/* ---------- hero notch ---------- */
-.screen-top {
-  position: relative;
-  height: 150px;
-  display: flex;
-  justify-content: center;
-  max-width: 1120px;
-  margin: 4px max(16px, env(safe-area-inset-left, 0px)) 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 0;
-  border-radius: 22px 22px 0 0;
-  background: var(--wallpaper);
-  overflow: hidden;
-  /* the screen fades into the page below it */
-  -webkit-mask-image: linear-gradient(#000 55%, transparent);
-  mask-image: linear-gradient(#000 55%, transparent);
+/* ---------- hero ---------- */
+.hero { padding-block: 22px 0; }
+.stage {
+  position: relative; overflow: hidden; isolation: isolate;
+  border-radius: 28px; border: 1px solid var(--border-2);
+  background: var(--glow);
+  padding: 0 clamp(18px, 5vw, 64px) clamp(36px, 6vw, 72px);
+  display: grid; justify-items: center; text-align: center;
 }
-@media (min-width: 1152px) { .screen-top { margin-inline: auto; } }
+/* fine grain of light lines, like the reference's connectors, kept very faint */
+.stage::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 0.5px), rgba(255,255,255,0.08) 50%, transparent calc(50% + 0.5px)),
+    radial-gradient(120% 80% at 50% 120%, rgba(11, 12, 11, 0.85) 0%, transparent 60%);
+  -webkit-mask-image: linear-gradient(transparent 40%, #000);
+  mask-image: linear-gradient(transparent 40%, #000);
+}
 .island {
   --w: 216px; --h: 26px; --r: 14px;
-  position: relative;
-  width: var(--w);
-  height: var(--h);
-  background: #000;
-  border-radius: 0 0 var(--r) var(--r);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 14px 34px rgba(0, 0, 0, 0.55);
+  position: relative; width: var(--w); height: var(--h);
+  background: #000; border-radius: 0 0 var(--r) var(--r);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 16px 36px rgba(0, 0, 0, 0.5);
   transition: width 620ms cubic-bezier(0.32, 1.45, 0.52, 1), height 620ms cubic-bezier(0.32, 1.45, 0.52, 1), border-radius 620ms cubic-bezier(0.32, 1.45, 0.52, 1);
-  overflow: hidden;
-  margin-top: -1px;
+  overflow: hidden; margin-top: -1px; text-align: left;
 }
 .island[data-state="music"] { --w: 268px; }
 .island[data-state="charge"] { --w: 360px; --h: 70px; --r: 26px; }
 .island[data-state="note"] { --w: 392px; --h: 70px; --r: 26px; }
-.st { position: absolute; inset: 0; display: flex; align-items: center; opacity: 0; transition: opacity 260ms ease; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink); pointer-events: none; }
+.island-slot { height: 70px; display: flex; justify-content: center; align-items: flex-start; width: 100%; }
+.st { position: absolute; inset: 0; display: flex; align-items: center; opacity: 0; transition: opacity 260ms ease; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text); pointer-events: none; }
 .island[data-state="clock"] .st-clock,
 .island[data-state="music"] .st-music,
 .island[data-state="charge"] .st-charge,
 .island[data-state="note"] .st-note { opacity: 1; transition-delay: 180ms; }
 .row3 { width: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 12px; }
-.row3 .l { justify-self: start; display: inline-flex; gap: 6px; align-items: center; color: var(--ink-2); }
-.row3 .r { justify-self: end; display: inline-flex; gap: 6px; align-items: center; color: var(--ink-2); font-size: 10.5px; }
+.row3 .l { justify-self: start; display: inline-flex; gap: 6px; align-items: center; color: var(--text-2); }
+.row3 .r { justify-self: end; display: inline-flex; gap: 6px; align-items: center; color: var(--text-2); font-size: 10.5px; }
 .time { font-weight: 600; font-size: 12.5px; }
 .art { width: 15px; height: 15px; border-radius: 4px; background: linear-gradient(135deg, #2fd6bf, #1b6f88 60%, #312a64); }
 .eq { display: inline-flex; gap: 1.5px; height: 11px; align-items: center; }
-.eq i { width: 2px; height: 100%; border-radius: 1px; background: var(--mint); animation: eq 900ms steps(6) infinite; transform-origin: center; }
+.eq i { width: 2px; height: 100%; border-radius: 1px; background: #2fd6bf; animation: eq 900ms steps(6) infinite; transform-origin: center; }
 .eq i:nth-child(2) { animation-delay: -300ms; }
 .eq i:nth-child(3) { animation-delay: -600ms; }
 .eq i:nth-child(4) { animation-delay: -150ms; }
 @keyframes eq { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
 .toastrow { padding: 0 22px 2px 16px; gap: 12px; }
 .lead { position: relative; width: 40px; height: 40px; flex: none; display: grid; place-items: center; }
-.well { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: #0f2e2b; color: var(--mint); }
-.well.plain { background: #1e2423; color: var(--ink); }
+.well { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: #0f2e2b; color: #2fd6bf; }
+.well.plain { background: #1e2423; color: var(--text); }
 .lead svg.ring { position: absolute; inset: 0; }
 .t-label { font-size: 10.5px; font-weight: 600; color: var(--muted); }
 .t-title { font-size: 14px; font-weight: 600; line-height: 1.25; }
 .t-sub { font-size: 12px; color: var(--muted); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 290px; }
 .ttext { display: grid; min-width: 0; }
 
-/* ---------- hero ---------- */
-.hero { padding-block: 0 56px; }
-.hero-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 48px; align-items: end; margin-top: 28px; }
-.hero h1 { font-size: clamp(4.2rem, 13vw, 9.5rem); line-height: 0.9; font-weight: 800; letter-spacing: -0.045em; }
-.hero h1 .dot { color: var(--mint); }
-.tagline { font-family: var(--display); font-size: clamp(1.25rem, 2.4vw, 1.7rem); font-weight: 500; line-height: 1.3; margin-top: 18px; max-width: 26ch; }
-.meaning { margin-top: 14px; color: var(--muted); font-size: 0.95rem; }
-.meaning b { color: var(--ink-2); font-weight: 500; }
-.hero-side { display: grid; gap: 16px; }
-.ctas { display: flex; flex-wrap: wrap; gap: 10px; }
+.hero { position: relative; isolation: isolate; }
+.hero::before { content: ""; position: absolute; z-index: -1; inset: -120px 0 auto; height: 900px; background: radial-gradient(40% 45% at 50% 30%, rgba(201, 211, 196, 0.16), transparent 70%), radial-gradient(30% 35% at 80% 10%, rgba(236, 240, 232, 0.1), transparent 70%); pointer-events: none; }
+.hero-copy { display: grid; justify-items: center; text-align: center; margin: clamp(40px, 7vw, 80px) auto 0; max-width: 760px; }
+.pill-tag { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border-radius: var(--radius-pill); border: 1px solid var(--border-2); background: rgba(11, 12, 11, 0.45); font-size: 0.8rem; color: var(--text); }
+.pill-tag i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.hero h1 { margin-top: 18px; font-size: clamp(4rem, 13vw, 9rem); line-height: 0.9; font-weight: 800; letter-spacing: -0.05em; color: #fff; text-shadow: 0 8px 40px rgba(0, 0, 0, 0.35); }
+.tagline { font-family: var(--display); font-size: clamp(1.2rem, 2.4vw, 1.6rem); font-weight: 500; line-height: 1.3; margin-top: 16px; max-width: 30ch; color: #fff; }
+.meaning { margin-top: 12px; color: var(--text-2); font-size: 0.98rem; max-width: 58ch; }
+.meaning b { color: #fff; font-weight: 600; }
+.ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 28px; }
 .btn {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 13px 20px; border-radius: 999px;
-  font-weight: 600; font-size: 0.98rem; text-decoration: none;
-  border: 1px solid var(--line); color: var(--ink); background: var(--panel);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px;
+  padding: 12px 22px; border-radius: var(--radius-pill);
+  font-weight: 600; font-size: 0.96rem; text-decoration: none;
+  border: 1px solid var(--border-2); color: var(--text); background: var(--surface-2);
   transition: transform 160ms ease, background-color 160ms ease;
 }
-.btn:hover { transform: translateY(-1px); background: var(--panel-2); }
-.btn.primary { background: var(--mint); color: var(--mint-ink); border-color: transparent; }
-.btn.primary:hover { background: #4fe2cd; }
-.dl-meta { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
-.facts { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { font-family: var(--mono); font-size: 0.72rem; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); background: var(--panel); white-space: nowrap; }
-.chip.mint { border-color: var(--mint-line); color: var(--mint); background: var(--mint-soft); }
+.btn:hover { transform: translateY(-1px); background: rgba(255, 255, 255, 0.12); }
+.btn.primary { background: #fff; color: #0b0c0b; border-color: transparent; }
+.btn.primary:hover { background: #e9ece7; }
+.dl-meta { margin-top: 12px; font-family: var(--mono); font-size: 0.74rem; color: var(--muted); }
+.hero-note { margin-top: 6px; font-size: 0.85rem; color: var(--muted); max-width: 56ch; }
+.hero-note b { color: #fff; }
+.facts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 22px; }
+.chip { font-family: var(--mono); font-size: 0.72rem; padding: 6px 12px; border-radius: var(--radius-pill); border: 1px solid var(--border-2); color: var(--text); background: rgba(11, 12, 11, 0.5); white-space: nowrap; }
+.chip.lit { background: rgba(255, 255, 255, 0.9); color: #0b0c0b; border-color: transparent; }
 
 /* ---------- video ---------- */
-.video { margin: 44px 0 0; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); background: #000; aspect-ratio: 16 / 9; max-width: 100%; }
+.video { margin: 18px 0 0; border-radius: var(--radius-card); overflow: hidden; border: 1px solid var(--border); background: #000; aspect-ratio: 16 / 9; }
 .video video { display: block; width: 100%; height: 100%; }
 
-/* ---------- screenshots hang from a bezel ---------- */
-.shot {
-  position: relative; display: grid; justify-items: center; padding: 0 clamp(18px, 6%, 48px) clamp(22px, 5%, 40px);
-  border-radius: 0 0 var(--radius) var(--radius);
-  background: var(--wallpaper);
-  border: 1px solid rgba(255, 255, 255, 0.08); border-top: 0; overflow: hidden;
-}
-.shot::before { content: ""; position: absolute; inset: 0 0 auto; height: 1px; background: #2a3533; }
-.shot img { display: block; width: 100%; height: auto; filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.5)); }
-.shot.pills { gap: 14px; padding-block: 0 26px; }
-.shot.pills img { width: auto; }
-.cap { font-family: var(--mono); font-size: 0.72rem; color: rgba(237, 243, 241, 0.75); text-align: center; }
+/* ---------- sections ---------- */
+.sec { padding-block: clamp(72px, 10vw, 120px) 0; }
+.sec-head { display: grid; gap: 12px; margin-bottom: 36px; max-width: 760px; }
+.sec-head.center { margin-inline: auto; text-align: center; justify-items: center; }
 
-/* ---------- features ---------- */
-.feat-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 22px; }
-.feat { display: grid; gap: 16px; align-content: start; min-width: 0; }
+/* ---------- screenshots on light ---------- */
+.shot {
+  position: relative; display: grid; justify-items: center; align-content: start;
+  padding: 0 clamp(16px, 6%, 44px) clamp(20px, 5%, 36px);
+  border-radius: 16px; background: var(--glow); overflow: hidden;
+  border: 1px solid var(--border);
+}
+.shot img { display: block; width: 100%; height: auto; filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.5)); }
+.shot.pills { gap: 14px; padding-block: 18px 22px; align-content: center; }
+.shot.pills img { width: auto; }
+.cap { font-family: var(--mono); font-size: 0.72rem; color: rgba(242, 243, 241, 0.85); text-align: center; }
+
+/* ---------- features: bento ---------- */
+.bento { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+.feat { padding: 14px 14px 24px; display: grid; gap: 20px; align-content: start; min-width: 0; }
+.feat .txt { padding: 0 10px; display: grid; gap: 12px; }
 .feat.w7 { grid-column: span 7; }
 .feat.w5 { grid-column: span 5; }
-.feat ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; color: var(--ink-2); }
+.feat ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; color: var(--text-2); }
 .feat li { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 10px; }
-.feat li::before { content: ""; width: 6px; height: 6px; margin-top: 0.62em; border-radius: 50%; background: var(--mint); }
-.feat li b { color: var(--ink); font-weight: 600; }
-.more { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 30px; }
-.mini { padding: 18px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); display: grid; gap: 6px; align-content: start; min-width: 0; }
-.mini p { color: var(--ink-2); font-size: 0.92rem; }
+.feat li::before { content: ""; width: 5px; height: 5px; margin-top: 0.68em; border-radius: 50%; background: var(--accent); }
+.feat li b { color: var(--text); font-weight: 600; }
+.more { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.mini { padding: 20px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.mini p { color: var(--text-2); font-size: 0.92rem; }
+.mini .num { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); letter-spacing: 0.1em; }
 
 /* ---------- install ---------- */
-.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; counter-reset: step; }
-.step { padding: 22px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line); display: grid; gap: 10px; align-content: start; min-width: 0; }
-.step::before { counter-increment: step; content: counter(step); font-family: var(--display); font-weight: 800; font-size: 2.2rem; line-height: 1; color: var(--mint); }
-.step p { color: var(--ink-2); }
-.warn { margin-top: 4px; padding: 12px 14px; border-radius: 12px; background: #0a0d0c; border: 1px dashed var(--line); font-size: 0.9rem; color: var(--ink-2); }
-.warn b { color: var(--ink); }
+.steps { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; counter-reset: step; }
+.steps::before { content: ""; position: absolute; left: 44px; right: 44px; top: 44px; height: 1px; background: linear-gradient(90deg, var(--border-2), rgba(255,255,255,0.25), var(--border-2)); }
+.step { position: relative; padding: 24px; display: grid; gap: 10px; align-content: start; min-width: 0; background: #111311; }
+.step::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-2); background: var(--bg); font-family: var(--mono); font-weight: 500; font-size: 0.9rem; color: var(--text); margin-bottom: 6px; }
+.step p { color: var(--text-2); }
+.warn { margin-top: 4px; padding: 12px 14px; border-radius: 12px; background: rgba(255, 201, 77, 0.07); border: 1px solid rgba(255, 201, 77, 0.3); font-size: 0.9rem; color: var(--text-2); }
+.warn b { color: var(--text); }
 .req { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px; }
-
-/* ---------- privacy ---------- */
-.priv { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
-.box { padding: 24px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line); display: grid; gap: 12px; align-content: start; min-width: 0; }
-.list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
-.list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding-bottom: 10px; border-bottom: 1px dashed var(--line); color: var(--ink-2); }
-.list li:last-child { border-bottom: 0; padding-bottom: 0; }
-.list .when { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); white-space: nowrap; align-self: center; }
-.list b { color: var(--ink); font-weight: 600; }
-
-/* ---------- changelog ---------- */
-.releases { display: grid; gap: 14px; }
-.rel { padding: 20px 22px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); display: grid; gap: 8px; }
-.rel-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
-.rel-head h3 { font-size: 1.1rem; }
-.rel-head time { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
-.rel p { color: var(--ink-2); white-space: pre-line; }
+.req .chip { background: var(--surface); border-color: var(--border); color: var(--text-2); }
 
 /* ---------- reviews ---------- */
-.rv-top { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 18px; align-items: start; }
-.rv-score { padding: 24px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line); display: grid; gap: 10px; }
-.rv-avg { font-family: var(--display); font-size: 3.4rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
+.rv-top { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.rv-score { padding: 26px; display: grid; gap: 10px; }
+.rv-avg { font-family: var(--display); font-size: 3.6rem; font-weight: 800; line-height: 1; letter-spacing: -0.04em; }
 .rv-avg small { font-size: 1.1rem; color: var(--muted); font-weight: 600; }
-.stars { --pct: 0%; position: relative; display: inline-block; justify-self: start; font-size: 1.25rem; letter-spacing: 2px; line-height: 1; color: #2a3331; }
+.stars { --pct: 0%; position: relative; display: inline-block; justify-self: start; font-size: 1.25rem; letter-spacing: 2px; line-height: 1; color: #2c302c; }
 .stars::before { content: "\2605\2605\2605\2605\2605"; }
 .stars::after { content: "\2605\2605\2605\2605\2605"; position: absolute; inset: 0; width: var(--pct); overflow: hidden; color: var(--star); white-space: nowrap; }
 .stars.sm { font-size: 0.95rem; letter-spacing: 1px; }
-.bars { display: grid; gap: 5px; margin-top: 4px; }
+.bars { display: grid; gap: 6px; margin-top: 4px; }
 .bar-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) 24px; gap: 8px; align-items: center; font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
 .bar-row span:last-child { text-align: right; }
-.bar { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; }
+.bar { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--star); border-radius: 3px; }
-.rv-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.rv { padding: 20px 22px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); display: grid; gap: 10px; align-content: start; min-width: 0; }
-.rv p { color: var(--ink-2); white-space: pre-line; overflow-wrap: anywhere; }
+.rv-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.rv { padding: 22px; border-radius: var(--radius-card); border: 1px solid var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02)); display: grid; gap: 12px; align-content: start; min-width: 0; }
+.rv p { color: var(--text-2); white-space: pre-line; overflow-wrap: anywhere; }
 .rv-by { display: flex; align-items: center; gap: 10px; font-size: 0.88rem; color: var(--muted); }
 .rv-by img { width: 26px; height: 26px; border-radius: 50%; }
-.rv-by b { color: var(--ink); font-weight: 600; }
-.rv-empty { grid-column: 1 / -1; padding: 28px; border-radius: 18px; border: 1px dashed var(--line); color: var(--ink-2); display: grid; gap: 6px; }
-.rv-empty b { color: var(--ink); }
+.rv-by b { color: var(--text); font-weight: 600; }
+.rv-empty { grid-column: 1 / -1; padding: 28px; border-radius: var(--radius-card); border: 1px dashed var(--border-2); color: var(--text-2); display: grid; gap: 6px; }
+.rv-empty b { color: var(--text); }
 .rv-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 18px; }
+.rv-cta .btn { background: var(--surface-2); }
+.rv-cta .btn.primary { background: #fff; }
+
+/* ---------- privacy ---------- */
+.priv { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0; overflow: hidden; }
+.box { padding: 28px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.box + .box { border-left: 1px solid var(--border); }
+.box h3 { display: flex; align-items: center; gap: 10px; }
+.box h3 i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.box.stay h3 i { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.list { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+.list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); color: var(--text-2); }
+.list li:last-child { border-bottom: 0; padding-bottom: 0; }
+.list .when { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); white-space: nowrap; align-self: center; padding: 3px 9px; border-radius: var(--radius-pill); border: 1px solid var(--border); }
+.list b { color: var(--text); font-weight: 600; }
+
+/* ---------- changelog ---------- */
+.releases { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.rel { padding: 22px 24px; border-radius: var(--radius-card); border: 1px solid var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02)); display: grid; gap: 8px; align-content: start; min-width: 0; }
+.rel:first-child { border-color: rgba(201, 211, 196, 0.35); }
+.rel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 14px; }
+.rel-head h3 { font-size: 1.1rem; }
+.rel-head time { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
+.rel p { color: var(--text-2); white-space: pre-line; overflow-wrap: anywhere; }
 
 /* ---------- faq ---------- */
-.faq { display: grid; gap: 10px; max-width: 820px; }
-details { border-radius: 16px; background: var(--panel); border: 1px solid var(--line); padding: 4px 18px; }
-summary { cursor: pointer; padding: 14px 0; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
-summary::-webkit-details-marker { display: none; }
-summary::after { content: "+"; font-family: var(--mono); color: var(--mint); }
-details[open] summary::after { content: "−"; }
-details p { padding: 0 0 16px; color: var(--ink-2); }
+.faq-grid { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 32px; align-items: start; }
+.faq { display: grid; gap: 10px; }
+details.q { border-radius: 18px; border: 1px solid var(--border); background: var(--surface); padding: 4px 20px; }
+details.q[open] { background: var(--surface-2); }
+details.q summary { cursor: pointer; padding: 15px 0; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+details.q summary::-webkit-details-marker { display: none; }
+details.q summary::after { content: "+"; font-family: var(--mono); color: var(--muted); }
+details.q[open] summary::after { content: "\2212"; }
+details.q p { padding: 0 0 16px; color: var(--text-2); }
 
-/* ---------- coming soon ---------- */
-.soon { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+/* ---------- coming next ---------- */
+.soon { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 
-footer { border-top: 1px solid var(--line); margin-top: 56px; padding-block: 26px 40px; color: var(--muted); font-size: 0.88rem; }
+footer { margin-top: clamp(72px, 10vw, 120px); border-top: 1px solid var(--border); padding-block: 28px 40px; color: var(--muted); font-size: 0.86rem; }
 footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; }
 
-@media (max-width: 900px) {
-  .hero-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+/* ---------- laptop mockup: what Gabay looks like on a real screen ---------- */
+.device { margin: clamp(36px, 5vw, 60px) auto 0; max-width: 1040px; }
+.screen {
+  position: relative; aspect-ratio: 16 / 9.4; overflow: hidden;
+  border: clamp(6px, 1.1vw, 12px) solid #050505; border-radius: clamp(14px, 2vw, 24px) clamp(14px, 2vw, 24px) 6px 6px;
+  background:
+    radial-gradient(60% 55% at 70% 8%, rgba(255, 214, 170, 0.75) 0%, transparent 60%),
+    radial-gradient(70% 60% at 15% 100%, rgba(120, 150, 110, 0.85) 0%, transparent 65%),
+    radial-gradient(60% 50% at 95% 95%, rgba(170, 90, 50, 0.7) 0%, transparent 60%),
+    linear-gradient(180deg, #c99a74 0%, #7d7a62 45%, #3c4a35 100%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 40px 80px rgba(0, 0, 0, 0.55);
+}
+.screen .island-slot { position: absolute; top: 0; left: 0; right: 0; z-index: 3; }
+.win { position: absolute; left: 14%; right: 14%; top: 16%; bottom: 13%; border-radius: 10px; background: rgba(245, 246, 243, 0.94); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35); overflow: hidden; display: grid; grid-template-rows: auto 1fr; }
+.win-bar { display: flex; align-items: center; gap: 6px; padding: 9px 12px; background: #e3e5e0; }
+.win-bar i { width: 9px; height: 9px; border-radius: 50%; background: #c3c6c0; }
+.win-bar span { flex: 1; height: 14px; margin-left: 10px; border-radius: 7px; background: #f4f5f2; }
+.win-body { display: grid; grid-template-columns: 22% 1fr; gap: 14px; padding: 16px; }
+.win-body b { display: block; height: 10px; border-radius: 5px; background: #dcdfd9; margin-bottom: 12px; }
+.side b:first-child { height: 26px; border-radius: 13px; background: #cfd8cb; margin-bottom: 18px; }
+.rows b { height: 16px; }
+.rows b:nth-child(odd) { width: 92%; }
+.rows b:nth-child(3n) { width: 70%; }
+.taskbar { position: absolute; left: 0; right: 0; bottom: 0; height: 7%; display: flex; justify-content: center; align-items: center; gap: 8px; background: rgba(20, 22, 20, 0.6); }
+.taskbar i { width: 3%; aspect-ratio: 1; border-radius: 4px; background: rgba(255, 255, 255, 0.35); }
+.base { height: clamp(10px, 1.6vw, 18px); margin: 0 -4%; border-radius: 0 0 18px 18px; background: linear-gradient(#2a2c2a, #121312); position: relative; }
+.base::before { content: ""; position: absolute; left: 50%; top: 0; width: 14%; height: 40%; transform: translateX(-50%); border-radius: 0 0 8px 8px; background: #0b0c0b; }
+@media (max-width: 600px) {
+  .screen .island { transform: scale(0.62); transform-origin: top center; }
+  .win { left: 6%; right: 6%; top: 22%; }
+  .win-body { padding: 10px; gap: 8px; }
+  .win-body b { height: 6px; margin-bottom: 7px; }
+}
+
+@media (max-width: 960px) {
+  .nav-links, .nav-cta { display: none; }
+  .menu { display: block; }
   .feat.w7, .feat.w5 { grid-column: span 12; }
   .more { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .steps, .priv, .soon, .rv-top, .rv-list { grid-template-columns: minmax(0, 1fr); }
-  .nav-links { display: none; }
+  .steps, .soon, .rv-top, .faq-grid { grid-template-columns: minmax(0, 1fr); }
+  .steps::before { display: none; }
+  .rv-list, .releases { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  .priv { grid-template-columns: minmax(0, 1fr); }
+  .box + .box { border-left: 0; border-top: 1px solid var(--border); }
 }
 @media (max-width: 520px) {
   .more { grid-template-columns: minmax(0, 1fr); }
-  .island[data-state="charge"] { --w: 300px; }
-  .island[data-state="note"] { --w: 320px; }
-  .t-sub { max-width: 220px; }
-  .edge { padding-block: 56px 16px; }
+  .island[data-state="charge"] { --w: 290px; }
+  .island[data-state="note"] { --w: 310px; }
+  .t-sub { max-width: 210px; }
   .list li { grid-template-columns: minmax(0, 1fr); }
+  .list .when { justify-self: start; }
+  .stage { border-radius: 22px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -305,19 +359,59 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
 </head>
 <body>
 
-<header class="wrap nav">
-  <a class="brand" href="./"><img src="img/icon.png" alt="" width="28" height="28">Gabay</a>
-  <nav class="nav-links" aria-label="Sections">
-    <a href="#features">Features</a>
-    <a href="#install">Install</a>
-    <a href="#reviews">Reviews</a>
-    <a href="#privacy">Privacy</a>
-    <a href="#changes">What's new</a>
-    <a href="#faq">FAQ</a>
-  </nav>
-</header>
+<div class="nav-bar wrap">
+  <header class="nav">
+    <a class="brand" href="./"><img src="img/icon.png" alt="" width="24" height="24">Gabay</a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#reviews">Reviews</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#changes">What's new</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="nav-cta" href="#install">Get Gabay</a>
+    <details class="menu">
+      <summary aria-label="Menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+      <nav class="menu-list" aria-label="Sections">
+        <a href="#features">Features</a>
+        <a href="#install">Install</a>
+        <a href="#reviews">Reviews</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#changes">What's new</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+    </details>
+  </header>
+</div>
 
-<div class="screen-top">
+<main>
+  <section class="hero">
+    <div class="wrap">
+        <div class="hero-copy">
+          <p class="pill-tag"><i></i>Free for Windows 11 and 10</p>
+          <h1>Gabay.</h1>
+          <p class="tagline">Your Windows taskbar, folded into an iPhone-style notch.</p>
+          <p class="meaning"><b>Gabay</b> is Filipino for "guide". It sits at the top of your screen, shows what matters at a glance, and opens into quick settings, your day and your tools when you hover over it.</p>
+          <div class="ctas">
+            <a class="btn primary" id="download" href="https://github.com/IkariShinjiii/gabay/releases/latest">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m9 12v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10l5 5l5-5"/></svg>
+              <span id="download-label">Download for Windows</span>
+            </a>
+            <a class="btn" href="#install">How to install</a>
+          </div>
+          <p class="dl-meta" id="download-meta">Windows installer · free</p>
+          <p class="hero-note">Installs for your account only and starts with Windows. Windows may say "Windows protected your PC" the first time: choose <b>More info</b>, then <b>Run anyway</b>.</p>
+          <div class="facts">
+            <span class="chip lit">Under 0.1% CPU at rest</span>
+            <span class="chip">No account</span>
+            <span class="chip">No ads or tracking</span>
+            <span class="chip">Updates itself</span>
+          </div>
+        </div>
+      <figure class="device" aria-label="Gabay on a laptop screen">
+        <div class="screen">
+        <div class="island-slot">
   <div class="island" id="island" data-state="clock" role="img" aria-label="Gabay's notch showing the clock, now playing, a charging alert and a notification in turn">
     <div class="st st-clock">
       <div class="row3">
@@ -353,43 +447,22 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
       <span class="ttext"><span class="t-label">Messenger</span><span class="t-title">Kevin</span><span class="t-sub">are you coming tonight? we're at the usual place</span></span>
     </div>
   </div>
-</div>
-
-<main>
-  <section class="hero">
-    <div class="wrap">
-      <div class="hero-grid">
-        <div>
-          <p class="eyebrow">Free for Windows 11 and 10</p>
-          <h1>Gabay<span class="dot">.</span></h1>
-          <p class="tagline">Your Windows taskbar, folded into an iPhone-style notch.</p>
-          <p class="meaning"><b>Gabay</b> is Filipino for "guide". It sits at the top of your screen, shows what matters at a glance, and opens into quick settings, your day and your tools when you hover over it.</p>
         </div>
-        <div class="hero-side">
-          <div class="ctas">
-            <a class="btn primary" id="download" href="https://github.com/IkariShinjiii/gabay/releases/latest">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m9 12v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10l5 5l5-5"/></svg>
-              <span id="download-label">Download for Windows</span>
-            </a>
-            <a class="btn" href="#install">How to install</a>
+          <div class="win" aria-hidden="true">
+            <div class="win-bar"><i></i><i></i><i></i><span></span></div>
+            <div class="win-body"><div class="side"><b></b><b></b><b></b><b></b></div><div class="rows"><b></b><b></b><b></b><b></b><b></b><b></b></div></div>
           </div>
-          <p class="dl-meta" id="download-meta">Windows installer · free</p>
-          <p class="small">Installs for your account only and starts with Windows. Windows may say "Windows protected your PC" the first time: choose <b>More info</b>, then <b>Run anyway</b>.</p>
-          <div class="facts">
-            <span class="chip mint">Under 0.1% CPU at rest</span>
-            <span class="chip">No account</span>
-            <span class="chip">No ads or tracking</span>
-            <span class="chip">Updates itself</span>
-          </div>
+          <div class="taskbar" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
         </div>
-      </div>
+        <div class="base" aria-hidden="true"></div>
+      </figure>
       <figure class="video">
         <video id="showcase" src="media/gabay-showcase.mp4" poster="media/poster.jpg" muted loop playsinline controls preload="metadata" aria-label="Gabay showcase video: the notch, live activities, alerts, Controls, Today and the small details"></video>
       </figure>
     </div>
   </section>
 
-  <section class="edge" id="features" aria-labelledby="f-h">
+  <section class="sec" id="features" aria-labelledby="f-h">
     <div class="wrap">
       <div class="sec-head">
         <p class="eyebrow">What lives in the notch</p>
@@ -397,31 +470,22 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
         <p class="lede">Collapsed, Gabay is a slim strip with the time, Wi-Fi, weather and battery. Hover it and it opens into eight tabs. It steps aside when a video or game goes full screen.</p>
       </div>
 
-      <div class="feat-grid">
-        <article class="feat w7">
+      <div class="bento">
+        <article class="feat card w7">
           <div class="shot"><img src="img/controls.png" alt="The Controls tab: Wi-Fi, Bluetooth and Audio tiles, Airplane mode, Dark mode, Focus, Screenshot and Record, volume and brightness sliders, and a Now playing card" width="1076" height="1012" loading="lazy"></div>
+          <div class="txt">
+            <h3>Controls</h3>
+            <ul>
+              <li><span><b>Wi-Fi and Bluetooth</b> on and off, with lists of nearby networks and paired devices.</span></li>
+              <li><span><b>Volume and brightness</b> bars that drag like an iPhone, plus <b>volume per app</b>.</span></li>
+              <li><span><b>Focus</b> silences notifications for an hour, until 6 PM, until 7 AM, or until you turn it off.</span></li>
+              <li><span><b>Screenshot</b> the whole screen or snip a part. <b>Record</b> the screen with its sound.</span></li>
+              <li><span><b>Now playing</b> from Spotify, your browser and other players, with seeking and optional synced lyrics.</span></li>
+              <li><span>Airplane mode, Dark mode, and Windows' Project chooser.</span></li>
+            </ul>
+          </div>
         </article>
-        <article class="feat w5">
-          <h3>Controls</h3>
-          <ul>
-            <li><span><b>Wi-Fi and Bluetooth</b> on and off, with lists of nearby networks and paired devices.</span></li>
-            <li><span><b>Volume and brightness</b> bars that drag like an iPhone, plus <b>volume per app</b>.</span></li>
-            <li><span><b>Focus</b> silences notifications for an hour, until 6 PM, until 7 AM, or until you turn it off.</span></li>
-            <li><span><b>Screenshot</b> the whole screen or snip a part. <b>Record</b> the screen with its sound.</span></li>
-            <li><span><b>Now playing</b> from Spotify, your browser and other players, with seeking and optional synced lyrics.</span></li>
-            <li><span>Airplane mode, Dark mode, and Windows' Project chooser.</span></li>
-          </ul>
-        </article>
-
-        <article class="feat w5">
-          <h3>Live activities and alerts</h3>
-          <ul>
-            <li><span>While music plays: <b>album art and a level meter</b>. While a download runs: <b>how much has arrived</b>. While recording: <b>a red dot and the time</b>.</span></li>
-            <li><span>The notch <b>grows for a few seconds</b> for Windows notifications, a new song, charging, low battery, a finished timer or download, and a meeting 10 minutes out.</span></li>
-            <li><span>A <b>green or orange dot</b> while an app uses your camera or microphone.</span></li>
-          </ul>
-        </article>
-        <article class="feat w7">
+        <article class="feat card w5">
           <div class="shot pills">
             <img src="img/pill.png" alt="The collapsed notch: Wi-Fi, the time and battery" width="234" height="24" loading="lazy" style="width:234px">
             <img src="img/live.png" alt="The notch while music plays: album art, the time, battery and a level meter" width="282" height="24" loading="lazy" style="width:282px">
@@ -430,59 +494,65 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
             <img src="img/note.png" alt="A Messenger notification shown in the notch" width="398" height="70" loading="lazy" style="width:398px">
             <p class="cap">collapsed · music · weather, download and camera · charging · notification</p>
           </div>
+          <div class="txt">
+            <h3>Live activities and alerts</h3>
+            <ul>
+              <li><span>While music plays: <b>album art and a level meter</b>. While a download runs: <b>how much has arrived</b>. While recording: <b>a red dot and the time</b>.</span></li>
+              <li><span>The notch <b>grows for a few seconds</b> for Windows notifications, a new song, charging, low battery, a finished timer or download, and a meeting 10 minutes out.</span></li>
+              <li><span>A <b>green or orange dot</b> while an app uses your camera or microphone.</span></li>
+            </ul>
+          </div>
         </article>
-
-        <article class="feat w7">
+        <article class="feat card w5">
           <div class="shot"><img src="img/today.png" alt="The Today tab: time, date and weather, a focus timer, to-dos, a stopwatch and two timers" width="1076" height="832" loading="lazy"></div>
+          <div class="txt">
+            <h3>Today</h3>
+            <ul>
+              <li><span>The <b>time, date and weather</b> for your city.</span></li>
+              <li><span>A <b>focus timer</b>, a <b>stopwatch</b> with laps, and up to six <b>timers</b> that keep running when the notch closes.</span></li>
+              <li><span><b>To-dos</b> that stay on your PC.</span></li>
+              <li><span><b>Up next</b> from your Google Calendar, with a heads-up 10 minutes before.</span></li>
+            </ul>
+          </div>
         </article>
-        <article class="feat w5">
-          <h3>Today</h3>
-          <ul>
-            <li><span>The <b>time, date and weather</b> for your city.</span></li>
-            <li><span>A <b>focus timer</b>, a <b>stopwatch</b> with laps, and up to six <b>timers</b> that keep running when the notch closes.</span></li>
-            <li><span><b>To-dos</b> that stay on your PC.</span></li>
-            <li><span><b>Up next</b> from your Google Calendar, with a heads-up 10 minutes before.</span></li>
-          </ul>
-        </article>
-
-        <article class="feat w5">
-          <h3>Volume per app and System</h3>
-          <ul>
-            <li><span>A slider for every app playing sound, like Windows' volume mixer, one hover away.</span></li>
-            <li><span><b>CPU, memory and disk</b> as rings that turn warm past 85%.</span></li>
-          </ul>
-        </article>
-        <article class="feat w7">
+        <article class="feat card w7">
           <div class="shot"><img src="img/system.png" alt="The System tab: CPU, memory and disk shown as rings" width="1076" height="412" loading="lazy"></div>
+          <div class="txt">
+            <h3>Volume per app and System</h3>
+            <ul>
+              <li><span>A slider for every app playing sound, like Windows' volume mixer, one hover away.</span></li>
+              <li><span><b>CPU, memory and disk</b> as rings that turn warm past 85%.</span></li>
+            </ul>
+          </div>
         </article>
       </div>
 
       <div class="more">
-        <div class="mini"><h3>Notes</h3><p>A scratchpad that saves as you type, one hover away.</p></div>
-        <div class="mini"><h3>Clipboard</h3><p>Text and images you copied, with pinned items kept. Skips anything a password manager marks private.</p></div>
-        <div class="mini"><h3>Launch and Power</h3><p>Search apps or type <code>lock</code>, <code>focus 25</code>, <code>todo buy milk</code>. Lock, sleep, restart, shut down.</p></div>
-        <div class="mini"><h3>Settings</h3><p>Accent colours, screens, space at the top for your windows, every shortcut, and Report a bug.</p></div>
+        <div class="mini card"><h3>Notes</h3><p>A scratchpad that saves as you type, one hover away.</p></div>
+        <div class="mini card"><h3>Clipboard</h3><p>Text and images you copied, with pinned items kept. Skips anything a password manager marks private.</p></div>
+        <div class="mini card"><h3>Launch and Power</h3><p>Search apps or type <code>lock</code>, <code>focus 25</code>, <code>todo buy milk</code>. Lock, sleep, restart, shut down.</p></div>
+        <div class="mini card"><h3>Settings</h3><p>Accent colours, screens, space at the top for your windows, every shortcut, and Report a bug.</p></div>
       </div>
     </div>
   </section>
 
-  <section class="edge" id="install" aria-labelledby="i-h">
+  <section class="sec" id="install" aria-labelledby="i-h">
     <div class="wrap">
       <div class="sec-head">
         <p class="eyebrow">Install</p>
         <h2 id="i-h">Up and running in a minute.</h2>
       </div>
       <div class="steps">
-        <div class="step">
+        <div class="step card">
           <h3>Download the installer</h3>
           <p>Use the download button at the top. You get <code>Gabay-Setup</code> with the version number, about 107 MB.</p>
         </div>
-        <div class="step">
+        <div class="step card">
           <h3>Run it</h3>
           <p>Open the file. Gabay isn't code-signed yet, so Windows may warn you.</p>
           <p class="warn">If you see <b>"Windows protected your PC"</b>, choose <b>More info</b>, then <b>Run anyway</b>.</p>
         </div>
-        <div class="step">
+        <div class="step card">
           <h3>Meet the notch</h3>
           <p>When setup finishes, the notch appears at the top of your screen and a short welcome tour shows you around. Gabay starts with Windows from then on.</p>
         </div>
@@ -496,7 +566,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
     </div>
   </section>
 
-  <section class="edge" id="reviews" aria-labelledby="r-h">
+  <section class="sec" id="reviews" aria-labelledby="r-h">
     <div class="wrap">
       <div class="sec-head">
         <p class="eyebrow">Reviews</p>
@@ -504,7 +574,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
         <p class="lede">Reviews are written on GitHub, so each one comes from a real account. They appear here once checked for spam.</p>
       </div>
       <div class="rv-top">
-        <div class="rv-score" aria-live="polite">
+        <div class="rv-score card" aria-live="polite">
           <div class="rv-avg" id="rv-avg">&ndash;<small> / 5</small></div>
           <span class="stars" id="rv-stars" role="img" aria-label="No ratings yet"></span>
           <p class="small" id="rv-count">No reviews yet</p>
@@ -524,16 +594,16 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
     </div>
   </section>
 
-  <section class="edge" id="privacy" aria-labelledby="p-h">
+  <section class="sec" id="privacy" aria-labelledby="p-h">
     <div class="wrap">
       <div class="sec-head">
         <p class="eyebrow">Privacy</p>
         <h2 id="p-h">Your stuff stays on your PC.</h2>
         <p class="lede">Gabay has no accounts, no ads and no analytics. It only goes online for the features below, and most of them are off until you turn them on.</p>
       </div>
-      <div class="priv">
+      <div class="priv card">
         <div class="box">
-          <h3>What leaves your PC</h3>
+          <h3><i></i>What leaves your PC</h3>
           <ul class="list">
             <li><span><b>Update checks</b> to GitHub, where Gabay is published.</span><span class="when">at start, every 6 h</span></li>
             <li><span><b>Your city</b>, once, to find it, then its coordinates for the forecast (Open-Meteo).</span><span class="when">if you set a city</span></li>
@@ -542,8 +612,8 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
             <li><span><b>A bug report</b>, only when you send one yourself.</span><span class="when">when you choose</span></li>
           </ul>
         </div>
-        <div class="box">
-          <h3>What stays on your PC</h3>
+        <div class="box stay">
+          <h3><i></i>What stays on your PC</h3>
           <ul class="list">
             <li><span><b>Clipboard history</b> lives in memory and is gone when Gabay quits. Only items you pin are saved.</span><span class="when">memory</span></li>
             <li><span><b>Notification text</b> is shown in the notch and never stored.</span><span class="when">not kept</span></li>
@@ -556,7 +626,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
     </div>
   </section>
 
-  <section class="edge" id="changes" aria-labelledby="c-h">
+  <section class="sec" id="changes" aria-labelledby="c-h">
     <div class="wrap">
       <div class="sec-head">
         <p class="eyebrow">What's new</p>
@@ -585,51 +655,53 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
     </div>
   </section>
 
-  <section class="edge" id="faq" aria-labelledby="q-h">
+  <section class="sec" id="faq" aria-labelledby="q-h">
     <div class="wrap">
+      <div class="faq-grid">
       <div class="sec-head">
         <p class="eyebrow">Questions</p>
         <h2 id="q-h">Good to know.</h2>
       </div>
       <div class="faq">
-        <details>
+        <details class="q">
           <summary>Does it replace the Windows taskbar?</summary>
           <p>It does most of the taskbar's everyday jobs from the notch. Your Windows taskbar still works. Many people set it to auto-hide so the bottom of the screen is free.</p>
         </details>
-        <details>
+        <details class="q">
           <summary>Will it cover my browser tabs?</summary>
           <p>Settings › Experiments › Reserve space at the top makes maximized windows sit just below the notch, the way they sit above the taskbar. You can also set the notch to hide until you rest the pointer on the top edge.</p>
         </details>
-        <details>
+        <details class="q">
           <summary>Why does Windows warn me when I install it?</summary>
           <p>Windows warns about apps that aren't signed with a paid certificate. Gabay isn't signed yet. Choose More info, then Run anyway.</p>
         </details>
-        <details>
+        <details class="q">
           <summary>Does it slow down my PC?</summary>
           <p>Collapsed and idle it uses under 0.1% of the CPU and around 155 MB of memory. Its background helpers sleep until something changes.</p>
         </details>
-        <details>
+        <details class="q">
           <summary>How do I report a bug?</summary>
           <p>In Gabay, open Settings › Report a bug, describe what happened, and send it on GitHub or copy it to paste in a message. It adds version and screen details, never your files, clipboard or messages.</p>
         </details>
-        <details>
+        <details class="q">
           <summary>Is it free?</summary>
           <p>Yes. No ads, no account, no paid tier. Please share the link to this page rather than the installer, so friends always get the latest version.</p>
         </details>
       </div>
+      </div>
     </div>
   </section>
 
-  <section class="edge" id="soon" aria-labelledby="s-h">
+  <section class="sec" id="soon" aria-labelledby="s-h">
     <div class="wrap">
       <div class="sec-head">
         <p class="eyebrow">Coming next</p>
         <h2 id="s-h">On the list.</h2>
       </div>
       <div class="soon">
-        <div class="mini"><h3>Filipino translation</h3><p>Tagalog labels for everything, picked in Settings.</p></div>
-        <div class="mini"><h3>Notification actions</h3><p>Dismiss a notification or open its app straight from the notch.</p></div>
-        <div class="mini"><h3>No more install warning</h3><p>Signing the installer so Windows stops asking "Run anyway?".</p></div>
+        <div class="mini card"><h3>Filipino translation</h3><p>Tagalog labels for everything, picked in Settings.</p></div>
+        <div class="mini card"><h3>Notification actions</h3><p>Dismiss a notification or open its app straight from the notch.</p></div>
+        <div class="mini card"><h3>No more install warning</h3><p>Signing the installer so Windows stops asking "Run anyway?".</p></div>
       </div>
     </div>
   </section>
