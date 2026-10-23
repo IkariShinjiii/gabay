@@ -1,4 +1,5 @@
 # Publishes the download website (site/) to GitHub Pages: https://ikarishinjiii.github.io/gabay/
+# The main address is https://gabay-site-plum.vercel.app (Vercel deploys site/ on its own; see site/vercel.json).
 name: Website
 
 on:
