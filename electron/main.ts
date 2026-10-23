@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { app, BrowserWindow, powerMonitor, globalShortcut, ipcMain, Menu, nativeImage, screen, session, shell, systemPreferences, Tray } from 'electron'
+import os from 'node:os'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { getStats } from './stats'
@@ -622,6 +623,8 @@ app.whenReady().then(async () => {
   // those). Ctrl+Alt+Space is already taken by the Claude desktop app on this machine, so the saved choice is
   // tried first, then the other candidates. register() returns false if another app owns the combo.
   const summon = (): void => {
+    // A game has the mouse: taking focus now would throw the player out of the match.
+    if (mouseLocked) return
     // The window is click-through by default and unfocused; make it take input before the renderer opens.
     win.setIgnoreMouseEvents(false)
     win.focus()
@@ -635,6 +638,19 @@ app.whenReady().then(async () => {
     else console.warn(`[gabay] no global hotkey available (tried ${HOTKEYS.join(', ')})`)
   }
   if (!PREVIEW) applyHotkey(settings.hotkey)
+
+  // Gabay is never what a game should wait for: run it, its helper and its renderers below normal priority.
+  const lowerPriority = (): void => {
+    const pids = new Set([process.pid, ...app.getAppMetrics().map((m) => m.pid)])
+    for (const pid of pids) {
+      try {
+        os.setPriority(pid, os.constants.priority.PRIORITY_BELOW_NORMAL)
+      } catch {
+        /* a process that just ended */
+      }
+    }
+  }
+  if (!PREVIEW) setTimeout(lowerPriority, 6000)
 
   // Put the window back at top-center of the chosen display. Setting bounds twice is deliberate: moving to a
   // display with a different scale factor can rescale the window on the first call, and the second pins it.
