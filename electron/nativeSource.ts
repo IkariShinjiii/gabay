@@ -344,7 +344,7 @@ static class Native {
   static bool MouseCaptured(RECT m) {
     try {
       var ci = new CURSORINFO(); ci.cbSize = Marshal.SizeOf(typeof(CURSORINFO));
-      if (GetCursorInfo(ref ci) && (ci.flags & 1) == 0) return true; // CURSOR_SHOWING is off
+      if (GetCursorInfo(ref ci) && ((ci.flags & 1) == 0 || ci.hCursor == IntPtr.Zero)) return true; // hidden: ShowCursor(false), or SetCursor(NULL) as most games do
       RECT c;
       if (GetClipCursor(out c) && c.R - c.L > 0 && (c.L > m.L || c.T > m.T || c.R < m.R || c.B < m.B)) return true; // locked to less than the monitor
     } catch { }
