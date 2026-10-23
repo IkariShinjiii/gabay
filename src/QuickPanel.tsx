@@ -943,6 +943,23 @@ function MixerView({ onBack }: { onBack: () => void }): React.JSX.Element {
   const busy = useRef(new Map<number, boolean>())
   const pending = useRef(new Map<number, number>())
   const [outs, setOuts] = useState<OutputDevice[]>([])
+  const [outOpen, setOutOpen] = useState(() => {
+    try {
+      return localStorage.getItem('gabay.soundOutputs') !== 'closed'
+    } catch {
+      return true
+    }
+  })
+  const toggleOuts = (): void => {
+    setOutOpen((o) => {
+      try {
+        localStorage.setItem('gabay.soundOutputs', o ? 'closed' : 'open')
+      } catch {
+        /* storage unavailable: the choice just lasts until the panel closes */
+      }
+      return !o
+    })
+  }
   const loadOuts = useCallback(async (): Promise<void> => {
     setOuts(await window.overlay.outputList().catch(() => []))
   }, [])
@@ -996,18 +1013,26 @@ function MixerView({ onBack }: { onBack: () => void }): React.JSX.Element {
       <SubHead title={tr('Sound')} onBack={onBack} />
       {outs.length > 1 && (
         <>
-          <div className="sub-note">{tr('Output')}</div>
-          <div className="net-list">
-            {outs.map((d) => (
-              <motion.button key={d.id} whileTap={{ scale: 0.98 }} className={d.current ? 'net-row on' : 'net-row'} title={d.current ? tr('In use') : tr('Play sound here')} onClick={() => void pickOut(d)}>
-                <span className="ct-well small">
-                  <Icon name={d.kind === 'display' ? 'monitor' : 'volume-2'} size={13} />
-                </span>
-                <span className="net-name">{d.name}</span>
-                <span className="net-state">{d.current ? <Icon name="check" size={12} /> : null}</span>
-              </motion.button>
-            ))}
-          </div>
+          <button className="sub-fold" aria-expanded={outOpen} onClick={toggleOuts}>
+            <span>{tr('Output')}</span>
+            {!outOpen && <span className="sub-fold-now">{outs.find((d) => d.current)?.name}</span>}
+            <span className="sub-fold-chev" style={{ transform: outOpen ? 'rotate(90deg)' : undefined }}>
+              <Icon name="chevron-right" size={13} />
+            </span>
+          </button>
+          {outOpen && (
+            <div className="net-list">
+              {outs.map((d) => (
+                <motion.button key={d.id} whileTap={{ scale: 0.98 }} className={d.current ? 'net-row on' : 'net-row'} title={d.current ? tr('In use') : tr('Play sound here')} onClick={() => void pickOut(d)}>
+                  <span className="ct-well small">
+                    <Icon name={d.kind === 'display' ? 'monitor' : 'volume-2'} size={13} />
+                  </span>
+                  <span className="net-name">{d.name}</span>
+                  <span className="net-state">{d.current ? <Icon name="check" size={12} /> : null}</span>
+                </motion.button>
+              ))}
+            </div>
+          )}
           <div className="sub-note">{tr('Volume per app')}</div>
         </>
       )}
@@ -1016,7 +1041,7 @@ function MixerView({ onBack }: { onBack: () => void }): React.JSX.Element {
       ) : apps.length === 0 ? (
         <div className="sub-empty">{tr('No apps are playing sound.')}</div>
       ) : (
-        <div className="mixer" style={{ maxHeight: Math.max(110, 320 - (outs.length > 1 ? outs.length * 38 + 52 : 0)) }}>
+        <div className="mixer" style={{ maxHeight: Math.max(110, 320 - (outs.length > 1 ? (outOpen ? outs.length * 38 : 0) + 52 : 0)) }}>
           {apps.map((a) => (
             <div key={a.pid} className="mix-row">
               <div className="mix-head">
