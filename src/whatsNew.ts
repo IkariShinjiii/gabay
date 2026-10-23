@@ -1,6 +1,7 @@
 // What each release brought, in plain words. Shown once as a toast after updating, and in Settings > What's new.
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
+  ['1.3.5', ['Fixed Gabay popping open while you play: it now ignores the mouse while a game has it locked']],
   [
     '1.3.4',
     [

@@ -332,8 +332,23 @@ static class Native {
     var mi = new MONITORINFO(); mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
     if (!GetMonitorInfo(MonitorFromWindow(h, 2), ref mi)) return "fs 0";
     var m = mi.rcMonitor;
-    if (r.L <= m.L && r.T <= m.T && r.R >= m.R && r.B >= m.B) return "fs 1 " + m.L + " " + m.T + " " + m.R + " " + m.B;
+    if (r.L <= m.L && r.T <= m.T && r.R >= m.R && r.B >= m.B) return "fs 1 " + m.L + " " + m.T + " " + m.R + " " + m.B + " " + (MouseCaptured(m) ? 1 : 0);
     return "fs 0";
+  }
+
+  // A game that is aiming has hidden the pointer or locked it to its window; its "pointer" then drifts to the screen
+  // edges as the player looks around, which must never count as pointing at the notch.
+  [StructLayout(LayoutKind.Sequential)] struct CURSORINFO { public int cbSize, flags; public IntPtr hCursor; public int x, y; }
+  [DllImport("user32.dll")] static extern bool GetCursorInfo(ref CURSORINFO ci);
+  [DllImport("user32.dll")] static extern bool GetClipCursor(out RECT r);
+  static bool MouseCaptured(RECT m) {
+    try {
+      var ci = new CURSORINFO(); ci.cbSize = Marshal.SizeOf(typeof(CURSORINFO));
+      if (GetCursorInfo(ref ci) && (ci.flags & 1) == 0) return true; // CURSOR_SHOWING is off
+      RECT c;
+      if (GetClipCursor(out c) && c.R - c.L > 0 && (c.L > m.L || c.T > m.T || c.R < m.R || c.B < m.B)) return true; // locked to less than the monitor
+    } catch { }
+    return false;
   }
 
   static string ClassOf(IntPtr h) { var s = new StringBuilder(128); GetClassName(h, s, 128); return s.ToString(); }
