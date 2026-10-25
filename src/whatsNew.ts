@@ -2,6 +2,13 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.3.8',
+    [
+      'Fold the sound Output list away with one click; Gabay remembers it',
+      'Settings is easier to scan, and every option can be reached with the keyboard'
+    ]
+  ],
+  [
     '1.3.7',
     [
       'Pick your sound output right in Gabay: Controls › Audio › the arrow shows your speakers, headphones and monitors',
