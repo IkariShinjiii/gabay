@@ -426,6 +426,11 @@ export default function QuickPanel(props: {
     cache = s
     setStateRaw(s)
   }
+  // Whether the default microphone is muted; null when the PC has none (the tile then stays out).
+  const [micMuted, setMicMuted] = useState<boolean | null>(null)
+  useEffect(() => {
+    void window.overlay.micGet().then(setMicMuted, () => undefined)
+  }, [])
   // Media already there when the tab opens shows at once; only media that appears later animates in.
   const mediaAtMount = useRef(!!cache?.media)
   const [page, setPage] = useState(0)
@@ -585,7 +590,7 @@ export default function QuickPanel(props: {
                 moreTitle={tr('Volume per app')}
               />
             </div>
-            <div className={`ct-row ${ROW[1 + (hasRadio ? 1 : 0)]}`}>
+            <div className={`ct-row ${ROW[1 + (hasRadio ? 1 : 0) + (micMuted !== null ? 1 : 0)]}`}>
               {hasRadio && (
                 <SplitTile
                   icon="plane"
@@ -606,6 +611,16 @@ export default function QuickPanel(props: {
                 onMain={() => void act({ kind: 'dark', on: !state.dark })}
                 settings="colors"
               />
+              {micMuted !== null && (
+                <SplitTile
+                  icon="mic"
+                  label={tr('Microphone')}
+                  sub={micMuted ? tr('Muted') : tr('Live')}
+                  on={micMuted}
+                  mainTitle={micMuted ? tr('Unmute the microphone') : tr('Mute the microphone')}
+                  onMain={() => void window.overlay.micSet(!micMuted).then(setMicMuted, () => undefined)}
+                />
+              )}
             </div>
             <div className="ct-row three">
               <SplitTile
