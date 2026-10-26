@@ -96,7 +96,7 @@ search field to filter, click a row to copy it back, star to pin, "Clear history
 - **Collapsed pill:** shows the clock; while a focus timer exists it shows a progress ring and countdown instead
   (display only; control it from the Today tab or the command bar). The timer keeps running while the panel is closed.
 - **The bar** (bottom field, one input for everything): text that is a command runs it on Enter (a live hint shows what
-  will happen); anything else searches apps, or filters the clipboard on the Clipboard tab. Ctrl+1 to Ctrl+8 switch tabs.
+  will happen); anything else searches apps, or filters the clipboard on the Clipboard tab. Ctrl+1 to Ctrl+9 switch tabs.
   Commands:
   `lock`, `sleep`, `restart`, `shutdown`, `focus [minutes]` / `timer` / `start`, `pause`, `reset`, `todo <text>`,
   `open <app>`, `clear clipboard`, `go <tab>`. `restart` and `shutdown` never run from the command bar: they open the Power
@@ -110,7 +110,7 @@ The taskbar's system-tray features, built into the notch.
 - **Collapsed pill:** network (Wi-Fi, Ethernet or offline) on the left, the clock or focus-timer ring in the middle, battery on
   the right (red at 20% or less when not charging). Battery comes from Chromium's event-based battery API and the network type
   from the network adapters, so the collapsed notch still runs no timers or processes.
-- **Controls tab** (Ctrl+1; tabs are Ctrl+1 to Ctrl+8):
+- **Controls tab** (Ctrl+1; tabs are Ctrl+1 to Ctrl+9):
   - Split tiles: the main part acts, the chevron opens the matching Windows Settings page. Wi-Fi and Bluetooth switch the
     radios; Audio mutes and shows the output device; Dark mode switches Windows' app and system theme (applied live);
     Airplane mode uses Windows' own switch.
@@ -189,6 +189,7 @@ The taskbar's system-tray features, built into the notch.
   chat. It adds the Gabay and Windows versions, screen setup, a few settings and recent error messages, with user names
   and home folders removed. Nothing from the clipboard, notifications, calendar or files.
 - **The search bar** shows only on Launch (apps and commands) and Clipboard (filter). The hotkey opens Launch.
+- **Inbox tab:** recent Windows notifications, newest first, including ones Do not disturb kept quiet. Open or dismiss one, or clear all. They are held in memory only: never saved to disk, and gone when Gabay quits.
 - **Notes tab:** one scratchpad that saves as you type (to `notes.json` in `%APPDATA%\gabay`), with copy and clear.
 - **What's new:** the first start after an update shows a short note in the notch; Settings › What's new lists it
   (`src/whatsNew.ts`, one entry per release).
