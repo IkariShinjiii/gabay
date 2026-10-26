@@ -13,6 +13,9 @@ export interface OverlayApi {
   networkKind(): Promise<'wifi' | 'ethernet' | 'offline'>
   /** What this PC has; desktops often have no battery or Wi-Fi. */
   hardware(): Promise<{ battery: boolean; wifi: boolean } | null>
+  /** Microphone mute state of the default recording device; null when there is none. */
+  micGet(): Promise<boolean | null>
+  micSet(muted: boolean): Promise<boolean | null>
   /** Whether Windows' own Do not disturb is on. */
   windowsDnd(): Promise<boolean>
   /** Remove a Windows notification (by the id Gabay was given), or open the app it came from. */

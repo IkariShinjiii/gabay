@@ -9,7 +9,7 @@
 //            notedismiss <id> | noteopen <id>   remove a notification from Windows, or open the app it came from
 //            noteaccess <status>        whether Windows lets Gabay read notifications (Allowed, Denied, ...)
 //   requests <id> <command> [args]  ->  r <id> <json>
-//            vol <0-100> | volget | media toggle|next|prev | bt | notes on|off
+//            vol <0-100> | volget | micget | micset mute|unmute | media toggle|next|prev | bt | notes on|off
 //            appbar L T R B H | appbar off   (reserve a band at the top of a monitor, physical pixels)
 //            clipok                          (false when the copying app asked to keep it out of clipboard history)
 //            clipseq                         (clipboard sequence number: changes on every copy)
@@ -425,6 +425,8 @@ static class Native {
         return VolGet();
       }
       case "volget": return VolGet();
+      case "micget": return MicGet();
+      case "micset": try { Vol(1).SetMute(arg == "mute", Guid.Empty); } catch { } return MicGet();
       case "outlist": return OutList();
       case "outset": return OutSet(arg) ? "true" : "false";
       case "media": return MediaCommand(arg) ? "true" : "false";
@@ -747,12 +749,16 @@ static class Native {
   }
 
   // ---------- volume ----------
-  static IAudioEndpointVolume Vol() {
+  static IAudioEndpointVolume Vol(int flow = 0) {
     var en = new MMDeviceEnumeratorComObject() as IMMDeviceEnumerator;
-    IMMDevice dev; en.GetDefaultAudioEndpoint(0, 1, out dev);
+    IMMDevice dev; en.GetDefaultAudioEndpoint(flow, 1, out dev);
     var iid = typeof(IAudioEndpointVolume).GUID;
     IAudioEndpointVolume v; dev.Activate(ref iid, 23, 0, out v);
     return v;
+  }
+  // The default recording device (dataFlow 1): "true" muted, "false" not, "null" when there is none.
+  static string MicGet() {
+    try { bool m; Vol(1).GetMute(out m); return m ? "true" : "false"; } catch { return "null"; }
   }
   static string VolGet() {
     var ep = Vol(); float l; bool m; ep.GetMasterVolumeLevelScalar(out l); ep.GetMute(out m);

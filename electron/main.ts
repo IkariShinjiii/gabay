@@ -416,6 +416,18 @@ app.whenReady().then(async () => {
     // Resolves when the menu closes, so the panel can stay open while it's up.
     return new Promise<boolean>((resolve) => Menu.buildFromTemplate(items).popup({ window: win, callback: () => resolve(true) }))
   })
+  // Microphone mute: the default recording device. null when the PC has none.
+  ipcMain.handle('mic:get', async (e) => {
+    fromUi(e)
+    const r = await nativeCall('micget').catch(() => null)
+    return typeof r === 'boolean' ? r : null
+  })
+  ipcMain.handle('mic:set', async (e, muted: unknown) => {
+    fromUi(e)
+    if (typeof muted !== 'boolean') return null
+    const r = await nativeCall('micset', muted ? 'mute' : 'unmute').catch(() => null)
+    return typeof r === 'boolean' ? r : null
+  })
   ipcMain.handle('media:get', (e) => {
     fromUi(e)
     return media
