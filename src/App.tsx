@@ -781,6 +781,10 @@ export default function App(): React.JSX.Element {
   }
 
   // Picking a tab by hand starts it clean: typed text would otherwise keep covering the new tab with app results.
+  // The Inbox counts as seen whenever it is on screen (a note that arrived while it sat collapsed must not leave a stale dot).
+  useEffect(() => {
+    if (expanded && tab === 'Inbox') setUnseen(0)
+  }, [expanded, tab])
   const selectTab = useCallback((t: Tab): void => {
     setTab(t)
     if (t === 'Inbox') setUnseen(0)
