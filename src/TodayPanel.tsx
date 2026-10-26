@@ -100,6 +100,7 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
         <div className="clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
         <button className="date date-btn" onClick={() => setMonth((m) => !m)} title={tr('Calendar')}>
           {now.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
+          <Icon name="calendar" size={11} />
         </button>
         {weather && (
           <div className="wx" title={weather.place}>

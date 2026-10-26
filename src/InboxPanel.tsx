@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import Empty from './Empty'
 import Icon from './Icon'
 import { tr } from './i18n'
@@ -27,7 +28,23 @@ function ago(at: number): string {
   return `${Math.floor(m / 60)}h`
 }
 
+const lines = (it: InboxItem): React.JSX.Element => (
+  <>
+    <span className="inbox-app">
+      {it.app} · {ago(it.at)}
+    </span>
+    {it.title && <span className="inbox-title">{it.title}</span>}
+    {it.body && <span className="inbox-body">{it.body}</span>}
+  </>
+)
+
 export default function InboxPanel({ items, onOpen, onDismiss, onClear }: Props): React.JSX.Element {
+  // Re-render each 30 s so "2m" keeps counting while the tab is open.
+  const [, tick] = useState(0)
+  useEffect(() => {
+    const id = window.setInterval(() => tick((t) => t + 1), 30_000)
+    return () => window.clearInterval(id)
+  }, [])
   if (items.length === 0) {
     return <Empty icon="bell" title={tr('No notifications')} hint={tr('New Windows notifications are listed here, including ones silenced by Do not disturb. They are not saved.')} />
   }
@@ -37,14 +54,15 @@ export default function InboxPanel({ items, onOpen, onDismiss, onClear }: Props)
         {tr('Clear all')}
       </button>
       {items.map((it) => (
-        <div key={it.key} className="row inbox-row" onMouseDown={(e) => e.preventDefault()} onClick={() => onOpen(it)} title={it.id === undefined ? undefined : tr('Open')}>
-          <span className="inbox-text">
-            <span className="inbox-app">
-              {it.app} · {ago(it.at)}
-            </span>
-            {it.title && <span className="inbox-title">{it.title}</span>}
-            {it.body && <span className="inbox-body">{it.body}</span>}
-          </span>
+        <div key={it.key} className="row inbox-row">
+          {/* A real button, so the keyboard reaches it; without an id Windows can't open the app, so it is plain text. */}
+          {it.id === undefined ? (
+            <span className="inbox-text">{lines(it)}</span>
+          ) : (
+            <button className="inbox-text inbox-open" title={tr('Open')} onMouseDown={(e) => e.preventDefault()} onClick={() => onOpen(it)}>
+              {lines(it)}
+            </button>
+          )}
           <button
             className="star"
             title={tr('Dismiss')}

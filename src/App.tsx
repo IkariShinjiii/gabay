@@ -929,12 +929,13 @@ export default function App(): React.JSX.Element {
                 role="tab"
                 aria-selected={t === tab}
                 title={`${tr(t)} (Ctrl+${i + 1})`}
+                aria-label={t === 'Inbox' && unseen > 0 && tab !== 'Inbox' ? `${tr(t)}, ${tr('New')}` : undefined}
                 className={t === tab ? 'tab on' : 'tab'}
                 tabIndex={expanded ? 0 : -1}
                 onClick={() => selectTab(t)}
               >
                 {tr(t)}
-                {t === 'Inbox' && unseen > 0 && tab !== 'Inbox' && <span className="tab-badge" aria-label={tr('New')} />}
+                {t === 'Inbox' && unseen > 0 && tab !== 'Inbox' && <span className="tab-badge" aria-hidden="true" />}
                 {/* One marker shared by all tabs: Motion slides it from the old tab to the new one. */}
                 {t === tab && <motion.span layoutId="tab-marker" className="tab-marker" transition={SPRING} />}
               </button>

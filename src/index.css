@@ -108,7 +108,7 @@ body,
   background: none;
   font: inherit;
   cursor: pointer;
-  padding: 6px 9px;
+  padding: 6px 7px;
   border-radius: 8px;
   color: var(--muted);
 }
@@ -125,8 +125,8 @@ body,
 /* Active marker: a short bar under the label, the same accent as the focus ring */
 .tab-marker {
   position: absolute;
-  left: 9px;
-  right: 9px;
+  left: 7px;
+  right: 7px;
   bottom: 1px;
   height: 2px;
   border-radius: 1px;
@@ -2626,7 +2626,7 @@ button.big-icon {
 .dock {
   flex: none;
   display: flex;
-  justify-content: center;
+  justify-content: safe center; /* many apps scroll from the first one instead of cutting it off */
   gap: 4px;
   margin-top: 2px;
   padding: 8px 4px 2px;
@@ -2724,7 +2724,24 @@ button.big-icon {
 
 /* ---------- Inbox ---------- */
 .inbox-row {
+  cursor: default;
   align-items: flex-start;
+}
+
+.inbox-open {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.inbox-open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .inbox-text {
@@ -2770,6 +2787,9 @@ button.big-icon {
 
 /* ---------- Month view (Today) ---------- */
 .date-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 0;
   background: none;
   padding: 0;
@@ -2845,13 +2865,16 @@ button.big-icon {
 }
 
 .month-day.is-today {
-  background: var(--accent);
-  color: #000;
+  background: var(--accent-strong);
+  color: var(--on-accent);
   font-weight: 600;
 }
 
 .dock-desktop {
   margin-left: 6px;
+  position: sticky; /* stays reachable when the row scrolls */
+  right: 0;
+  background: #000;
 }
 
 .dock-desktop:hover,
