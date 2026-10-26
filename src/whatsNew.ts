@@ -2,6 +2,15 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.4.0',
+    [
+      'New Inbox tab: your recent notifications in one list, including ones Do not disturb kept quiet (never saved)',
+      'Click the date on Today for a month calendar',
+      'Mute your microphone from Controls',
+      'Dock: move pinned apps left or right, and a Show desktop button'
+    ]
+  ],
+  [
     '1.3.8',
     [
       'Fold the sound Output list away with one click; Gabay remembers it',
