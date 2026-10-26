@@ -817,7 +817,7 @@ export default function App(): React.JSX.Element {
   const rightPx = (battery ? 34 : 0) + (live && download ? 52 : live && media?.playing ? 20 : 0) + (privacy.cam.length || privacy.mic.length ? 12 : 0)
   const pillWidth = Math.max(live ? NOTCH.live.width : NOTCH.collapsed.width, 2 * Math.max(leftPx, rightPx) + 104)
   // The dock adds its own height on top of the usual cap, so tall tabs aren't squeezed by it.
-  const dockShown = dockOn && !welcome && wins.length > 0
+  const dockShown = dockOn && !welcome && wins.length > 0 && tab === 'Launch' // running apps live on Launch only
   const panelCap = NOTCH.expanded.height + (dockShown ? NOTCH.expanded.dock : 0)
   const size = expanded
     ? { width: NOTCH.expanded.width, height: Math.min(panelHeight, panelCap) }
