@@ -55,6 +55,8 @@ export const FIL: Record<string, string> = {
   "System": "Sistema",
   "Clipboard": "Clipboard",
   "Inbox": "Inbox",
+  "Previous month": "Nakaraang buwan",
+  "Next month": "Susunod na buwan",
   "No notifications": "Walang notification",
   "New Windows notifications are listed here, including ones silenced by Do not disturb. They are not saved.": "Dito makikita ang mga bagong notification ng Windows, pati ang pinatahimik ng Do not disturb. Hindi ito sine-save.",
   "Clear all": "Burahin lahat",
