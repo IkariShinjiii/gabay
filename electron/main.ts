@@ -334,13 +334,13 @@ app.whenReady().then(async () => {
       },
       note: async (raw) => {
         if (!settings.notifications || !raw || typeof raw !== 'object') return
-        if (settings.dndUntil === -1 || Date.now() < settings.dndUntil) return // do not disturb
+        const quiet = settings.dndUntil === -1 || Date.now() < settings.dndUntil // do not disturb: listed in the inbox, not shown
         const n = raw as Record<string, unknown>
         const appName = str(n.app, 80) ?? 'Notification'
         // Windows is silent while its Do not disturb is on, so Gabay plays the sound instead (if wanted).
-        const sound = settings.noteSound && (await nativeCall('dnd').catch(() => null)) === true
+        const sound = !quiet && settings.noteSound && (await nativeCall('dnd').catch(() => null)) === true
         const id = typeof n.id === 'number' && Number.isInteger(n.id) && n.id >= 0 ? n.id : undefined
-        send('overlay:note', settings.notePreview ? { id, app: appName, title: str(n.title, 120), body: str(n.body, 240), sound } : { id, app: appName, title: null, body: null, sound })
+        send('overlay:note', settings.notePreview ? { id, app: appName, title: str(n.title, 120), body: str(n.body, 240), sound, quiet } : { id, app: appName, title: null, body: null, sound, quiet })
       }
     }, () => {
       void nativeCall('notes', settings.notifications && !PREVIEW ? 'on' : 'off')

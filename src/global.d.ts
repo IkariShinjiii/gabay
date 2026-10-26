@@ -270,6 +270,8 @@ export interface NoteInfo {
   body: string | null
   /** Play the notification sound (Windows' Do not disturb is on, so Windows is silent). */
   sound?: boolean
+  /** Do not disturb is on: keep it for the inbox, show no toast. */
+  quiet?: boolean
 }
 
 export interface WifiNetwork {

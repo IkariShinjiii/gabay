@@ -14,6 +14,7 @@ import QuickPanel from './QuickPanel'
 import { useBattery } from './useBattery'
 import StatsPanel from './StatsPanel'
 import TodayPanel from './TodayPanel'
+import InboxPanel, { type InboxItem } from './InboxPanel'
 import NotchToast, { type Toast } from './NotchToast'
 import { chime, leftOf, useTimers } from './useTimers'
 import { useRecorder } from './useRecorder'
@@ -24,7 +25,7 @@ import { notesFor } from './whatsNew'
 import { useFocusTimer } from './useFocusTimer'
 import { tr, setLanguage, type Language } from './i18n'
 
-const TABS = ['Controls', 'Today', 'Notes', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
+const TABS = ['Controls', 'Today', 'Inbox', 'Notes', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
 type Tab = (typeof TABS)[number]
 
 const SAMPLE_WINS: DockApp[] = [
@@ -373,6 +374,12 @@ export default function App(): React.JSX.Element {
   const showing = useRef(false)
   const expandedRef = useRef(expanded)
   expandedRef.current = expanded
+  const tabRef = useRef(tab)
+  tabRef.current = tab
+  // Recent Windows notifications, newest first. In memory only (never saved), capped.
+  const [inbox, setInbox] = useState<InboxItem[]>([])
+  const [unseen, setUnseen] = useState(0)
+  const inboxKey = useRef(1)
   const showNext = useCallback((): void => {
     window.clearTimeout(toastTimer.current)
     if (toastHoverRef.current) { toastHoverRef.current = false; window.overlay.setInteractive(false) }
@@ -432,6 +439,12 @@ export default function App(): React.JSX.Element {
         if (new URLSearchParams(location.hash.slice(1)).has('hover')) document.documentElement.setAttribute('data-preview-hover', '')
         setToast({ id: 0, icon: 'message-square', noteId: 1, label: tr('Messenger'), title: tr('Kevin'), sub: tr('are you coming tonight? we are at the usual place'), ms: 60_000 })
       }
+    if (previewParam === 'Inbox')
+      setInbox([
+        { key: 1, id: 1, app: 'Messenger', title: 'Kevin', body: 'are you coming tonight? we are at the usual place', at: Date.now() - 120_000 },
+        { key: 2, id: 2, app: 'Outlook', title: 'Weekly report due', body: null, at: Date.now() - 3_600_000 },
+        { key: 3, id: 3, app: 'Discord', title: 'Server', body: 'Someone mentioned you in #general: the patch notes are up, take a look when you can', at: Date.now() - 7_200_000 }
+      ])
     if (previewParam === 'Live')
       setMedia({ title: tr('Weightless'), artist: 'Marconi Union', app: 'Spotify.exe', playing: true, duration: 480, art: '' })
     // &demo (dev preview only): a running timer and stopwatch and sample weather, for screenshots.
@@ -454,7 +467,10 @@ export default function App(): React.JSX.Element {
     })
     const offMedia = window.overlay.onMedia(take)
     const offNote = window.overlay.onNote((n) => {
-      if (dndRef.current) return
+      const seen = expandedRef.current && tabRef.current === 'Inbox'
+      setInbox((l) => [{ key: inboxKey.current++, id: n.id, app: n.app, title: n.title, body: n.body, at: Date.now() }, ...l].slice(0, 50))
+      if (!seen) setUnseen((u) => u + 1)
+      if (n.quiet || dndRef.current) return
       if (n.sound && !fullscreenRef.current) noteChime() // a toast is held back over a game or video, and so is its sound
       pushToast({
         icon: 'message-square',
@@ -767,10 +783,11 @@ export default function App(): React.JSX.Element {
   // Picking a tab by hand starts it clean: typed text would otherwise keep covering the new tab with app results.
   const selectTab = useCallback((t: Tab): void => {
     setTab(t)
+    if (t === 'Inbox') setUnseen(0)
     setInput('')
   }, [])
 
-  // Ctrl+1..8 switch tabs while the panel is open.
+  // Ctrl+1..9 switch tabs while the panel is open.
   useEffect(() => {
     if (!expanded) return
     const onKey = (e: KeyboardEvent): void => {
@@ -826,6 +843,24 @@ export default function App(): React.JSX.Element {
     body = <ClipboardPanel query={query} onCopied={onClipCopied} />
   } else if (expanded && tab === 'Today') {
     body = <TodayPanel timer={focusTimer} timers={timers} weather={weather} todoVersion={todoVersion} onHold={onTodoHold} />
+  } else if (expanded && tab === 'Inbox') {
+    body = (
+      <InboxPanel
+        items={inbox}
+        onOpen={(it) => {
+          if (it.id !== undefined) void window.overlay.noteOpen(it.id)
+          setInbox((l) => l.filter((x) => x.key !== it.key))
+        }}
+        onDismiss={(it) => {
+          if (it.id !== undefined) void window.overlay.noteDismiss(it.id)
+          setInbox((l) => l.filter((x) => x.key !== it.key))
+        }}
+        onClear={() => {
+          for (const it of inbox) if (it.id !== undefined) void window.overlay.noteDismiss(it.id)
+          setInbox([])
+        }}
+      />
+    )
   } else if (expanded && tab === 'Notes') {
     body = <NotesPanel onHold={onTodoHold} />
   } else if (expanded && tab === 'Power') {
@@ -899,6 +934,7 @@ export default function App(): React.JSX.Element {
                 onClick={() => selectTab(t)}
               >
                 {tr(t)}
+                {t === 'Inbox' && unseen > 0 && tab !== 'Inbox' && <span className="tab-badge" aria-label={tr('New')} />}
                 {/* One marker shared by all tabs: Motion slides it from the old tab to the new one. */}
                 {t === tab && <motion.span layoutId="tab-marker" className="tab-marker" transition={SPRING} />}
               </button>
