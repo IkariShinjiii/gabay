@@ -17,7 +17,7 @@ import { currentProjectMode, isProjectMode, setProjectMode } from './project'
 import { isSettingsKey, networkKind, quickGet, quickPeek, quickSet, quickSlide, SETTINGS_PAGES, stopQuick } from './quick'
 import { COLLAPSE_MAX, COLLAPSE_MIN, DEFAULTS, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
 import { getNotes, setNotes } from './notes'
-import { ensureIndex, findByExe, getIcon, isStarred, launch, pinnedApps, search, toggleStar } from './launcher'
+import { ensureIndex, findByExe, getIcon, isStarred, launch, movePin, pinnedApps, search, toggleStar } from './launcher'
 import { isPowerAction, runPower } from './power'
 import { addTodo, listTodos, removeTodo, toggleTodo } from './todos'
 import { clearHistory, copyBack, listClipboard, setClipboardGuard, startClipboardHistory, stopClipboardHistory, togglePin } from './clipboardHistory'
@@ -398,6 +398,10 @@ app.whenReady().then(async () => {
         label: pinned ? 'Unpin from dock' : 'Pin to dock',
         click: () => void toggleStar(pinId).then(() => pushWins())
       })
+    }
+    if (pinId && pinned) {
+      items.push({ label: 'Move left', click: () => void movePin(pinId, -1).then(() => pushWins()) })
+      items.push({ label: 'Move right', click: () => void movePin(pinId, 1).then(() => pushWins()) })
     }
     if (g.wins.length) {
       items.push({ type: 'separator' })
