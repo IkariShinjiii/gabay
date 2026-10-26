@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { app, BrowserWindow, powerMonitor, globalShortcut, ipcMain, Menu, nativeImage, screen, session, shell, systemPreferences, Tray } from 'electron'
+import { execFile } from 'node:child_process'
 import os from 'node:os'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -378,6 +379,13 @@ app.whenReady().then(async () => {
     if (!g) return false
     if (g.launchId) return launch(g.launchId)
     return g.path ? (await shell.openPath(g.path)) === '' : false
+  })
+  // Show desktop (minimize or restore every window), the taskbar's far corner. A fixed command: nothing from the UI is used.
+  ipcMain.handle('desktop:toggle', (e) => {
+    fromUi(e)
+    return new Promise<boolean>((resolve) => {
+      execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', '(New-Object -ComObject Shell.Application).ToggleDesktop()'], { windowsHide: true, timeout: 10_000 }, (err) => resolve(!err))
+    })
   })
   // Right-click on a dock icon: a native menu, so it can spill outside the notch.
   ipcMain.handle('windows:menu', async (e, key: unknown) => {

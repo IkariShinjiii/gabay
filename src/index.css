@@ -2849,3 +2849,13 @@ button.big-icon {
   color: #000;
   font-weight: 600;
 }
+
+.dock-desktop {
+  margin-left: 6px;
+}
+
+.dock-desktop:hover,
+.dock-desktop:focus-visible {
+  color: var(--text);
+  background: var(--surface);
+}
