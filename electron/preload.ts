@@ -70,6 +70,7 @@ contextBridge.exposeInMainWorld('overlay', {
   whenPresent: () => ipcRenderer.invoke('presence:wait'),
   micGet: () => ipcRenderer.invoke('mic:get'),
   micSet: (muted: boolean) => ipcRenderer.invoke('mic:set', muted),
+  showDesktop: () => ipcRenderer.invoke('desktop:toggle'),
   windowsGet: () => ipcRenderer.invoke('windows:get'),
   windowsClick: (id: string) => ipcRenderer.invoke('windows:click', id),
   windowsLaunch: (key: string) => ipcRenderer.invoke('windows:launch', key),

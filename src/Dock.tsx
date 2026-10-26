@@ -67,6 +67,9 @@ export default function Dock({ apps, onHold }: { apps: DockApp[]; onHold: (held:
           </button>
         )
       })}
+      <button className="dock-app dock-desktop" title={tr('Show desktop')} aria-label={tr('Show desktop')} onClick={() => void window.overlay.showDesktop()}>
+        <Icon name="monitor" size={18} />
+      </button>
     </div>
   )
 }
