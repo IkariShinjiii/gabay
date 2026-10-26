@@ -5,6 +5,7 @@ import { formatClock, leftOf, MAX_TIMERS, type Timers } from './useTimers'
 import { weatherLook } from './weatherIcon'
 import { formatMs, type FocusTimer } from './useFocusTimer'
 import { tr } from './i18n'
+import MonthView from './MonthView'
 
 interface Props {
   timer: FocusTimer
@@ -71,6 +72,7 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
   const [now, setNow] = useState(() => new Date())
   const [todos, setTodos] = useState<Todo[]>([])
   const [draft, setDraft] = useState('')
+  const [month, setMonth] = useState(() => new URLSearchParams(location.hash.slice(1)).has('month')) // &month: dev preview
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 1000)
@@ -96,7 +98,9 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
     <div className="today">
       <div className="today-left">
         <div className="clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-        <div className="date">{now.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}</div>
+        <button className="date date-btn" onClick={() => setMonth((m) => !m)} title={tr('Calendar')}>
+          {now.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
+        </button>
         {weather && (
           <div className="wx" title={weather.place}>
             <Icon name={weatherLook(weather.code, weather.day).icon} size={14} />
@@ -130,6 +134,7 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
       </div>
 
       <div className="today-right">
+        {month ? <MonthView today={now} onClose={() => setMonth(false)} /> : <>
         <Agenda now={now.getTime()} />
         <input
           className="field todo-field"
@@ -170,6 +175,7 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
             </div>
           ))}
         </div>
+        </>}
       </div>
     </div>
       <div className="today-row">

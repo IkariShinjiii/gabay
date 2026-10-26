@@ -2767,3 +2767,85 @@ button.big-icon {
   border-radius: 50%;
   background: var(--accent);
 }
+
+/* ---------- Month view (Today) ---------- */
+.date-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.date-btn:hover,
+.date-btn:focus-visible {
+  color: var(--accent-text);
+}
+
+.month {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.month-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.month-title {
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.month-step {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  display: inline-flex;
+}
+
+.month-step.flip {
+  transform: scaleX(-1);
+}
+
+.month-step:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.month-dow {
+  color: var(--muted);
+  font-size: 11px;
+  padding-bottom: 2px;
+}
+
+.month-day {
+  padding: 4px 0;
+  border-radius: 8px;
+  color: var(--text-2);
+}
+
+.month-day.is-today {
+  background: var(--accent);
+  color: #000;
+  font-weight: 600;
+}
