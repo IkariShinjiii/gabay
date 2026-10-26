@@ -276,6 +276,17 @@ export async function toggleStar(id: string): Promise<boolean> {
   return s.starred.includes(id)
 }
 
+/** Moves a starred app one place earlier (-1) or later (1) in the dock; false if it isn't starred or is already at that end. */
+export async function movePin(id: string, delta: -1 | 1): Promise<boolean> {
+  const s = await loadStore()
+  const i = s.starred.indexOf(id)
+  const j = i + delta
+  if (i < 0 || j < 0 || j >= s.starred.length) return false
+  ;[s.starred[i], s.starred[j]] = [s.starred[j], s.starred[i]]
+  await saveStore()
+  return true
+}
+
 // --- the dock: starred apps stay in it, and open windows join their app ---
 const exeCache = new Map<string, string | null>()
 /** The program a Start menu shortcut runs (lowercase), or null for Store apps and unreadable shortcuts. */
