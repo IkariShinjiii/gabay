@@ -176,6 +176,7 @@ export default function App(): React.JSX.Element {
   const versionRef = useRef('')
   // Set once pushToast exists (further down); called from the settings load above.
   const announceUpdate = useRef<(version: string) => void>(() => undefined)
+  const pushToastRef = useRef<(t: Omit<Toast, 'id'>) => void>(() => undefined)
   accentRef.current = accentName
   const [place, setPlace] = useState<string | null>(null)
   const [dockOn, setDockOn] = useState(false)
@@ -203,6 +204,19 @@ export default function App(): React.JSX.Element {
         // An automatic update can finish while nobody is at the PC: wait until someone is, then say it.
         void window.overlay.whenPresent().then(() => window.setTimeout(() => announceUpdate.current(r.version), 2500))
         void window.overlay.setSettings({ seenVersion: r.version })
+      }
+      // Once, a few days in: ask for a review (never over a game, and not on top of the update note).
+      const at = r.settings.reviewAt
+      if (r.settings.welcomed && at > 0 && !previewParam) {
+        window.setTimeout(() => {
+          void window.overlay.whenPresent().then(() =>
+            window.setTimeout(() => {
+              if (fullscreenRef.current) return // try again next start
+              void window.overlay.setSettings({ reviewAt: -1 })
+              pushToastRef.current({ icon: 'star', title: tr('Enjoying Gabay?'), sub: tr('Rate it in Settings › Rate Gabay'), tone: 'accent', ms: 8000 })
+            }, 15_000)
+          )
+        }, Math.min(Math.max(0, at - Date.now()), 2_000_000_000))
       }
       // First run: open straight into the tour (never in screenshot previews, except the tour's own).
       if (previewWelcome || (!r.settings.welcomed && !previewParam)) startWelcome()
@@ -402,6 +416,8 @@ export default function App(): React.JSX.Element {
     },
     [showNext]
   )
+  pushToastRef.current = pushToast
+
   useEffect(() => {
     if (!expanded && !showing.current && queue.current.length) showNext()
   }, [expanded, showNext])

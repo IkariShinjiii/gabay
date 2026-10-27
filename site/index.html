@@ -188,6 +188,14 @@ code { font-family: var(--mono); font-size: 0.85em; color: var(--text-2); }
 .dl-meta { margin-top: 12px; font-family: var(--mono); font-size: 0.74rem; color: var(--muted); }
 .hero-note { margin-top: 6px; font-size: 0.85rem; color: var(--muted); max-width: 56ch; }
 .hero-note b { color: #fff; }
+/* thank-you panel after Download: a friendly ask, never a gate */
+.thanks { width: min(440px, calc(100% - 32px)); padding: 28px 26px 22px; border: 1px solid var(--border-2); border-radius: var(--radius-card); background: #121412; color: var(--text); text-align: center; }
+.thanks::backdrop { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
+.thanks h2 { margin: 0; font-family: var(--display); font-size: 1.5rem; }
+.thanks p { margin: 10px 0 0; color: var(--text-2); font-size: 0.95rem; }
+.thanks .ctas { margin-top: 22px; }
+.thanks .later { margin-top: 14px; padding: 8px 14px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 0.88rem; cursor: pointer; }
+.thanks .later:hover { color: var(--text); }
 .facts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 22px; }
 .chip { font-family: var(--mono); font-size: 0.72rem; padding: 6px 12px; border-radius: var(--radius-pill); border: 1px solid var(--border-2); color: var(--text); background: rgba(11, 12, 11, 0.5); white-space: nowrap; }
 .chip.lit { background: rgba(255, 255, 255, 0.9); color: #0b0c0b; border-color: transparent; }
@@ -810,6 +818,18 @@ html.pre-lock, html.pre-lock body { overflow: hidden; }
     </div>
   </section>
 </main>
+<dialog class="thanks" id="thanks" aria-labelledby="thanks-h">
+  <h2 id="thanks-h">Your download has started</h2>
+  <p>Gabay is free and made by one person. If you like it, a star and a follow on GitHub help a lot.</p>
+  <div class="ctas">
+    <a class="btn primary" href="https://github.com/IkariShinjiii/gabay" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="m12 2l3.1 6.3l6.9 1l-5 4.9l1.2 6.8L12 17.8L5.8 21l1.2-6.8l-5-4.9l6.9-1z"/></svg>
+      Star the repo
+    </a>
+    <a class="btn" href="https://github.com/IkariShinjiii" target="_blank" rel="noopener">Follow IkariShinjiii</a>
+  </div>
+  <form method="dialog"><button class="later">Maybe later</button></form>
+</dialog>
 
 <footer>
   <div class="wrap">
@@ -851,6 +871,16 @@ html.pre-lock, html.pre-lock body { overflow: hidden; }
       new IntersectionObserver(function (e) { if (e[0].isIntersecting) play(); else video.pause(); }, { threshold: 0.25 }).observe(video);
     } else play();
   }
+
+  // After Download: the file starts as usual, then a thank-you panel asks (never requires) a star and a follow.
+  var thanks = document.getElementById('thanks');
+  document.getElementById('download').addEventListener('click', function () {
+    if (thanks && typeof thanks.showModal === 'function') setTimeout(function () { if (!thanks.open) thanks.showModal(); }, 400);
+  });
+  if (thanks) thanks.addEventListener('click', function (e) {
+    var r = thanks.getBoundingClientRect(); // a click on the backdrop lands on the dialog too, outside its box
+    if (e.target === thanks && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) thanks.close();
+  });
 
   // The download button always points at the newest release; without the API it falls back to the releases page.
   var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };

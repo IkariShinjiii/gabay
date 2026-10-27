@@ -85,6 +85,8 @@ export interface OverlayApi {
   /** Opens a prefilled GitHub issue ('github') or copies the report ('copy'). Personal paths are scrubbed. */
   reportBug(description: string, how: 'github' | 'copy'): Promise<boolean>
   logError(msg: string): void
+  /** Opens the Gabay review form on GitHub. */
+  openReview(): Promise<boolean>
   onPrivacy(cb: (p: { mic: string[]; cam: string[] }) => void): () => void
   /** Open windows, while "Hide the Windows taskbar" is on. */
   /** Resolves once someone is using the PC (keyboard or mouse in the last few seconds). */
@@ -148,6 +150,7 @@ export interface Settings {
   lyrics: boolean
   dndUntil: number
   welcomed: boolean
+  reviewAt: number
   seenVersion: string
   visibility: 'always' | 'auto'
   hideTaskbar: boolean

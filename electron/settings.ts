@@ -28,6 +28,8 @@ export interface Settings {
   dndUntil: number
   /** The first-run tour was shown (or skipped). */
   welcomed: boolean
+  /** When to ask once for a review (ms); 0 = not scheduled yet, -1 = asked. */
+  reviewAt: number
   /** The version whose "what's new" was last shown. */
   seenVersion: string
   /** 'always': shown, except while something is full screen. 'auto': off-screen until the pointer rests on the top edge. */
@@ -51,7 +53,7 @@ export const ACCENTS = ['mint', 'windows', 'blue', 'purple', 'pink', 'orange', '
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, noteSound: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, welcomed: false, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarWasAutoHide: null, autoUpdate: true, updateChannel: 'stable', language: 'en' }
+export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, noteSound: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, welcomed: false, reviewAt: 0, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarWasAutoHide: null, autoUpdate: true, updateChannel: 'stable', language: 'en' }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -82,6 +84,7 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
   const lyrics = typeof r.lyrics === 'boolean' ? r.lyrics : base.lyrics
   const dndUntil = typeof r.dndUntil === 'number' && (r.dndUntil === -1 || r.dndUntil >= 0) ? r.dndUntil : base.dndUntil
   const welcomed = typeof r.welcomed === 'boolean' ? r.welcomed : base.welcomed
+  const reviewAt = typeof r.reviewAt === 'number' && Number.isFinite(r.reviewAt) && (r.reviewAt === -1 || r.reviewAt >= 0) ? r.reviewAt : base.reviewAt
   const seenVersion = typeof r.seenVersion === 'string' && /^\d+\.\d+\.\d+$/.test(r.seenVersion) ? r.seenVersion : base.seenVersion
   const hideTaskbar = typeof r.hideTaskbar === 'boolean' ? r.hideTaskbar : base.hideTaskbar
   const taskbarWasAutoHide =
@@ -89,7 +92,7 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
   const autoUpdate = typeof r.autoUpdate === 'boolean' ? r.autoUpdate : base.autoUpdate
   const updateChannel = r.updateChannel === 'stable' || r.updateChannel === 'preview' ? r.updateChannel : base.updateChannel
   const language = r.language === 'en' || r.language === 'fil' ? r.language : base.language
-  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, noteSound, reserveTop, accent, place, lyrics, dndUntil, welcomed, seenVersion, visibility, hideTaskbar, taskbarWasAutoHide, autoUpdate, updateChannel, language }
+  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, noteSound, reserveTop, accent, place, lyrics, dndUntil, welcomed, reviewAt, seenVersion, visibility, hideTaskbar, taskbarWasAutoHide, autoUpdate, updateChannel, language }
 }
 
 export async function loadSettings(): Promise<Settings> {
