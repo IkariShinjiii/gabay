@@ -56,6 +56,7 @@ contextBridge.exposeInMainWorld('overlay', {
   lyricsGet: (title: string, artist: string, duration: number) => ipcRenderer.invoke('lyrics:get', title, artist, duration),
   accentColor: () => ipcRenderer.invoke('theme:accent'),
   reportBug: (description: string, how: 'github' | 'copy') => ipcRenderer.invoke('bug:report', description, how),
+  openReview: () => ipcRenderer.invoke('review:open'),
   logError: (msg: string): void => ipcRenderer.send('log:error', msg),
   onPrivacy: (cb: (p: unknown) => void): (() => void) => {
     const handler = (_e: unknown, p: unknown): void => cb(p)

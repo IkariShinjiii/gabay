@@ -137,6 +137,11 @@ process.on('unhandledRejection', (e) => logError('main (async)', e))
 app.whenReady().then(async () => {
   if (!gotLock) return
   let settings = await loadSettings()
+  // Ask for a review once, three days after the first start.
+  if (settings.reviewAt === 0 && !PREVIEW) {
+    settings = { ...settings, reviewAt: Date.now() + 3 * 86_400_000 }
+    void saveSettings(settings)
+  }
   const win = createOverlay(targetDisplay(settings))
   let mouseLocked = false
 
@@ -582,6 +587,10 @@ app.whenReady().then(async () => {
     if (e.sender !== win.webContents || typeof msg !== 'string') return
     logError('notch page', msg.slice(0, 300))
   })
+  ipcMain.handle('review:open', (e) => {
+    fromUi(e)
+    return shell.openExternal('https://github.com/IkariShinjiii/gabay/issues/new?template=review.yml').then(() => true, () => false)
+  })
   ipcMain.handle('bug:report', (e, description: unknown, how: unknown) => {
     fromUi(e)
     return sendReport(description, how, { settings: settings as unknown as Record<string, unknown>, helperRunning: nativeRunning() })
@@ -815,7 +824,7 @@ app.whenReady().then(async () => {
   // welcome tour isn't shown again.
   ipcMain.handle('settings:reset', (e) => {
     fromUi(e)
-    return applyPatch({ ...DEFAULTS, hotkey: DEFAULTS.hotkey, welcomed: true, seenVersion: settings.seenVersion })
+    return applyPatch({ ...DEFAULTS, hotkey: DEFAULTS.hotkey, welcomed: true, reviewAt: settings.reviewAt, seenVersion: settings.seenVersion })
   })
   ipcMain.handle('notes:get', (e) => {
     fromUi(e)

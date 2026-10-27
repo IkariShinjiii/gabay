@@ -625,6 +625,15 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
           </button>
         </div>
       </div>
+      <div className="set-row">
+        <div className="set-label">{tr('Rate Gabay')}</div>
+        <div className="set-opts">
+          <button className="chip on" onClick={() => void window.overlay.openReview()} title={tr('Opens the review form on GitHub (needs a GitHub account)')}>
+            {tr('Write a review')}
+          </button>
+        </div>
+        <div className="set-note muted">{tr('Reviews show on the Gabay website once checked for spam.')}</div>
+      </div>
       <ReportRow onHold={onHold} />
       <ResetRow
         onReset={async () => {
