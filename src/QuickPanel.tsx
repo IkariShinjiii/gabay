@@ -429,7 +429,21 @@ export default function QuickPanel(props: {
   // Whether the default microphone is muted; null when the PC has none (the tile then stays out).
   const [micMuted, setMicMuted] = useState<boolean | null>(null)
   useEffect(() => {
-    void window.overlay.micGet().then(setMicMuted, () => undefined)
+    // Right after start the helper may not be up yet; ask again a few times before deciding there is no mic.
+    let alive = true
+    let timer: number | undefined
+    const ask = (left: number): void => {
+      void window.overlay.micGet().then((m) => {
+        if (!alive) return
+        if (m !== null) setMicMuted(m)
+        else if (left > 0) timer = window.setTimeout(() => ask(left - 1), 2000)
+      }, () => undefined)
+    }
+    ask(4)
+    return () => {
+      alive = false
+      window.clearTimeout(timer)
+    }
   }, [])
   // Media already there when the tab opens shows at once; only media that appears later animates in.
   const mediaAtMount = useRef(!!cache?.media)
@@ -594,7 +608,7 @@ export default function QuickPanel(props: {
               {hasRadio && (
                 <SplitTile
                   icon="plane"
-                  label={tr('Airplane mode')}
+                  label={tr('Airplane')}
                   sub={state.airplane === null ? tr('Unavailable') : state.airplane ? tr('On') : tr('Off')}
                   on={!!state.airplane}
                   disabled={state.airplane === null}
