@@ -978,7 +978,7 @@ static class Native {
           if (!primed || seen.Contains(n.Id)) continue; // what was already there when notes turned on is old news
           string app = null, title = null, body = null;
           try { app = n.AppInfo.DisplayInfo.DisplayName; } catch { }
-          try { lock (noteApps) { if (noteApps.Count > 40) noteApps.Clear(); noteApps[n.Id] = n.AppInfo.AppUserModelId; } } catch { }
+          try { lock (noteApps) { if (noteApps.Count > 80) noteApps.Clear(); noteApps[n.Id] = n.AppInfo.AppUserModelId; } } catch { }
           try {
             var b = n.Notification.Visual.GetBinding(KnownNotificationBindings.ToastGeneric);
             if (b != null) {

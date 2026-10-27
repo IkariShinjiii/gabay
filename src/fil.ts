@@ -75,6 +75,7 @@ export const FIL: Record<string, string> = {
   "Bluetooth": "Bluetooth",
   "Audio": "Audio",
   "Airplane mode": "Airplane mode",
+  "Airplane": "Airplane",
   "Dark mode": "Dark mode",
   "Focus": "Focus",
   "Screenshot": "Screenshot",
