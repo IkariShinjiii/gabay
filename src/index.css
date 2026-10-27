@@ -531,7 +531,7 @@ body,
 }
 
 .settings {
-  padding: 12px 18px;
+  padding: 2px 12px 12px 0; /* lines up with the other tabs; the right side leaves room for the scrollbar */
   display: flex;
   flex-direction: column;
   gap: 14px; /* groups read as groups: more air between them than between a label and its chips */
@@ -2209,6 +2209,7 @@ button.big-icon {
 /* ---------- Settings additions ---------- */
 .swatches {
   gap: 8px;
+  padding-left: 4px; /* room for the selected ring, which draws outside the swatch */
 }
 
 .swatch {

@@ -197,6 +197,7 @@ export const FIL: Record<string, string> = {
   "Focus timer": "Focus timer",
   "Time is up": "Tapos na ang oras",
   "Take a short break": "Magpahinga muna sandali",
+  "Timers": "Mga timer",
   "Timer done": "Tapos na ang timer",
   "Charging": "Nagcha-charge",
   "Fully charged": "Puno na ang baterya",
