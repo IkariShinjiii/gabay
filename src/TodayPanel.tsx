@@ -215,7 +215,7 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
         <div className="card tm">
           <div className="card-head">
             <Icon name="timer" size={13} />
-            Timers
+            {tr('Timers')}
             <span className="tm-add">
               {[1, 5, 10, 30].map((m) => (
                 <button key={m} className="chip" disabled={timers.countdowns.length >= MAX_TIMERS} onClick={() => timers.add(m)} title={`New ${m}-minute timer`}>
