@@ -242,8 +242,10 @@ export default function App(): React.JSX.Element {
         evaluate()
       }
 
+      // Over a full-screen game or video the top edge belongs to the app (games scroll and aim there); only the hotkey opens Gabay.
       if (visibilityRef.current !== 'auto' && !fullscreenRef.current) return
       if (!revealedRef.current) {
+        if (fullscreenRef.current) return
         // Reveal only on a rest at the very top edge within the notch's width, never on a pass through to a tab.
         const atEdge = e.clientY <= 3 && Math.abs(e.clientX - window.innerWidth / 2) <= NOTCH.collapsed.width / 2 + 24
         if (!atEdge) {
