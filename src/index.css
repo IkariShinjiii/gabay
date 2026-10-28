@@ -2880,6 +2880,25 @@ button.big-icon {
   background: #000;
 }
 
+.dock-tray {
+  display: flex;
+  gap: 2px;
+  margin-right: 4px;
+  padding-right: 6px;
+  border-right: 1px solid var(--line);
+}
+
+.dock-tray-icon {
+  width: 32px;
+}
+
+.dock-tray-icon img {
+  width: 18px;
+  height: 18px;
+}
+
+.dock-tray-icon:hover,
+.dock-tray-icon:focus-visible,
 .dock-sys:hover,
 .dock-sys:focus-visible,
 .dock-desktop:hover,

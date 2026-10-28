@@ -240,6 +240,20 @@ app.whenReady().then(async () => {
   // Open windows for the dock row (only while the taskbar is hidden). Paths stay here; the renderer gets icons.
   type Win = { id: string; title: string; path: string | null; minimized: boolean; active: boolean; attention: boolean }
   let openWins: Win[] = []
+  // Other apps' tray icons (while Gabay is the notification area). Checked here: they come from any app on the PC.
+  type Tray = { id: string; tip: string; icon: string }
+  let trayIcons: Tray[] = []
+  const takeTray = (raw: unknown): Tray[] => {
+    if (!Array.isArray(raw)) return []
+    const out: Tray[] = []
+    for (const t of raw.slice(0, 64) as Record<string, unknown>[]) {
+      if (!t || typeof t !== 'object') continue
+      const id = typeof t.id === 'string' && /^(?:[0-9a-f]{32}|-?\d{1,20}-\d{1,10})$/.test(t.id) ? t.id : null
+      const icon = typeof t.icon === 'string' && t.icon.length < 60_000 && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(t.icon) ? t.icon : null
+      if (id && icon) out.push({ id, tip: str(t.tip, 128) ?? '', icon })
+    }
+    return out
+  }
   const winIcons = new Map<string, string | null>()
   const iconFor = async (path: string | null): Promise<string | null> => {
     if (!path) return null
@@ -326,6 +340,10 @@ app.whenReady().then(async () => {
         }
         send('overlay:media', media)
       },
+      tray: (raw) => {
+        trayIcons = settings.hideTaskbar && settings.trayIcons ? takeTray(raw) : []
+        send('overlay:tray', trayIcons)
+      },
       windows: (raw) => {
         openWins = settings.hideTaskbar ? takeWins(raw) : []
         void pushWins()
@@ -363,6 +381,16 @@ app.whenReady().then(async () => {
       }
       check()
     })
+  })
+  ipcMain.handle('tray:get', (e) => {
+    fromUi(e)
+    return trayIcons
+  })
+  ipcMain.handle('tray:click', (e, id: unknown, button: unknown) => {
+    fromUi(e)
+    // only an icon the helper listed, and only a left or right click
+    if (typeof id !== 'string' || !trayIcons.some((t) => t.id === id) || (button !== 'l' && button !== 'r')) return false
+    return nativeCall('trayclick', `${id} ${button}`)
   })
   ipcMain.handle('windows:get', async (e) => {
     fromUi(e)
@@ -746,9 +774,13 @@ app.whenReady().then(async () => {
       }
       await nativeCall('tbset', `1 ${settings.taskbarWasAutoHide ? 1 : 0}`)
       await nativeCall('tbhide', settings.taskbarFull ? '1' : '0')
+      await nativeCall('tray', settings.trayIcons ? `on ${process.pid}` : 'off')
       await nativeCall('wins', 'on')
     } else {
       await nativeCall('tbhide', '0') // also undoes a hide left over from a run that was killed
+      await nativeCall('tray', 'off')
+      trayIcons = []
+      send('overlay:tray', [])
       await nativeCall('wins', 'off')
       openWins = []
       send('overlay:windows', [])
@@ -816,6 +848,7 @@ app.whenReady().then(async () => {
     const prevReserve = settings.reserveTop
     const prevHide = settings.hideTaskbar
     const prevFull = settings.taskbarFull
+    const prevTray = settings.trayIcons
     const prevChannel = settings.updateChannel
     // taskbarWasAutoHide is main's own record; a patch (or Reset's defaults) never overwrites it.
     const next: Settings = { ...sanitize(patch, settings), taskbarWasAutoHide: settings.taskbarWasAutoHide }
@@ -828,7 +861,7 @@ app.whenReady().then(async () => {
     void nativeCall('notes', settings.notifications ? 'on' : 'off')
     if (next.reserveTop !== prevReserve) applyReserve()
     await saveSettings(settings)
-    if (next.hideTaskbar !== prevHide || next.taskbarFull !== prevFull) await applyTaskbar()
+    if (next.hideTaskbar !== prevHide || next.taskbarFull !== prevFull || next.trayIcons !== prevTray) await applyTaskbar()
     if (next.updateChannel !== prevChannel && app.isPackaged) void lookForUpdate()
     return snapshot()
   }

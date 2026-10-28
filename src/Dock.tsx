@@ -1,4 +1,4 @@
-import type { DockApp } from './global'
+import type { DockApp, TrayIcon } from './global'
 import Icon from './Icon'
 import { tr } from './i18n'
 
@@ -10,7 +10,7 @@ import { tr } from './i18n'
  * it has several windows, brings up the next one. Right-click: open a new window, pin or unpin, close.
  * The mark under an icon: a dot per open window (up to three), wide for the app in use, pulsing for attention.
  */
-export default function Dock({ apps, onHold }: { apps: DockApp[]; onHold: (held: boolean) => void }): React.JSX.Element {
+export default function Dock({ apps, tray, onHold }: { apps: DockApp[]; tray: TrayIcon[]; onHold: (held: boolean) => void }): React.JSX.Element {
   const click = (a: DockApp): void => {
     if (a.wins.length === 0) {
       void window.overlay.windowsLaunch(a.key)
@@ -68,6 +68,25 @@ export default function Dock({ apps, onHold }: { apps: DockApp[]; onHold: (held:
         )
       })}
       <span className="dock-corner">
+      {tray.length > 0 && (
+        <span className="dock-tray" role="group" aria-label={tr('Tray icons')}>
+          {tray.map((t) => (
+            <button
+              key={t.id}
+              className="dock-app dock-tray-icon"
+              title={t.tip}
+              aria-label={t.tip || tr('Tray icon')}
+              onClick={() => void window.overlay.trayClick(t.id, 'l')}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                void window.overlay.trayClick(t.id, 'r')
+              }}
+            >
+              <img src={t.icon} alt="" draggable={false} />
+            </button>
+          ))}
+        </span>
+      )}
       <button className="dock-app dock-sys" title={tr('Notifications and calendar')} aria-label={tr('Notifications and calendar')} onClick={() => void window.overlay.openFlyout('notifications')}>
         <Icon name="bell" size={18} />
       </button>

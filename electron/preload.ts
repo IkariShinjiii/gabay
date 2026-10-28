@@ -74,6 +74,13 @@ contextBridge.exposeInMainWorld('overlay', {
   showDesktop: () => ipcRenderer.invoke('desktop:toggle'),
   openFlyout: (which: 'notifications' | 'quick') => ipcRenderer.invoke('shell:flyout', which),
   windowsGet: () => ipcRenderer.invoke('windows:get'),
+  onTray: (cb: (t: unknown) => void): (() => void) => {
+    const handler = (_e: unknown, t: unknown): void => cb(t)
+    ipcRenderer.on('overlay:tray', handler)
+    return () => ipcRenderer.removeListener('overlay:tray', handler)
+  },
+  trayGet: () => ipcRenderer.invoke('tray:get'),
+  trayClick: (id: string, button: 'l' | 'r') => ipcRenderer.invoke('tray:click', id, button),
   windowsClick: (id: string) => ipcRenderer.invoke('windows:click', id),
   windowsLaunch: (key: string) => ipcRenderer.invoke('windows:launch', key),
   windowsMenu: (key: string) => ipcRenderer.invoke('windows:menu', key),

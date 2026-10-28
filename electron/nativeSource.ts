@@ -18,9 +18,11 @@
 //            wins on|off | windows           (open windows: pushed on change while on, or asked for)
 //            focus <h> | minimize <h>        (switch to / minimize an open window)
 //            tbget | tbset <0|1> [restore]   (the Windows taskbar's auto-hide; restore is applied when Gabay exits)
+//            tray on <gabay pid> | tray off | trayclick <id> l|r   (Gabay as the notification area)
 //            tbhide <0|1>                    (hide the taskbar windows outright; always shown again when Gabay exits)
 //   pushes   priv <json>                     camera / microphone in use, and by which apps
 //            wins <json>                     open windows, in z-order, while wins is on
+//            tray <json>                     tray icons, while tray is on
 export const NATIVE_SOURCE = String.raw`
 using System;
 using System.Collections.Generic;
@@ -413,6 +415,7 @@ static class Native {
     } catch { }
     // Gabay closed our stdin: it is gone. Give the reserved space back, and the taskbar setting, before leaving.
     try { if (band != null) band.Invoke((Action)(() => band.Release())); } catch { }
+    try { if (trayCtl != null) trayCtl.Invoke((Action)TrayOff); } catch { }
     try { TaskbarHide(false); } catch { }
     try { if (tbRestore >= 0) TaskbarAutoHide(tbRestore == 1); } catch { }
     Environment.Exit(0);
@@ -467,6 +470,8 @@ static class Native {
       }
       case "tbget": return TaskbarAutoHide() ? "true" : "false";
       case "tbhide": TaskbarHide(arg == "1"); return "true";
+      case "tray": return Tray(arg);
+      case "trayclick": return TrayClick(arg) ? "true" : "false";
       case "net": return "\"" + Net() + "\"";
       case "hw": return Hardware();
       case "dnd": return WindowsDnd() ? "true" : "false";
@@ -878,11 +883,11 @@ static class Native {
   // ---------- the Windows taskbar's own auto-hide setting ----------
   static int tbRestore = -1;
   static bool TaskbarAutoHide() {
-    var d = new APPBARDATA(); d.cbSize = Marshal.SizeOf(typeof(APPBARDATA)); d.hWnd = FindWindow("Shell_TrayWnd", null);
+    var d = new APPBARDATA(); d.cbSize = Marshal.SizeOf(typeof(APPBARDATA)); d.hWnd = ExplorerTray();
     return ((uint)SHAppBarMessage(4, ref d) & 1) != 0; // ABM_GETSTATE, ABS_AUTOHIDE
   }
   static void TaskbarAutoHide(bool on) {
-    var d = new APPBARDATA(); d.cbSize = Marshal.SizeOf(typeof(APPBARDATA)); d.hWnd = FindWindow("Shell_TrayWnd", null);
+    var d = new APPBARDATA(); d.cbSize = Marshal.SizeOf(typeof(APPBARDATA)); d.hWnd = ExplorerTray();
     d.lParam = new IntPtr(on ? 1 : 0);
     SHAppBarMessage(10, ref d); // ABM_SETSTATE
   }
@@ -897,7 +902,7 @@ static class Native {
     var list = new List<IntPtr>();
     foreach (var cls in new[] { "Shell_TrayWnd", "Shell_SecondaryTrayWnd" }) {
       var h = IntPtr.Zero;
-      while ((h = FindWindowEx(IntPtr.Zero, h, cls, null)) != IntPtr.Zero) list.Add(h);
+      while ((h = FindWindowEx(IntPtr.Zero, h, cls, null)) != IntPtr.Zero) if (h != trayWnd) list.Add(h);
     }
     return list;
   }
@@ -919,6 +924,225 @@ static class Native {
       if (!tbHidden) return;
       foreach (var h in Taskbars()) if (IsWindowVisible(h)) ShowWindow(h, 0); // SW_HIDE
     }
+  }
+
+  // ---------- tray icons (Gabay as the notification area) ----------
+  // Apps hand their tray icons to the first window of class Shell_TrayWnd. While on, Gabay owns such a window, kept
+  // ahead of Explorer's, so icons come here. Every message is passed on to Explorer unchanged and Explorer's answer
+  // returned, so its own tray stays complete and nothing is lost when Gabay stops: the window simply goes away.
+  [StructLayout(LayoutKind.Sequential)] struct COPYDATASTRUCT { public IntPtr dwData; public int cbData; public IntPtr lpData; }
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)] struct TRAYDATA {
+    public int sig; public uint msg; public uint cbSize; public uint hWnd; public uint uID; public uint uFlags; public uint uCallbackMessage; public uint hIcon;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string szTip;
+    public uint dwState; public uint dwStateMask;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)] public string szInfo;
+    public uint uVersion;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)] public string szInfoTitle;
+    public uint dwInfoFlags; public Guid guidItem; public uint hBalloonIcon;
+  }
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)] struct WNDCLASSEX {
+    public int cbSize; public uint style; public WndProcFn lpfnWndProc; public int cbClsExtra; public int cbWndExtra; public IntPtr hInstance;
+    public IntPtr hIcon; public IntPtr hCursor; public IntPtr hbrBackground; public string lpszMenuName; public string lpszClassName; public IntPtr hIconSm;
+  }
+  [StructLayout(LayoutKind.Sequential)] struct POINT { public int X; public int Y; }
+  delegate IntPtr WndProcFn(IntPtr h, uint m, IntPtr w, IntPtr l);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern ushort RegisterClassEx(ref WNDCLASSEX c);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr CreateWindowEx(uint ex, string cls, string name, uint style, int x, int y, int w, int h, IntPtr parent, IntPtr menu, IntPtr inst, IntPtr p);
+  [DllImport("user32.dll")] static extern bool DestroyWindow(IntPtr h);
+  [DllImport("user32.dll")] static extern IntPtr DefWindowProc(IntPtr h, uint m, IntPtr w, IntPtr l);
+  [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int w, int hh, uint flags);
+  [DllImport("user32.dll")] static extern IntPtr SendMessageTimeout(IntPtr h, uint m, IntPtr w, IntPtr l, uint flags, uint ms, out IntPtr result);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern uint RegisterWindowMessage(string s);
+  [DllImport("user32.dll")] static extern bool SendNotifyMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+  [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT p);
+  [DllImport("user32.dll")] static extern bool AllowSetForegroundWindow(uint pid);
+  [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern IntPtr GetModuleHandle(string name);
+
+  class TrayItem { public string key; public IntPtr hwnd; public uint uid; public uint cb; public uint ver; public string tip = ""; public string icon; public bool hidden; public uint pid; }
+  static readonly Dictionary<string, TrayItem> trayItems = new Dictionary<string, TrayItem>();
+  static readonly object trayLock = new object();
+  static WndProcFn trayProc; // kept alive: Windows calls it
+  static IntPtr trayWnd = IntPtr.Zero;
+  static Control trayCtl;
+  static System.Windows.Forms.Timer trayRaise;
+  static System.Threading.Timer trayPush;
+  static uint trayOwnerPid; // Gabay itself: its own tray icon isn't shown in its dock
+  static string lastTray;
+
+  static IntPtr ExplorerTray() {
+    var h = IntPtr.Zero;
+    while ((h = FindWindowEx(IntPtr.Zero, h, "Shell_TrayWnd", null)) != IntPtr.Zero) if (h != trayWnd) return h;
+    return IntPtr.Zero;
+  }
+
+  static string Tray(string arg) {
+    var a = arg.Split(' ');
+    lock (trayLock) {
+      if (trayCtl == null) {
+        var ready = new ManualResetEvent(false);
+        var th = new Thread(() => { trayCtl = new Control(); var unused = trayCtl.Handle; ready.Set(); Application.Run(); });
+        th.SetApartmentState(ApartmentState.STA);
+        th.IsBackground = true;
+        th.Start();
+        ready.WaitOne();
+      }
+    }
+    if (a[0] == "on") {
+      trayOwnerPid = a.Length > 1 ? uint.Parse(a[1]) : 0;
+      trayCtl.Invoke((Action)TrayOn);
+    } else trayCtl.Invoke((Action)TrayOff);
+    return "true";
+  }
+
+  static void TrayOn() {
+    if (trayWnd != IntPtr.Zero) return;
+    if (trayProc == null) {
+      trayProc = TrayWndProc;
+      var c = new WNDCLASSEX();
+      c.cbSize = Marshal.SizeOf(typeof(WNDCLASSEX)); c.lpfnWndProc = trayProc; c.hInstance = GetModuleHandle(null); c.lpszClassName = "Shell_TrayWnd";
+      RegisterClassEx(ref c);
+    }
+    // a hidden, zero-size tool window: nothing on screen, and nothing that can take focus
+    trayWnd = CreateWindowEx(0x00000008 | 0x00000080, "Shell_TrayWnd", "", 0x80000000, 0, 0, 0, 0, IntPtr.Zero, IntPtr.Zero, GetModuleHandle(null), IntPtr.Zero);
+    if (trayWnd == IntPtr.Zero) return;
+    RaiseTray();
+    if (trayRaise == null) { trayRaise = new System.Windows.Forms.Timer(); trayRaise.Interval = 500; trayRaise.Tick += (s, e) => RaiseTray(); }
+    trayRaise.Start();
+    if (trayPush == null) trayPush = new System.Threading.Timer(_ => PushTray(), null, Timeout.Infinite, Timeout.Infinite);
+    // ask every app to hand its icons over again (what Explorer does when it restarts)
+    SendNotifyMessage(new IntPtr(0xffff), RegisterWindowMessage("TaskbarCreated"), IntPtr.Zero, IntPtr.Zero);
+  }
+
+  static void TrayOff() {
+    if (trayRaise != null) trayRaise.Stop();
+    if (trayWnd != IntPtr.Zero) { DestroyWindow(trayWnd); trayWnd = IntPtr.Zero; }
+    lock (trayLock) trayItems.Clear();
+    lastTray = null;
+    Send("tray []");
+  }
+
+  // Apps find the tray with FindWindow, which takes the first in z-order: stay ahead of Explorer's.
+  static void RaiseTray() {
+    if (trayWnd == IntPtr.Zero) return;
+    if (FindWindow("Shell_TrayWnd", null) != trayWnd) SetWindowPos(trayWnd, new IntPtr(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); // topmost, no move/size/activate
+  }
+
+  static IntPtr TrayWndProc(IntPtr h, uint m, IntPtr w, IntPtr l) {
+    if (m != 0x004A || l == IntPtr.Zero) return DefWindowProc(h, m, w, l); // WM_COPYDATA only
+    try {
+      var cds = (COPYDATASTRUCT)Marshal.PtrToStructure(l, typeof(COPYDATASTRUCT));
+      if (cds.dwData == new IntPtr(1)) ReadTray(cds);
+    } catch { } // a malformed message from some app must not take the helper down
+    // Explorer still gets everything, tray icons and app bar requests alike, and its answer is the answer.
+    var ex = ExplorerTray();
+    IntPtr res = IntPtr.Zero;
+    if (ex != IntPtr.Zero && SendMessageTimeout(ex, m, w, l, 0x0002, 3000, out res) != IntPtr.Zero) return res; // SMTO_ABORTIFHUNG
+    return new IntPtr(1);
+  }
+
+  static void ReadTray(COPYDATASTRUCT cds) {
+    int head = 8 + 24; // signature, message, then the start of NOTIFYICONDATA
+    int full = Marshal.SizeOf(typeof(TRAYDATA));
+    if (cds.lpData == IntPtr.Zero || cds.cbData < head) return;
+    // copy what was sent into a zeroed buffer of the full size, so a short (older) struct reads as empty fields
+    var buf = Marshal.AllocHGlobal(full);
+    TRAYDATA d;
+    try {
+      var bytes = new byte[full];
+      Marshal.Copy(cds.lpData, bytes, 0, Math.Min(cds.cbData, full));
+      Marshal.Copy(bytes, 0, buf, full);
+      d = (TRAYDATA)Marshal.PtrToStructure(buf, typeof(TRAYDATA));
+    } finally { Marshal.FreeHGlobal(buf); }
+    if (d.sig != 0x34753423) return;
+    var hwnd = new IntPtr(unchecked((int)d.hWnd));
+    bool byGuid = (d.uFlags & 0x20) != 0 && d.guidItem != Guid.Empty;
+    string key = byGuid ? d.guidItem.ToString("N") : ((long)hwnd).ToString() + "-" + d.uID;
+    lock (trayLock) {
+      TrayItem it;
+      trayItems.TryGetValue(key, out it);
+      switch (d.msg) {
+        case 0: // NIM_ADD
+        case 1: // NIM_MODIFY
+          if (it == null) {
+            if (hwnd == IntPtr.Zero || !IsWindow(hwnd)) return;
+            it = new TrayItem { key = key };
+            trayItems[key] = it;
+          }
+          if (hwnd != IntPtr.Zero) { it.hwnd = hwnd; uint pid; GetWindowThreadProcessId(hwnd, out pid); it.pid = pid; }
+          it.uid = d.uID;
+          if ((d.uFlags & 0x01) != 0) it.cb = d.uCallbackMessage;
+          if ((d.uFlags & 0x04) != 0) it.tip = d.szTip ?? "";
+          if ((d.uFlags & 0x08) != 0 && (d.dwStateMask & 1) != 0) it.hidden = (d.dwState & 1) != 0; // NIS_HIDDEN
+          if ((d.uFlags & 0x02) != 0) it.icon = IconPng(new IntPtr(unchecked((int)d.hIcon)));
+          break;
+        case 2: // NIM_DELETE
+          if (it != null) trayItems.Remove(key);
+          break;
+        case 4: // NIM_SETVERSION
+          if (it != null) it.ver = d.uVersion;
+          break;
+        default: return;
+      }
+    }
+    if (trayPush != null) trayPush.Change(250, Timeout.Infinite);
+  }
+
+  // The icon now, as a small PNG: the app may destroy or change its icon handle later.
+  static string IconPng(IntPtr hIcon) {
+    if (hIcon == IntPtr.Zero) return null;
+    try {
+      using (var ic = System.Drawing.Icon.FromHandle(hIcon))
+      using (var bmp = new System.Drawing.Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+      using (var g = System.Drawing.Graphics.FromImage(bmp))
+      using (var ms = new System.IO.MemoryStream()) {
+        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+        g.DrawIcon(ic, new System.Drawing.Rectangle(0, 0, 32, 32));
+        bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+        return "data:image/png;base64," + Convert.ToBase64String(ms.ToArray());
+      }
+    } catch { return null; }
+  }
+
+  static void PushTray() {
+    var sb = new StringBuilder("[");
+    lock (trayLock) {
+      var dead = new List<string>();
+      foreach (var it in trayItems.Values) {
+        if (!IsWindow(it.hwnd)) { dead.Add(it.key); continue; } // the app quit without removing its icon
+        if (it.hidden || it.icon == null || it.pid == trayOwnerPid) continue;
+        if (sb.Length > 1) sb.Append(',');
+        sb.Append("{\"id\":").Append(J(it.key)).Append(",\"tip\":").Append(J(it.tip)).Append(",\"icon\":").Append(J(it.icon)).Append('}');
+      }
+      foreach (var k in dead) trayItems.Remove(k);
+    }
+    var now = sb.Append(']').ToString();
+    if (trayWnd != IntPtr.Zero && now != lastTray) { lastTray = now; Send("tray " + now); }
+    if (trayWnd != IntPtr.Zero) trayPush.Change(3000, Timeout.Infinite); // and again now and then, to drop icons of apps that quit
+  }
+
+  // A click on an icon, sent the way Explorer sends it: to the app's window, with the message it asked for.
+  static bool TrayClick(string arg) {
+    var a = arg.Split(' ');
+    if (a.Length < 2) return false;
+    TrayItem it;
+    lock (trayLock) { if (!trayItems.TryGetValue(a[0], out it)) return false; }
+    if (it.cb == 0 || !IsWindow(it.hwnd)) return false;
+    POINT p; GetCursorPos(out p);
+    bool right = a[1] == "r";
+    uint down = right ? 0x0204u : 0x0201u, up = right ? 0x0205u : 0x0202u;
+    // Gabay is in front (it was just clicked): let the app come forward to show its window or menu.
+    AllowSetForegroundWindow(it.pid);
+    var hwnd = it.hwnd; var cb = it.cb; var uid = it.uid;
+    Func<uint, bool> post;
+    if (it.ver >= 4) {
+      var wp = new IntPtr((p.X & 0xffff) | ((p.Y & 0xffff) << 16));
+      post = msg => PostMessage(hwnd, cb, wp, new IntPtr((int)(msg & 0xffff) | (int)((uid & 0xffff) << 16)));
+    } else {
+      post = msg => PostMessage(hwnd, cb, new IntPtr((int)uid), new IntPtr((int)msg));
+    }
+    post(down); post(up);
+    if (it.ver >= 3) post(right ? 0x007Bu : 0x0400u); // WM_CONTEXTMENU or NIN_SELECT
+    return true;
   }
 
   // ---------- now playing ----------
