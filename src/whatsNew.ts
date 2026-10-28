@@ -7,7 +7,7 @@ export const WHATS_NEW: [version: string, items: string[]][] = [
       'New Inbox tab: your recent notifications in one list, including ones Do not disturb kept quiet (never saved)',
       'Click the date on Today for a month calendar',
       'Mute your microphone from Controls',
-      'Dock: move pinned apps left or right, plus Notifications, Quick Settings and Show desktop buttons',
+      'Dock: move pinned apps left or right, plus Inbox and Show desktop buttons',
       'Hide the taskbar completely, and see tray icons in the dock (experimental)',
       'Rate Gabay from Settings; your review shows on the Gabay website'
     ]

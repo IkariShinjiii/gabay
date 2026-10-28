@@ -420,19 +420,6 @@ app.whenReady().then(async () => {
       execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', '(New-Object -ComObject Shell.Application).ToggleDesktop()'], { windowsHide: true, timeout: 10_000 }, (err) => resolve(!err))
     })
   })
-  // Windows' own pop-outs, the taskbar's bell and Quick Settings corner. Fixed addresses: the UI only picks one by name.
-  const FLYOUTS: Record<string, string> = { notifications: 'ms-actioncenter:', quick: 'ms-actioncenter:controlcenter/&showFooter=true' }
-  ipcMain.handle('shell:flyout', async (e, which: unknown) => {
-    fromUi(e)
-    const uri = typeof which === 'string' && Object.hasOwn(FLYOUTS, which) ? FLYOUTS[which] : null
-    if (!uri) return false
-    try {
-      await shell.openExternal(uri)
-      return true
-    } catch {
-      return false
-    }
-  })
   // Right-click on a dock icon: a native menu, so it can spill outside the notch.
   ipcMain.handle('windows:menu', async (e, key: unknown) => {
     fromUi(e)
