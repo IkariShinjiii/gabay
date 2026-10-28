@@ -419,6 +419,8 @@ export default function QuickPanel(props: {
   recording: boolean
   onRecord: () => void
   onShot: () => void
+  /** Opens Clipboard or Power, which live behind buttons here instead of in the tab bar. */
+  onOpen: (tab: 'Clipboard' | 'Power') => void
 }): React.JSX.Element {
   const { battery } = props
   const [state, setStateRaw] = useState<QuickState | null>(cache)
@@ -749,6 +751,12 @@ export default function QuickPanel(props: {
             <button key={i} className={i === page ? 'q-dot on' : 'q-dot'} aria-label={i === 0 ? tr('Controls') : tr('More')} onClick={() => goPage(i)} />
           ))}
         </span>
+        <button className="q-icon-btn" title={tr('Clipboard')} aria-label={tr('Clipboard')} onClick={() => props.onOpen('Clipboard')}>
+          <Icon name="scissors" size={16} />
+        </button>
+        <button className="q-icon-btn" title={tr('Power')} aria-label={tr('Power')} onClick={() => props.onOpen('Power')}>
+          <Icon name="power" size={16} />
+        </button>
         <button className="q-icon-btn" title={tr('Open Windows Settings')} aria-label={tr('Open Windows Settings')} onClick={() => void window.overlay.quickOpen('settings')}>
           <Icon name="settings" size={16} />
         </button>
