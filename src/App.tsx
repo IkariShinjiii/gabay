@@ -32,7 +32,11 @@ type Tab = (typeof TABS)[number]
 const dot = (c: string): string => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="${c}"/></svg>`)}`
 const SAMPLE_TRAY: TrayIcon[] = [
   { id: '1-1', tip: 'Chat', icon: dot('#5865f2') },
-  { id: '2-1', tip: 'Games', icon: dot('#9aa4b2') }
+  { id: '2-1', tip: 'Games', icon: dot('#9aa4b2') },
+  { id: '3-1', tip: 'Music', icon: dot('#1db954') },
+  { id: '4-1', tip: 'Security', icon: dot('#3b82f6') },
+  { id: '5-1', tip: 'Cloud', icon: dot('#f5a524') },
+  { id: '6-1', tip: 'Updates', icon: dot('#e5484d') }
 ]
 
 const SAMPLE_WINS: DockApp[] = [

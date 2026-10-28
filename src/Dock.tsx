@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { DockApp, TrayIcon } from './global'
 import Icon from './Icon'
 import { tr } from './i18n'
@@ -26,7 +27,34 @@ export default function Dock({ apps, tray, onHold }: { apps: DockApp[]; tray: Tr
     await window.overlay.windowsMenu(a.key).catch(() => false)
     onHold(false)
   }
+  // screenshot previews can start with the drawer open (#…&tray=1)
+  const [trayOpen, setTrayOpen] = useState(() => new URLSearchParams(location.hash.slice(1)).get('tray') === '1')
+  const showTray = trayOpen && tray.length > 0
+  const trayClick = (id: string, button: 'l' | 'r'): void => {
+    setTrayOpen(false)
+    void window.overlay.trayClick(id, button)
+  }
   return (
+    <>
+    {showTray && (
+      <div className="tray-drawer" role="group" aria-label={tr('Tray icons')} onKeyDown={(e) => e.key === 'Escape' && setTrayOpen(false)}>
+        {tray.map((t) => (
+          <button
+            key={t.id}
+            className="tray-drawer-icon"
+            title={t.tip}
+            aria-label={t.tip || tr('Tray icon')}
+            onClick={() => trayClick(t.id, 'l')}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              trayClick(t.id, 'r')
+            }}
+          >
+            <img src={t.icon} alt="" draggable={false} />
+          </button>
+        ))}
+      </div>
+    )}
     <div
       className="dock"
       role="toolbar"
@@ -69,23 +97,15 @@ export default function Dock({ apps, tray, onHold }: { apps: DockApp[]; tray: Tr
       })}
       <span className="dock-corner">
       {tray.length > 0 && (
-        <span className="dock-tray" role="group" aria-label={tr('Tray icons')}>
-          {tray.map((t) => (
-            <button
-              key={t.id}
-              className="dock-app dock-tray-icon"
-              title={t.tip}
-              aria-label={t.tip || tr('Tray icon')}
-              onClick={() => void window.overlay.trayClick(t.id, 'l')}
-              onContextMenu={(e) => {
-                e.preventDefault()
-                void window.overlay.trayClick(t.id, 'r')
-              }}
-            >
-              <img src={t.icon} alt="" draggable={false} />
-            </button>
-          ))}
-        </span>
+        <button
+          className={trayOpen ? 'dock-app dock-sys dock-tray-btn on' : 'dock-app dock-sys dock-tray-btn'}
+          title={tr('Tray icons')}
+          aria-label={tr('Tray icons')}
+          aria-expanded={trayOpen}
+          onClick={() => setTrayOpen((o) => !o)}
+        >
+          <Icon name="chevron-right" size={18} />
+        </button>
       )}
       <button className="dock-app dock-sys" title={tr('Notifications and calendar')} aria-label={tr('Notifications and calendar')} onClick={() => void window.overlay.openFlyout('notifications')}>
         <Icon name="bell" size={18} />
@@ -98,5 +118,6 @@ export default function Dock({ apps, tray, onHold }: { apps: DockApp[]; tray: Tr
       </button>
       </span>
     </div>
+    </>
   )
 }
