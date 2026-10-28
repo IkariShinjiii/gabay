@@ -55,7 +55,7 @@ export default function Welcome({ hotkey, accent, onAccent, onDone }: Props): Re
     title = tr('Everything is one hover away.')
     text = (
       <>
-        Controls, your day, apps, clipboard and power live in these tabs.{' '}
+        {tr('Your day, controls, notifications, notes and apps live in these tabs. Clipboard and power are inside Controls.')}{' '}
         {keys.length ? <>{tr('Press {0} any time to search your apps.', keys.join(' + '))}</> : tr('Pick a search hotkey in Settings.')}
       </>
     )

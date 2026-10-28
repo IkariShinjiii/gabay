@@ -27,10 +27,13 @@ import { notesFor } from './whatsNew'
 import { useFocusTimer } from './useFocusTimer'
 import { tr, setLanguage, type Language } from './i18n'
 
-// Most used first. The last four show as icons (their name is the tooltip and the screen reader label).
-const TABS = ['Today', 'Controls', 'Inbox', 'Notes', 'System', 'Launch', 'Clipboard', 'Power', 'Settings'] as const
+// The tab bar, most used first; Launch and Settings show as icons (their name is the tooltip and screen reader label).
+const BAR_TABS = ['Today', 'Controls', 'Inbox', 'Notes', 'System', 'Launch', 'Settings'] as const
+// Clipboard and Power open from buttons in Controls; while one is open, Controls stays marked in the bar.
+const TABS = [...BAR_TABS, 'Clipboard', 'Power'] as const
 type Tab = (typeof TABS)[number]
-const TAB_ICONS: Partial<Record<Tab, IconName>> = { Launch: 'search', Clipboard: 'scissors', Power: 'power', Settings: 'settings' }
+const TAB_ICONS: Partial<Record<Tab, IconName>> = { Launch: 'search', Settings: 'settings' }
+const barTab = (t: Tab): Tab => (t === 'Clipboard' || t === 'Power' ? 'Controls' : t)
 
 const dot = (c: string): string => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="${c}"/></svg>`)}`
 const SAMPLE_TRAY: TrayIcon[] = [
@@ -858,7 +861,7 @@ export default function App(): React.JSX.Element {
     if (!expanded) return
     const onKey = (e: KeyboardEvent): void => {
       if (!e.ctrlKey || e.altKey || e.shiftKey) return
-      const t = TABS[Number(e.key) - 1]
+      const t = BAR_TABS[Number(e.key) - 1]
       if (t) {
         e.preventDefault()
         selectTab(t)
@@ -964,6 +967,7 @@ export default function App(): React.JSX.Element {
         recording={recording}
         onRecord={() => (recording ? recorder.stop() : void recorder.start())}
         onShot={() => void takeShot()}
+        onOpen={selectTab}
       />
     )
   } else {
@@ -1000,21 +1004,21 @@ export default function App(): React.JSX.Element {
         >
           {!welcome && (
           <div className="tabs" role="tablist" aria-label={tr('Sections')} onWheel={onTabsWheel}>
-            {TABS.map((t, i) => (
+            {BAR_TABS.map((t, i) => (
               <button
                 key={t}
                 role="tab"
-                aria-selected={t === tab}
+                aria-selected={t === barTab(tab)}
                 title={`${tr(t)} (Ctrl+${i + 1})`}
                 aria-label={t === 'Inbox' && unseen > 0 && tab !== 'Inbox' ? `${tr(t)}, ${tr('New')}` : TAB_ICONS[t] ? tr(t) : undefined}
-                className={['tab', t === tab && 'on', TAB_ICONS[t] && 'tab-icon', t === 'Launch' && 'tab-icons-start'].filter(Boolean).join(' ')}
+                className={['tab', t === barTab(tab) && 'on', TAB_ICONS[t] && 'tab-icon', t === 'Launch' && 'tab-icons-start'].filter(Boolean).join(' ')}
                 tabIndex={expanded ? 0 : -1}
                 onClick={() => selectTab(t)}
               >
                 {TAB_ICONS[t] ? <Icon name={TAB_ICONS[t]} size={16} /> : tr(t)}
                 {t === 'Inbox' && unseen > 0 && tab !== 'Inbox' && <span className="tab-badge" aria-hidden="true" />}
                 {/* One marker shared by all tabs: Motion slides it from the old tab to the new one. */}
-                {t === tab && <motion.span layoutId="tab-marker" className="tab-marker" transition={SPRING} />}
+                {t === barTab(tab) && <motion.span layoutId="tab-marker" className="tab-marker" transition={SPRING} />}
               </button>
             ))}
             <AnimatePresence>

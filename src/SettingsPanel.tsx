@@ -31,7 +31,7 @@ function ShortcutsRow({ hotkey }: { hotkey: string | null }): React.JSX.Element 
     [
       'In the open notch',
       [
-        ['Ctrl + 1 to 8', 'Switch tabs'],
+        ['Ctrl + 1 to 7', 'Switch tabs'],
         ['Scroll over the tabs', 'Change the volume'],
         ['Middle-click', 'Play or pause'],
         ['Esc', 'Clear the search, then let the notch close']
