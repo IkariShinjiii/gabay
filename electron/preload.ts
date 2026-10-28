@@ -121,6 +121,12 @@ contextBridge.exposeInMainWorld('overlay', {
     ipcRenderer.on('overlay:fullscreen', handler)
     return () => ipcRenderer.removeListener('overlay:fullscreen', handler)
   },
+  // Subscribe to the Start menu opening or closing (only while Gabay stands in for the taskbar).
+  onStart: (cb: (open: boolean) => void): (() => void) => {
+    const handler = (_e: unknown, open: unknown): void => cb(open === true)
+    ipcRenderer.on('overlay:start', handler)
+    return () => ipcRenderer.removeListener('overlay:start', handler)
+  },
   // Subscribe to the global-hotkey summon. Returns an unsubscribe function.
   onSummon: (cb: () => void): (() => void) => {
     const handler = (): void => cb()

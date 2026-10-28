@@ -2,6 +2,13 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.4.1',
+    [
+      'With the taskbar hidden, Gabay opens with the Start menu, even over a full-screen game',
+      'Tray icon menus open every time, and Gabay stays open until you pick something'
+    ]
+  ],
+  [
     '1.4.0',
     [
       'New Inbox tab: your recent notifications in one list, including ones Do not disturb kept quiet (never saved)',
