@@ -15,6 +15,7 @@ export interface OverlayApi {
   hardware(): Promise<{ battery: boolean; wifi: boolean } | null>
   /** Show desktop: minimize every window, or bring them back. */
   showDesktop(): Promise<boolean>
+  openFlyout(which: 'notifications' | 'quick'): Promise<boolean>
   /** Microphone mute state of the default recording device; null when there is none. */
   micGet(): Promise<boolean | null>
   micSet(muted: boolean): Promise<boolean | null>
