@@ -32,7 +32,7 @@ const BAR_TABS = ['Today', 'Controls', 'Inbox', 'Notes', 'System', 'Launch', 'Se
 // Clipboard and Power open from buttons in Controls; while one is open, Controls stays marked in the bar.
 const TABS = [...BAR_TABS, 'Clipboard', 'Power'] as const
 type Tab = (typeof TABS)[number]
-const TAB_ICONS: Partial<Record<Tab, IconName>> = { Launch: 'search', Settings: 'settings' }
+const TAB_ICONS: Partial<Record<Tab, IconName>> = { Launch: 'search', Settings: 'sliders-horizontal' } // not a gear: Controls' gear opens Windows Settings
 const barTab = (t: Tab): Tab => (t === 'Clipboard' || t === 'Power' ? 'Controls' : t)
 
 const dot = (c: string): string => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="${c}"/></svg>`)}`
