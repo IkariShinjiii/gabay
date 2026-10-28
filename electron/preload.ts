@@ -72,6 +72,8 @@ contextBridge.exposeInMainWorld('overlay', {
   micGet: () => ipcRenderer.invoke('mic:get'),
   micSet: (muted: boolean) => ipcRenderer.invoke('mic:set', muted),
   showDesktop: () => ipcRenderer.invoke('desktop:toggle'),
+  startMenu: () => ipcRenderer.invoke('shell:start'),
+  taskView: () => ipcRenderer.invoke('shell:taskview'),
   windowsGet: () => ipcRenderer.invoke('windows:get'),
   onTray: (cb: (t: unknown) => void): (() => void) => {
     const handler = (_e: unknown, t: unknown): void => cb(t)

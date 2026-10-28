@@ -235,6 +235,8 @@ app.whenReady().then(async () => {
   const str = (v: unknown, max: number): string | null => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null)
   let fsNow = false
   let startShown = false // Gabay is up because the Start menu is
+  let startOpen = false // the Start menu is in front (whatever the settings)
+  let startClosedAt = 0
   // Whether Windows lets Gabay read notifications; null until the helper reports.
   let noteAccess: string | null = null
   let media: Record<string, unknown> | null = null
@@ -351,6 +353,8 @@ app.whenReady().then(async () => {
       // While Gabay stands in for the taskbar, it comes up with the Start menu, as the taskbar does. This is the way
       // in over a full-screen game: Start is in front of the game then, so nothing of the game's is in the way.
       start: (open) => {
+        if (startOpen && !open) startClosedAt = Date.now()
+        startOpen = open
         const show = open && settings.hideTaskbar && !PREVIEW
         if (show === startShown) return
         startShown = show
@@ -437,6 +441,20 @@ app.whenReady().then(async () => {
     if (g.launchId) return launch(g.launchId)
     return g.path ? (await shell.openPath(g.path)) === '' : false
   })
+  // The dock's Start button: opens Start, or closes it when it is open. A click on Gabay already closes an open Start
+  // (it takes the focus) just before the click arrives, so a Start that closed a moment ago stays closed.
+  ipcMain.handle('shell:start', async (e) => {
+    fromUi(e)
+    if (startOpen || Date.now() - startClosedAt < 500) return false
+    return (await nativeCall('startmenu')) === true
+  })
+  // Task view: every window, and the virtual desktops. A fixed shell location: nothing from the UI is used.
+  ipcMain.handle('shell:taskview', (e) => {
+    fromUi(e)
+    return new Promise<boolean>((resolve) => {
+      execFile('explorer.exe', ['shell:::{3080F90E-D7AD-11D9-BD98-0010B5A6EB14}'], { windowsHide: true }, () => resolve(true))
+    })
+  })
   // Show desktop (minimize or restore every window), the taskbar's far corner. A fixed command: nothing from the UI is used.
   ipcMain.handle('desktop:toggle', (e) => {
     fromUi(e)
@@ -467,6 +485,19 @@ app.whenReady().then(async () => {
     if (pinId && pinned) {
       items.push({ label: 'Move left', click: () => void movePin(pinId, -1).then(() => pushWins()) })
       items.push({ label: 'Move right', click: () => void movePin(pinId, 1).then(() => pushWins()) })
+    }
+    // The app's windows, to pick one (what the taskbar's thumbnails are for). The one in front is ticked.
+    if (g.wins.length > 1) {
+      if (items.length) items.push({ type: 'separator' })
+      for (const w of g.wins.slice(0, 12)) {
+        const t = (w.title || g.name).replace(/&/g, '&&') // & marks a menu shortcut letter
+        items.push({
+          label: t.length > 60 ? t.slice(0, 59) + '…' : t,
+          type: 'checkbox',
+          checked: w.active && !w.minimized,
+          click: () => void nativeCall('focus', w.id)
+        })
+      }
     }
     if (g.wins.length) {
       items.push({ type: 'separator' })
