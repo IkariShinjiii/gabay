@@ -376,6 +376,7 @@ static class Native {
   }
 
   static void Main(string[] args) {
+    if (args.Length == 2 && args[0] == "--watch") { Watch(uint.Parse(args[1])); return; }
     SetProcessDPIAware();
     self = args.Length > 0 ? uint.Parse(args[0]) : 0;
     new Thread(ReadCommands) { IsBackground = true }.Start();
@@ -975,7 +976,31 @@ static class Native {
     }
     return list;
   }
+  // While the taskbar is hidden outright, a small watcher outside Gabay's process tree (so Task Manager's End task
+  // doesn't take it too) shows the taskbar again if Gabay ends without doing so, however it ends.
+  static bool watching;
+  static void SpawnWatch() {
+    if (watching || self == 0) return;
+    watching = true;
+    try {
+      string exe = Process.GetCurrentProcess().MainModule.FileName;
+      // started through cmd, which exits at once: the watcher's parent is then gone, so it isn't in Gabay's tree
+      var psi = new ProcessStartInfo("cmd.exe", "/d /c start \"\" /b \"" + exe + "\" --watch " + self);
+      psi.UseShellExecute = false; psi.CreateNoWindow = true;
+      Process.Start(psi);
+    } catch { watching = false; }
+  }
+  static void Watch(uint pid) {
+    bool fresh;
+    using (new Mutex(true, "Local\\GabayTaskbarWatch" + pid, out fresh)) {
+      if (!fresh) return; // one watcher per Gabay
+      try { using (var g = Process.GetProcessById((int)pid)) g.WaitForExit(); } catch { } // gone already: restore now
+      Thread.Sleep(1500); // a normal quit has already restored it; a restarted Gabay hides it again if it wants
+      foreach (var h in Taskbars()) if (!IsWindowVisible(h)) ShowWindow(h, 8); // SW_SHOWNA
+    }
+  }
   static void TaskbarHide(bool on) {
+    if (on) SpawnWatch();
     lock (Taskbars_lock) {
       tbHidden = on;
       if (on) {
