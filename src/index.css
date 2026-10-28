@@ -2905,30 +2905,65 @@ button.big-icon {
   display: flex;
   gap: inherit;
   margin-left: 6px;
+  padding-left: 6px;
+  border-left: 1px solid var(--line); /* apps on the left, Windows' corner on the right */
   position: sticky; /* stays reachable when the row scrolls */
   right: 0;
   background: #000;
 }
 
-.dock-tray {
+.dock-tray-btn .icon {
+  transform: rotate(-90deg); /* points up, at the drawer it opens */
+  transition: transform 160ms var(--ease-out);
+}
+
+.dock-tray-btn.on {
+  color: var(--accent);
+  background: var(--surface);
+}
+
+.dock-tray-btn.on .icon {
+  transform: rotate(90deg);
+}
+
+/* Tray icons, opened from the dock's tray button: a tidy grid above the dock, so running apps keep the whole row. */
+.tray-drawer {
+  flex: none;
   display: flex;
-  gap: 2px;
-  margin-right: 4px;
-  padding-right: 6px;
-  border-right: 1px solid var(--line);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  margin: 6px 0 0 auto;
+  max-width: 100%;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line);
 }
 
-.dock-tray-icon {
-  width: 32px;
+.tray-drawer-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  cursor: pointer;
 }
 
-.dock-tray-icon img {
-  width: 18px;
-  height: 18px;
+.tray-drawer-icon img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
 }
 
-.dock-tray-icon:hover,
-.dock-tray-icon:focus-visible,
+.tray-drawer-icon:hover,
+.tray-drawer-icon:focus-visible {
+  background: var(--line);
+}
+
 .dock-sys:hover,
 .dock-sys:focus-visible,
 .dock-desktop:hover,
