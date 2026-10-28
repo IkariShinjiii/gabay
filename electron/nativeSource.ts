@@ -22,6 +22,8 @@
 //            traywait <id> <grace ms>        (after a right-click: true while that app's menu is still open, checked
 //                                             for up to 6 s; false once it closed, or if none opened within the grace)
 //            tbhide <0|1>                    (hide the taskbar windows outright; always shown again when Gabay exits)
+//            appicon <base64 utf-8 path>     (the picture the shell shows for a file or a shell:AppsFolder item, as a
+//                                             base64 PNG string, or null)
 //   pushes   priv <json>                     camera / microphone in use, and by which apps
 //            wins <json>                     open windows, in z-order, while wins is on
 //            tray <json>                     tray icons, while tray is on
@@ -524,6 +526,10 @@ static class Native {
       case "tray": return Tray(arg);
       case "trayclick": return TrayClick(arg) ? "true" : "false";
       case "traywait": return TrayWait(arg);
+      case "appicon": {
+        var png = ShellIcon(Encoding.UTF8.GetString(Convert.FromBase64String(arg)), 48);
+        return png == null ? "null" : "\"" + Convert.ToBase64String(png) + "\"";
+      }
       case "net": return "\"" + Net() + "\"";
       case "hw": return Hardware();
       case "dnd": return WindowsDnd() ? "true" : "false";
@@ -1276,6 +1282,65 @@ static class Native {
       Thread.Sleep(80);
     }
     return "true";
+  }
+
+  // ---------- app icons: what the shell itself shows (Start, Explorer) ----------
+  // Asking the shell handles every kind of entry the same way: a shortcut's own icon file or its place inside a dll,
+  // Store apps, Steam and other launcher links, and Windows tools that only exist in the Apps folder.
+  [StructLayout(LayoutKind.Sequential)] struct ISIZE { public int cx, cy; }
+  [ComImport, Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IShellItemImageFactory { [PreserveSig] int GetImage(ISIZE size, int flags, out IntPtr hbm); }
+  [DllImport("shell32.dll", CharSet = CharSet.Unicode)] static extern int SHCreateItemFromParsingName(string path, IntPtr pbc, ref Guid riid, [MarshalAs(UnmanagedType.Interface)] out IShellItemImageFactory item);
+  [StructLayout(LayoutKind.Sequential)] struct DIBBITMAP { public int bmType, bmWidth, bmHeight, bmWidthBytes; public ushort bmPlanes, bmBitsPixel; public IntPtr bmBits; }
+  [StructLayout(LayoutKind.Sequential)] struct DIBHEADER { public int biSize, biWidth, biHeight; public ushort biPlanes, biBitCount; public int biCompression, biSizeImage, biXPelsPerMeter, biYPelsPerMeter, biClrUsed, biClrImportant; }
+  [StructLayout(LayoutKind.Sequential)] struct DIBSECTION { public DIBBITMAP dsBm; public DIBHEADER dsBmih; public int f0, f1, f2; public IntPtr dshSection; public int dsOffset; }
+  [DllImport("gdi32.dll")] static extern int GetObject(IntPtr h, int size, out DIBSECTION ds);
+  [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr h);
+
+  static byte[] ShellIcon(string path, int px) {
+    byte[] result = null;
+    // the shell wants a single-threaded apartment for this
+    var th = new Thread(() => {
+      IntPtr hbm = IntPtr.Zero;
+      try {
+        var iid = new Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b");
+        IShellItemImageFactory f;
+        if (SHCreateItemFromParsingName(path, IntPtr.Zero, ref iid, out f) != 0 || f == null) return;
+        if (f.GetImage(new ISIZE { cx = px, cy = px }, 0x4 | 0x1, out hbm) != 0 || hbm == IntPtr.Zero) return; // SIIGBF_ICONONLY | SIIGBF_BIGGERSIZEOK
+        DIBSECTION ds;
+        if (GetObject(hbm, Marshal.SizeOf(typeof(DIBSECTION)), out ds) == 0 || ds.dsBm.bmBits == IntPtr.Zero || ds.dsBm.bmBitsPixel != 32) return;
+        int w = ds.dsBm.bmWidth, h = ds.dsBm.bmHeight, stride = ds.dsBm.bmWidthBytes;
+        if (w <= 0 || h <= 0 || w > 512 || h > 512) return;
+        bool bottomUp = ds.dsBmih.biHeight > 0;
+        var raw = new byte[stride * h];
+        Marshal.Copy(ds.dsBm.bmBits, raw, 0, raw.Length);
+        bool anyAlpha = false; // old icons carry no alpha at all: then every pixel is solid
+        for (int i = 3; i < raw.Length; i += 4) if (raw[i] != 0) { anyAlpha = true; break; }
+        using (var bmp = new System.Drawing.Bitmap(w, h, System.Drawing.Imaging.PixelFormat.Format32bppArgb)) {
+          var bd = bmp.LockBits(new System.Drawing.Rectangle(0, 0, w, h), System.Drawing.Imaging.ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+          var row = new byte[w * 4];
+          for (int y = 0; y < h; y++) {
+            int src = (bottomUp ? h - 1 - y : y) * stride;
+            for (int x = 0; x < w; x++) {
+              int s = src + x * 4, d = x * 4;
+              int a = anyAlpha ? raw[s + 3] : 255;
+              // the shell hands premultiplied colour; PNG wants it straight
+              for (int c = 0; c < 3; c++) row[d + c] = (byte)(a == 0 ? 0 : Math.Min(255, raw[s + c] * 255 / a));
+              row[d + 3] = (byte)a;
+            }
+            Marshal.Copy(row, 0, bd.Scan0 + y * bd.Stride, row.Length);
+          }
+          bmp.UnlockBits(bd);
+          using (var ms = new System.IO.MemoryStream()) { bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png); result = ms.ToArray(); }
+        }
+      } catch { result = null; }
+      finally { if (hbm != IntPtr.Zero) DeleteObject(hbm); }
+    });
+    th.SetApartmentState(ApartmentState.STA);
+    th.IsBackground = true;
+    th.Start();
+    th.Join(6000);
+    return result;
   }
 
   // ---------- now playing ----------

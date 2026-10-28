@@ -5,7 +5,8 @@ export const WHATS_NEW: [version: string, items: string[]][] = [
     '1.4.1',
     [
       'With the taskbar hidden, Gabay opens with the Start menu, even over a full-screen game',
-      'Tray icon menus open every time, and Gabay stays open until you pick something'
+      'Tray icon menus open every time, and Gabay stays open until you pick something',
+      'Every app shows its real icon in Launch and the dock, including Steam games and Windows tools'
     ]
   ],
   [
