@@ -9,6 +9,8 @@ export const WHATS_NEW: [version: string, items: string[]][] = [
       'Mute your microphone from Controls',
       'Dock: move pinned apps left or right, plus Inbox and Show desktop buttons',
       'Hide the taskbar completely, and see tray icons in the dock (experimental)',
+      'A tidier tab bar: Clipboard and Power now open from Controls',
+      "A short tour of what's new after updating",
       'Rate Gabay from Settings; your review shows on the Gabay website'
     ]
   ],
