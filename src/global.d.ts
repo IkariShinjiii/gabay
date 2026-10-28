@@ -94,6 +94,9 @@ export interface OverlayApi {
   whenPresent(): Promise<boolean>
   onWindows(cb: (w: DockApp[]) => void): () => void
   windowsGet(): Promise<DockApp[]>
+  onTray(cb: (t: TrayIcon[]) => void): () => void
+  trayGet(): Promise<TrayIcon[]>
+  trayClick(id: string, button: 'l' | 'r'): Promise<boolean>
   /** Switch to an open window, or minimize it when it's the one in use. */
   windowsClick(id: string): Promise<boolean>
   /** Start a dock app (a pinned app that isn't open, or another window of one that is). */
@@ -128,6 +131,13 @@ export interface OpenWindow {
   attention: boolean
 }
 
+/** One tray icon (from another app's notification area icon). */
+export interface TrayIcon {
+  id: string
+  tip: string
+  icon: string
+}
+
 /** One icon in the dock: an app, with its open windows (none for a pinned app that isn't running). */
 export interface DockApp {
   key: string
@@ -156,6 +166,7 @@ export interface Settings {
   visibility: 'always' | 'auto'
   hideTaskbar: boolean
   taskbarFull: boolean
+  trayIcons: boolean
   autoUpdate: boolean
   updateChannel: 'stable' | 'preview'
   language: 'en' | 'fil'

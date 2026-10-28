@@ -78,6 +78,7 @@ export interface NativeEvents {
   privacy: (raw: unknown) => void
   noteAccess: (status: string) => void
   windows: (raw: unknown) => void
+  tray: (raw: unknown) => void
 }
 
 let child: ChildProcess | null = null
@@ -120,6 +121,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
         else if (kind === 'note') on.note(JSON.parse(rest))
         else if (kind === 'priv') on.privacy(JSON.parse(rest))
         else if (kind === 'wins') on.windows(JSON.parse(rest))
+        else if (kind === 'tray') on.tray(JSON.parse(rest))
         else if (kind === 'noteaccess') on.noteAccess(rest.slice(0, 40))
         else if (kind === 'r') {
           const s2 = rest.indexOf(' ')
@@ -160,7 +162,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
 }
 
 /** One request. `arg` must already be validated by the caller: it is passed on as part of a single line. */
-export function nativeCall(cmd: 'vol' | 'volget' | 'micget' | 'micset' | 'outlist' | 'outset' | 'media' | 'bt' | 'notes' | 'appbar' | 'clipok' | 'clipseq' | 'mixer' | 'appvol' | 'seek' | 'wins' | 'windows' | 'focus' | 'minimize' | 'close' | 'tbget' | 'tbset' | 'tbhide' | 'net' | 'hw' | 'dnd' | 'notedismiss' | 'noteopen', arg = ''): Promise<unknown> {
+export function nativeCall(cmd: 'vol' | 'volget' | 'micget' | 'micset' | 'outlist' | 'outset' | 'media' | 'bt' | 'notes' | 'appbar' | 'clipok' | 'clipseq' | 'mixer' | 'appvol' | 'seek' | 'wins' | 'windows' | 'focus' | 'minimize' | 'close' | 'tbget' | 'tbset' | 'tbhide' | 'tray' | 'trayclick' | 'net' | 'hw' | 'dnd' | 'notedismiss' | 'noteopen', arg = ''): Promise<unknown> {
   const p = child
   if (!p?.stdin || /[\r\n]/.test(arg)) return Promise.resolve(null)
   const id = nextId++

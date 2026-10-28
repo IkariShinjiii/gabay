@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { COLLAPSE_DELAY_MS, HIDE_DELAY_MS, NOTCH, REVEAL_DWELL_MS } from './constants'
-import type { DownloadState, LauncherItem, DockApp, LiveMedia, PowerAction, Settings, Weather } from './global'
+import type { DownloadState, LauncherItem, DockApp, TrayIcon, LiveMedia, PowerAction, Settings, Weather } from './global'
 import Dock from './Dock'
 import ClipboardPanel from './ClipboardPanel'
 import { parseCommand, type CommandActions } from './commands'
@@ -27,6 +27,12 @@ import { tr, setLanguage, type Language } from './i18n'
 
 const TABS = ['Controls', 'Today', 'Inbox', 'Notes', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
 type Tab = (typeof TABS)[number]
+
+const dot = (c: string): string => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="${c}"/></svg>`)}`
+const SAMPLE_TRAY: TrayIcon[] = [
+  { id: '1-1', tip: 'Chat', icon: dot('#5865f2') },
+  { id: '2-1', tip: 'Games', icon: dot('#9aa4b2') }
+]
 
 const SAMPLE_WINS: DockApp[] = [
   { key: 'a', name: 'Mail', icon: null, pinned: true, wins: [{ id: '1', title: tr('Inbox - Mail'), minimized: false, active: true, attention: false }] },
@@ -550,6 +556,14 @@ export default function App(): React.JSX.Element {
   useEffect(() => {
     if (expanded && dockOn && !previewParam) void window.overlay.windowsGet().then(setWins, () => undefined)
   }, [expanded, dockOn])
+  const [tray, setTray] = useState<TrayIcon[]>(previewDock ? SAMPLE_TRAY : [])
+  useEffect(() => {
+    if (previewParam) return
+    return window.overlay.onTray(setTray)
+  }, [])
+  useEffect(() => {
+    if (expanded && dockOn && !previewParam) void window.overlay.trayGet().then(setTray, () => undefined)
+  }, [expanded, dockOn])
   const attention = dockOn && wins.some((a) => a.wins.some((w) => w.attention))
 
   // --- camera / microphone dot, downloads ---
@@ -993,7 +1007,7 @@ export default function App(): React.JSX.Element {
               {body}
             </motion.div>
           </AnimatePresence>
-          {dockShown && <Dock apps={wins} onHold={(h) => { hold('menu', h); if (!h) evaluate() }} />}
+          {dockShown && <Dock apps={wins} tray={tray} onHold={(h) => { hold('menu', h); if (!h) evaluate() }} />}
           {hasBar && (
           <label className={parsed ? 'bar is-command' : 'bar'}>
             <Icon name={parsed ? 'command' : 'search'} size={16} />

@@ -690,10 +690,24 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
             <button className={!settings.taskbarFull ? 'chip on' : 'chip'} onClick={() => void save({ taskbarFull: false })}>
               {tr('Taskbar slides up')}
             </button>
-            <button className={settings.taskbarFull ? 'chip on' : 'chip'} title={tr('Hides the taskbar completely. Icons in its corner (system tray) can\'t be reached while it\'s hidden.')} onClick={() => void save({ taskbarFull: true })}>
+            <button className={settings.taskbarFull ? 'chip on' : 'chip'} title={tr('Hides the taskbar completely. Turn on Tray icons below to keep reaching icons in its corner.')} onClick={() => void save({ taskbarFull: true })}>
               {tr('Nothing')}
             </button>
           </div>
+        </div>
+      )}
+      {settings.hideTaskbar && (
+        <div className="set-row">
+          <div className="set-label">{tr('Tray icons')}</div>
+          <div className="set-opts">
+            <button className={settings.trayIcons ? 'chip on' : 'chip'} onClick={() => void save({ trayIcons: true })}>
+              {tr('On')}
+            </button>
+            <button className={!settings.trayIcons ? 'chip on' : 'chip'} onClick={() => void save({ trayIcons: false })}>
+              {tr('Off')}
+            </button>
+          </div>
+          {settings.trayIcons && <div className="set-note muted">{tr('Icons from the corner of the taskbar show in the dock. Click one as you would there; right-click for its menu. Experimental.')}</div>}
         </div>
       )}
     </div>
