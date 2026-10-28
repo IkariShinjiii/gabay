@@ -72,6 +72,7 @@ contextBridge.exposeInMainWorld('overlay', {
   micGet: () => ipcRenderer.invoke('mic:get'),
   micSet: (muted: boolean) => ipcRenderer.invoke('mic:set', muted),
   showDesktop: () => ipcRenderer.invoke('desktop:toggle'),
+  openFlyout: (which: 'notifications' | 'quick') => ipcRenderer.invoke('shell:flyout', which),
   windowsGet: () => ipcRenderer.invoke('windows:get'),
   windowsClick: (id: string) => ipcRenderer.invoke('windows:click', id),
   windowsLaunch: (key: string) => ipcRenderer.invoke('windows:launch', key),

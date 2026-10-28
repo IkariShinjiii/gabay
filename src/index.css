@@ -2871,13 +2871,17 @@ button.big-icon {
   font-weight: 600;
 }
 
-.dock-desktop {
+.dock-corner {
+  display: flex;
+  gap: inherit;
   margin-left: 6px;
   position: sticky; /* stays reachable when the row scrolls */
   right: 0;
   background: #000;
 }
 
+.dock-sys:hover,
+.dock-sys:focus-visible,
 .dock-desktop:hover,
 .dock-desktop:focus-visible {
   color: var(--text);

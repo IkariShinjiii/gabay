@@ -67,9 +67,17 @@ export default function Dock({ apps, onHold }: { apps: DockApp[]; onHold: (held:
           </button>
         )
       })}
+      <span className="dock-corner">
+      <button className="dock-app dock-sys" title={tr('Notifications and calendar')} aria-label={tr('Notifications and calendar')} onClick={() => void window.overlay.openFlyout('notifications')}>
+        <Icon name="bell" size={18} />
+      </button>
+      <button className="dock-app dock-sys" title={tr('Quick Settings')} aria-label={tr('Quick Settings')} onClick={() => void window.overlay.openFlyout('quick')}>
+        <Icon name="sliders-horizontal" size={18} />
+      </button>
       <button className="dock-app dock-desktop" title={tr('Show desktop')} aria-label={tr('Show desktop')} onClick={() => void window.overlay.showDesktop()}>
         <Icon name="monitor" size={18} />
       </button>
+      </span>
     </div>
   )
 }
