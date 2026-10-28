@@ -2923,22 +2923,21 @@ button.big-icon {
 }
 
 .dock-tray-btn.on .icon {
-  transform: rotate(90deg);
+  transform: rotate(90deg); /* points down, at the row it opened */
 }
 
-/* Tray icons, opened from the dock's tray button: a tidy grid above the dock, so running apps keep the whole row. */
-.tray-drawer {
+/* Tray icons, opened from the dock's tray button: a row that slides open under the dock, so the dock never moves. */
+.tray-row {
   flex: none;
+  overflow: hidden;
+}
+
+.tray-row-inner {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 4px;
-  margin: 6px 0 0 auto;
-  max-width: 100%;
-  padding: 6px;
-  border-radius: 14px;
-  background: var(--surface);
-  box-shadow: 0 0 0 1px var(--line);
+  padding: 6px 4px 2px;
 }
 
 .tray-drawer-icon {

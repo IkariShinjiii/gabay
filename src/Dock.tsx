@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import type { DockApp, TrayIcon } from './global'
 import Icon from './Icon'
 import { tr } from './i18n'
@@ -36,25 +37,6 @@ export default function Dock({ apps, tray, onHold }: { apps: DockApp[]; tray: Tr
   }
   return (
     <>
-    {showTray && (
-      <div className="tray-drawer" role="group" aria-label={tr('Tray icons')} onKeyDown={(e) => e.key === 'Escape' && setTrayOpen(false)}>
-        {tray.map((t) => (
-          <button
-            key={t.id}
-            className="tray-drawer-icon"
-            title={t.tip}
-            aria-label={t.tip || tr('Tray icon')}
-            onClick={() => trayClick(t.id, 'l')}
-            onContextMenu={(e) => {
-              e.preventDefault()
-              trayClick(t.id, 'r')
-            }}
-          >
-            <img src={t.icon} alt="" draggable={false} />
-          </button>
-        ))}
-      </div>
-    )}
     <div
       className="dock"
       role="toolbar"
@@ -118,6 +100,42 @@ export default function Dock({ apps, tray, onHold }: { apps: DockApp[]; tray: Tr
       </button>
       </span>
     </div>
+    <AnimatePresence initial={false}>
+      {showTray && (
+        <motion.div
+          key="tray"
+          className="tray-row"
+          role="group"
+          aria-label={tr('Tray icons')}
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 420, damping: 40 }}
+          onKeyDown={(e) => e.key === 'Escape' && setTrayOpen(false)}
+        >
+          <div className="tray-row-inner">
+            {tray.map((t, i) => (
+              <motion.button
+                key={t.id}
+                className="tray-drawer-icon"
+                title={t.tip}
+                aria-label={t.tip || tr('Tray icon')}
+                initial={{ y: -6, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: Math.min(i, 12) * 0.02, duration: 0.18 }}
+                onClick={() => trayClick(t.id, 'l')}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  trayClick(t.id, 'r')
+                }}
+              >
+                <img src={t.icon} alt="" draggable={false} />
+              </motion.button>
+            ))}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
     </>
   )
 }
