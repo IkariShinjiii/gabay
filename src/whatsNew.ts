@@ -8,7 +8,8 @@ export const WHATS_NEW: [version: string, items: string[]][] = [
       'Tray icon menus open every time, and Gabay stays open until you pick something',
       'Every app shows its real icon in Launch and the dock, including Steam games and Windows tools',
       'Dock: Start and Task view buttons; middle-click an app for a new window; right-click to pick one of its windows',
-      "The dock's bell shows how many notifications are new"
+      "The dock's bell shows how many notifications are new",
+      'If Gabay is closed from Task Manager, the Windows taskbar comes back on its own'
     ]
   ],
   [
