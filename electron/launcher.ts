@@ -5,6 +5,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import { writeJsonAtomic } from './atomicWrite'
 import { join } from 'node:path'
 import { fuzzyScore } from './search'
+import { nativeCall, nativeRunning } from './native'
 
 export interface LauncherItem {
   id: string
@@ -214,12 +215,28 @@ function loadStoreLogos(): Promise<Map<string, string>> {
   })
 }
 
+/**
+ * The picture the shell itself shows for a file or an Apps folder item (what Start and Explorer show), as a PNG data
+ * URL, from the native helper. null if the helper isn't running or the shell has nothing.
+ */
+export async function shellIcon(path: string): Promise<string | null> {
+  const r = await nativeCall('appicon', Buffer.from(path, 'utf8').toString('base64')).catch(() => null)
+  return typeof r === 'string' && r.length < 200_000 && /^[A-Za-z0-9+/]+={0,2}$/.test(r) ? `data:image/png;base64,${r}` : null
+}
+
 /** A small PNG data URL for the app's icon, or null (the renderer then shows a generic glyph). */
 export async function getIcon(id: string): Promise<string | null> {
   if (iconCache.has(id)) return iconCache.get(id) ?? null
   const e = entries.get(id)
   if (!e) return null
-  let icon: string | null = null
+  // The shell's own picture first: it gets right what reading the shortcut here misses (an icon file, a place inside
+  // a dll, Steam and other launcher links, Windows tools that only exist in the Apps folder).
+  const helper = nativeRunning()
+  let icon = helper ? await shellIcon(e.kind === 'lnk' ? e.target : 'shell:AppsFolder\\' + e.target) : null
+  if (icon) {
+    iconCache.set(id, icon)
+    return icon
+  }
   try {
     if (e.kind === 'lnk') {
       // A shortcut often has no icon of its own (the shell then draws a blank page with an arrow), so ask where it
@@ -245,7 +262,7 @@ export async function getIcon(id: string): Promise<string | null> {
   } catch {
     // Unreadable shortcut or logo: fall through to null.
   }
-  iconCache.set(id, icon)
+  if (helper) iconCache.set(id, icon) // without the helper (still starting), ask again next time
   return icon
 }
 

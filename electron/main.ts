@@ -18,7 +18,7 @@ import { currentProjectMode, isProjectMode, setProjectMode } from './project'
 import { isSettingsKey, networkKind, quickGet, quickPeek, quickSet, quickSlide, SETTINGS_PAGES, stopQuick } from './quick'
 import { COLLAPSE_MAX, COLLAPSE_MIN, DEFAULTS, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
 import { getNotes, setNotes } from './notes'
-import { ensureIndex, findByExe, getIcon, isStarred, launch, movePin, pinnedApps, search, toggleStar } from './launcher'
+import { ensureIndex, findByExe, getIcon, isStarred, shellIcon, launch, movePin, pinnedApps, search, toggleStar } from './launcher'
 import { isPowerAction, runPower } from './power'
 import { addTodo, listTodos, removeTodo, toggleTodo } from './todos'
 import { clearHistory, copyBack, listClipboard, setClipboardGuard, startClipboardHistory, stopClipboardHistory, togglePin } from './clipboardHistory'
@@ -260,7 +260,10 @@ app.whenReady().then(async () => {
     if (!path) return null
     if (!winIcons.has(path)) {
       if (winIcons.size > 200) winIcons.clear()
-      winIcons.set(path, await app.getFileIcon(path, { size: 'normal' }).then((i) => i.toDataURL(), () => null))
+      // the shell's own picture of the program, as in Start; Electron's lookup if the helper has none
+      const icon = (await shellIcon(path)) ?? (await app.getFileIcon(path, { size: 'normal' }).then((i) => i.toDataURL(), () => null))
+      if (!nativeRunning()) return icon // the helper is still starting: ask again next time
+      winIcons.set(path, icon)
     }
     return winIcons.get(path) ?? null
   }
