@@ -20,6 +20,7 @@ import { chime, leftOf, useTimers } from './useTimers'
 import { useRecorder } from './useRecorder'
 import { applyAccent, resolveAccent } from './accent'
 import Welcome from './Welcome'
+import UpdateTour, { hasTour } from './UpdateTour'
 import NotesPanel from './NotesPanel'
 import { notesFor } from './whatsNew'
 import { useFocusTimer } from './useFocusTimer'
@@ -80,9 +81,10 @@ export default function App(): React.JSX.Element {
   const previewTab = TABS.find((t) => t === previewParam)
   // Dev preview of the first-run tour: open on it with no pointer involved.
   const previewWelcome = previewParam === 'Welcome'
+  const previewTour = previewParam === 'Tour'
   // Dev preview of the open-apps row, with made-up apps (never the person's real windows).
   const previewDock = new URLSearchParams(location.hash.slice(1)).get('dock') === '1'
-  const [expanded, setExpanded] = useState(previewTab !== undefined || previewWelcome)
+  const [expanded, setExpanded] = useState(previewTab !== undefined || previewWelcome || previewTour)
   const [tab, setTab] = useState<Tab>(previewTab ?? 'Today')
   // One bar for everything: text that parses as a command is a command, anything else searches apps (or the clipboard).
   const [input, setInput] = useState('')
@@ -100,7 +102,7 @@ export default function App(): React.JSX.Element {
   const showNextRef = useRef<() => void>(() => undefined)
   const toastTimerRef = useRef<number | undefined>(undefined)
   const holds = useRef(new Set<string>())
-  const isOpen = useRef(previewTab !== undefined || previewWelcome)
+  const isOpen = useRef(previewTab !== undefined || previewWelcome || previewTour)
   const collapseMs = useRef(COLLAPSE_DELAY_MS) // replaced by the saved setting once it loads
   const timer = useRef<number | undefined>(undefined)
 
@@ -176,6 +178,18 @@ export default function App(): React.JSX.Element {
     setWelcome(false)
     hold('welcome', false)
     void window.overlay.setSettings({ welcomed: true, accent: accentRef.current, seenVersion: versionRef.current })
+    evaluate()
+  }, [hold, evaluate])
+  // --- tour of what's new, after an update that has one (or from Settings) ---
+  const [tour, setTour] = useState<string | null>(previewTour ? '1.4.0' : null)
+  const startTour = useCallback((version: string): void => {
+    setTour(version)
+    hold('welcome', true)
+    evaluate()
+  }, [hold, evaluate])
+  const finishTour = useCallback((): void => {
+    setTour(null)
+    hold('welcome', false)
     evaluate()
   }, [hold, evaluate])
   const accentRef = useRef('mint')
@@ -430,6 +444,15 @@ export default function App(): React.JSX.Element {
   useEffect(() => () => window.clearTimeout(toastTimer.current), [])
 
   announceUpdate.current = (version: string): void => {
+    if (hasTour(version)) {
+      // never over a game or video: try again in a while
+      if (fullscreenRef.current) {
+        window.setTimeout(() => announceUpdate.current(version), 60_000)
+        return
+      }
+      startTour(version)
+      return
+    }
     const items = notesFor(version)
     pushToast({
       icon: 'sparkles',
@@ -862,7 +885,18 @@ export default function App(): React.JSX.Element {
     .sort((a, b) => (a.endAt ?? 0) - (b.endAt ?? 0))[0]
 
   let body: React.JSX.Element
-  if (welcome) {
+  if (tour) {
+    body = (
+      <UpdateTour
+        version={tour}
+        onDone={finishTour}
+        onOpenSettings={() => {
+          setTab('Settings')
+          finishTour()
+        }}
+      />
+    )
+  } else if (welcome) {
     body = <Welcome hotkey={activeHotkey} accent={accentName} onAccent={setAccentName} onDone={finishWelcome} />
   } else if (showResults) {
     body = (
@@ -909,7 +943,7 @@ export default function App(): React.JSX.Element {
       />
     )
   } else if (expanded && tab === 'Settings') {
-    body = <SettingsPanel onSettings={applySettings} onHold={onTodoHold} onShowWelcome={startWelcome} liveHotkey={activeHotkey} />
+    body = <SettingsPanel onSettings={applySettings} onHold={onTodoHold} onShowWelcome={startWelcome} onShowTour={startTour} liveHotkey={activeHotkey} />
   } else if (expanded && tab === 'System') {
     // StatsPanel exists only while visible, so its polling stops when the notch collapses or the tab changes.
     body = <StatsPanel />

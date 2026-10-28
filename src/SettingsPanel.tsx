@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { hasTour } from './UpdateTour'
 import type { SettingsSnapshot, UpdateInfo } from './global'
 import { ACCENT_PRESETS } from './accent'
 import Icon from './Icon'
@@ -12,6 +13,7 @@ interface Props {
   /** A focused text field keeps the panel open. */
   onHold: (held: boolean) => void
   onShowWelcome: () => void
+  onShowTour: (version: string) => void
   /** The hotkey App knows is registered (the snapshot's copy can be older). */
   liveHotkey: string | null
 }
@@ -79,7 +81,7 @@ function ShortcutsRow({ hotkey }: { hotkey: string | null }): React.JSX.Element 
   )
 }
 
-function WhatsNewRow({ version }: { version: string }): React.JSX.Element {
+function WhatsNewRow({ version, onTour }: { version: string; onTour: (version: string) => void }): React.JSX.Element {
   return (
     <details className="set-row set-details" open={PREVIEW_OPEN || undefined}>
       <summary className="set-label">
@@ -91,6 +93,13 @@ function WhatsNewRow({ version }: { version: string }): React.JSX.Element {
           <li key={n}>{n}</li>
         ))}
       </ul>
+      {hasTour(version) && (
+        <div className="set-opts">
+          <button className="chip" onClick={() => onTour(version)}>
+            {tr('Take the tour')}
+          </button>
+        </div>
+      )}
     </details>
   )
 }
@@ -339,7 +348,7 @@ function UpdateRow(): React.JSX.Element {
  * Buttons and a slider rather than <select>: a native dropdown opens its own popup window, which would take
  * the pointer off the notch and collapse the panel under the user.
  */
-export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveHotkey }: Props): React.JSX.Element {
+export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onShowTour, liveHotkey }: Props): React.JSX.Element {
   const [snap, setSnap] = useState<SettingsSnapshot | null>(null)
   // Windows' Do not disturb, re-read every few seconds while Settings is open (it's turned on outside Gabay).
   const [winDnd, setWinDnd] = useState<boolean | null>(null)
@@ -615,7 +624,7 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
         </div>
         {settings.updateChannel === 'preview' && <div className="set-note muted">{tr('You get new versions first, before they go out to everyone.')}</div>}
       </div>
-      <WhatsNewRow version={snap.version} />
+      <WhatsNewRow version={snap.version} onTour={onShowTour} />
       <ShortcutsRow hotkey={liveHotkey ?? activeHotkey} />
       <div className="set-row">
         <div className="set-label">{tr('Welcome tour')}</div>

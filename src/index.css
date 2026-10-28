@@ -2413,6 +2413,36 @@ button.big-icon {
   margin-left: 0;
 }
 
+.tour-label {
+  position: absolute;
+  top: 10px;
+  left: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.tour-icons span {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line), 0 0 32px var(--accent-tint);
+  color: var(--accent);
+  animation: tour-pop 420ms var(--ease-out) both;
+}
+
+@keyframes tour-pop {
+  from { transform: translateY(10px) scale(0.92); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-icons span { animation: none; }
+}
+
 /* ---------- Notes ---------- */
 .notes {
   display: flex;
