@@ -342,8 +342,9 @@ export default function App(): React.JSX.Element {
     // The Start menu opened (the taskbar is hidden): come up with it on Launch, where the dock and tray icons are, and
     // stay while it is open. No focus is taken, so Start stays open; a click on Gabay closes Start and keeps Gabay.
     const offStart = window.overlay.onStart((open) => {
+      // Only when Start is what opens Gabay: an already open panel (a note half typed) keeps its tab.
+      if (open && !isOpen.current) setTab('Launch')
       hold('start', open)
-      if (open) setTab('Launch')
       evaluate()
     })
     // The hotkey opens Launch with the caret in its search field.
