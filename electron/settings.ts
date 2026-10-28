@@ -36,6 +36,8 @@ export interface Settings {
   visibility: 'always' | 'auto'
   /** Turn on the Windows taskbar's auto-hide and show open apps in the notch instead. */
   hideTaskbar: boolean
+  /** With hideTaskbar: hide it outright, so it never slides up at the bottom edge. */
+  taskbarFull: boolean
   /** Install updates by themselves while the person is away from the PC. */
   autoUpdate: boolean
   /** 'preview' also gets pre-releases (new versions before everyone else). */
@@ -53,7 +55,7 @@ export const ACCENTS = ['mint', 'windows', 'blue', 'purple', 'pink', 'orange', '
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, noteSound: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, welcomed: false, reviewAt: 0, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarWasAutoHide: null, autoUpdate: true, updateChannel: 'stable', language: 'en' }
+export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, noteSound: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, dndUntil: 0, welcomed: false, reviewAt: 0, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarFull: false, taskbarWasAutoHide: null, autoUpdate: true, updateChannel: 'stable', language: 'en' }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -87,12 +89,13 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
   const reviewAt = typeof r.reviewAt === 'number' && Number.isFinite(r.reviewAt) && (r.reviewAt === -1 || r.reviewAt >= 0) ? r.reviewAt : base.reviewAt
   const seenVersion = typeof r.seenVersion === 'string' && /^\d+\.\d+\.\d+$/.test(r.seenVersion) ? r.seenVersion : base.seenVersion
   const hideTaskbar = typeof r.hideTaskbar === 'boolean' ? r.hideTaskbar : base.hideTaskbar
+  const taskbarFull = typeof r.taskbarFull === 'boolean' ? r.taskbarFull : base.taskbarFull
   const taskbarWasAutoHide =
     r.taskbarWasAutoHide === null || typeof r.taskbarWasAutoHide === 'boolean' ? r.taskbarWasAutoHide : base.taskbarWasAutoHide
   const autoUpdate = typeof r.autoUpdate === 'boolean' ? r.autoUpdate : base.autoUpdate
   const updateChannel = r.updateChannel === 'stable' || r.updateChannel === 'preview' ? r.updateChannel : base.updateChannel
   const language = r.language === 'en' || r.language === 'fil' ? r.language : base.language
-  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, noteSound, reserveTop, accent, place, lyrics, dndUntil, welcomed, reviewAt, seenVersion, visibility, hideTaskbar, taskbarWasAutoHide, autoUpdate, updateChannel, language }
+  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, noteSound, reserveTop, accent, place, lyrics, dndUntil, welcomed, reviewAt, seenVersion, visibility, hideTaskbar, taskbarFull, taskbarWasAutoHide, autoUpdate, updateChannel, language }
 }
 
 export async function loadSettings(): Promise<Settings> {

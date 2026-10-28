@@ -155,6 +155,7 @@ export interface Settings {
   seenVersion: string
   visibility: 'always' | 'auto'
   hideTaskbar: boolean
+  taskbarFull: boolean
   autoUpdate: boolean
   updateChannel: 'stable' | 'preview'
   language: 'en' | 'fil'

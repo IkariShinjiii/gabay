@@ -18,6 +18,7 @@
 //            wins on|off | windows           (open windows: pushed on change while on, or asked for)
 //            focus <h> | minimize <h>        (switch to / minimize an open window)
 //            tbget | tbset <0|1> [restore]   (the Windows taskbar's auto-hide; restore is applied when Gabay exits)
+//            tbhide <0|1>                    (hide the taskbar windows outright; always shown again when Gabay exits)
 //   pushes   priv <json>                     camera / microphone in use, and by which apps
 //            wins <json>                     open windows, in z-order, while wins is on
 export const NATIVE_SOURCE = String.raw`
@@ -412,6 +413,7 @@ static class Native {
     } catch { }
     // Gabay closed our stdin: it is gone. Give the reserved space back, and the taskbar setting, before leaving.
     try { if (band != null) band.Invoke((Action)(() => band.Release())); } catch { }
+    try { TaskbarHide(false); } catch { }
     try { if (tbRestore >= 0) TaskbarAutoHide(tbRestore == 1); } catch { }
     Environment.Exit(0);
   }
@@ -464,6 +466,7 @@ static class Native {
         return IsWindow(h) && Listable(h) && ShowWindowAsync(h, 6) ? "true" : "false"; // SW_MINIMIZE
       }
       case "tbget": return TaskbarAutoHide() ? "true" : "false";
+      case "tbhide": TaskbarHide(arg == "1"); return "true";
       case "net": return "\"" + Net() + "\"";
       case "hw": return Hardware();
       case "dnd": return WindowsDnd() ? "true" : "false";
@@ -882,6 +885,40 @@ static class Native {
     var d = new APPBARDATA(); d.cbSize = Marshal.SizeOf(typeof(APPBARDATA)); d.hWnd = FindWindow("Shell_TrayWnd", null);
     d.lParam = new IntPtr(on ? 1 : 0);
     SHAppBarMessage(10, ref d); // ABM_SETSTATE
+  }
+
+  // ---------- hiding the taskbar outright ----------
+  // Explorer shows its taskbars again on its own (a restart, a new monitor, Start opening), so while hidden they are
+  // checked twice a second and hidden again. Nothing is changed in Explorer itself: showing the windows undoes it all.
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string cls, string name);
+  static volatile bool tbHidden;
+  static System.Threading.Timer tbTimer;
+  static List<IntPtr> Taskbars() {
+    var list = new List<IntPtr>();
+    foreach (var cls in new[] { "Shell_TrayWnd", "Shell_SecondaryTrayWnd" }) {
+      var h = IntPtr.Zero;
+      while ((h = FindWindowEx(IntPtr.Zero, h, cls, null)) != IntPtr.Zero) list.Add(h);
+    }
+    return list;
+  }
+  static void TaskbarHide(bool on) {
+    lock (Taskbars_lock) {
+      tbHidden = on;
+      if (on) {
+        if (tbTimer == null) tbTimer = new System.Threading.Timer(_ => KeepHidden(), null, 0, 500);
+        else tbTimer.Change(0, 500);
+      } else {
+        if (tbTimer != null) tbTimer.Change(Timeout.Infinite, Timeout.Infinite);
+        foreach (var h in Taskbars()) if (!IsWindowVisible(h)) ShowWindow(h, 8); // SW_SHOWNA: back, without taking focus
+      }
+    }
+  }
+  static readonly object Taskbars_lock = new object();
+  static void KeepHidden() {
+    lock (Taskbars_lock) {
+      if (!tbHidden) return;
+      foreach (var h in Taskbars()) if (IsWindowVisible(h)) ShowWindow(h, 0); // SW_HIDE
+    }
   }
 
   // ---------- now playing ----------
