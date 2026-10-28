@@ -900,9 +900,14 @@ static class Native {
   static System.Threading.Timer tbTimer;
   static List<IntPtr> Taskbars() {
     var list = new List<IntPtr>();
+    uint shell = ShellPid();
     foreach (var cls in new[] { "Shell_TrayWnd", "Shell_SecondaryTrayWnd" }) {
       var h = IntPtr.Zero;
-      while ((h = FindWindowEx(IntPtr.Zero, h, cls, null)) != IntPtr.Zero) if (h != trayWnd) list.Add(h);
+      while ((h = FindWindowEx(IntPtr.Zero, h, cls, null)) != IntPtr.Zero) {
+        if (h == trayWnd) continue;
+        uint pid; GetWindowThreadProcessId(h, out pid);
+        if (shell == 0 || pid == shell) list.Add(h); // Explorer's only: another taskbar tool's bar is left alone
+      }
     }
     return list;
   }
@@ -956,6 +961,7 @@ static class Native {
   [DllImport("user32.dll")] static extern bool SendNotifyMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
   [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT p);
   [DllImport("user32.dll")] static extern bool AllowSetForegroundWindow(uint pid);
+  [DllImport("user32.dll")] static extern bool InSendMessage();
   [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern IntPtr GetModuleHandle(string name);
 
   class TrayItem { public string key; public IntPtr hwnd; public uint uid; public uint cb; public uint ver; public string tip = ""; public string icon; public bool hidden; public uint pid; }
@@ -969,11 +975,20 @@ static class Native {
   static uint trayOwnerPid; // Gabay itself: its own tray icon isn't shown in its dock
   static string lastTray;
 
+  // Explorer's own taskbar: the Shell_TrayWnd of the process that owns the desktop. Not just "any one but Gabay's":
+  // other taskbar tools (RetroBar and the like) make one too, and forwarding to them could loop back here.
+  static uint ShellPid() { uint pid = 0; var sh = GetShellWindow(); if (sh != IntPtr.Zero) GetWindowThreadProcessId(sh, out pid); return pid; }
   static IntPtr ExplorerTray() {
+    uint shell = ShellPid();
     var h = IntPtr.Zero;
-    while ((h = FindWindowEx(IntPtr.Zero, h, "Shell_TrayWnd", null)) != IntPtr.Zero) if (h != trayWnd) return h;
+    while ((h = FindWindowEx(IntPtr.Zero, h, "Shell_TrayWnd", null)) != IntPtr.Zero) {
+      if (h == trayWnd) continue;
+      uint pid; GetWindowThreadProcessId(h, out pid);
+      if (shell == 0 || pid == shell) return h;
+    }
     return IntPtr.Zero;
   }
+  [ThreadStatic] static int forwarding; // a forwarded message that comes back here is not sent on again
 
   static string Tray(string arg) {
     var a = arg.Split(' ');
@@ -994,8 +1009,21 @@ static class Native {
     return "true";
   }
 
+  // Another program (not Explorer, not Gabay) already acting as the tray, like RetroBar.
+  static bool ForeignTray() {
+    uint shell = ShellPid();
+    var h = IntPtr.Zero;
+    while ((h = FindWindowEx(IntPtr.Zero, h, "Shell_TrayWnd", null)) != IntPtr.Zero) {
+      if (h == trayWnd) continue;
+      uint pid; GetWindowThreadProcessId(h, out pid);
+      if (shell != 0 && pid != shell) return true;
+    }
+    return false;
+  }
+
   static void TrayOn() {
     if (trayWnd != IntPtr.Zero) return;
+    if (ForeignTray()) return; // leave the tray to the tool that has it; Gabay's dock just shows no tray icons
     if (trayProc == null) {
       trayProc = TrayWndProc;
       var c = new WNDCLASSEX();
@@ -1024,11 +1052,26 @@ static class Native {
   // Apps find the tray with FindWindow, which takes the first in z-order: stay ahead of Explorer's.
   static void RaiseTray() {
     if (trayWnd == IntPtr.Zero) return;
-    if (FindWindow("Shell_TrayWnd", null) != trayWnd) SetWindowPos(trayWnd, new IntPtr(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); // topmost, no move/size/activate
+    var first = FindWindow("Shell_TrayWnd", null);
+    if (first == trayWnd) return;
+    // another taskbar tool holds the tray: step aside rather than fight it for every icon
+    uint pid; GetWindowThreadProcessId(first, out pid);
+    if (first != IntPtr.Zero && pid != ShellPid()) return;
+    SetWindowPos(trayWnd, new IntPtr(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); // topmost, no move/size/activate
   }
 
   static IntPtr TrayWndProc(IntPtr h, uint m, IntPtr w, IntPtr l) {
-    if (m != 0x004A || l == IntPtr.Zero) return DefWindowProc(h, m, w, l); // WM_COPYDATA only
+    // Commands meant for the taskbar (Show desktop is WM_COMMAND 407, from Shell.Application and other apps), its
+    // hotkeys and its private messages: passed straight on to Explorer, sent or posted the way they came.
+    if (m == 0x0111 || m == 0x0312 || (m >= 0x0400 && m < 0x8000)) {
+      var tb = ExplorerTray();
+      if (tb == IntPtr.Zero || forwarding > 0) return IntPtr.Zero;
+      if (!InSendMessage()) { PostMessage(tb, m, w, l); return IntPtr.Zero; }
+      IntPtr r;
+      forwarding++;
+      try { return SendMessageTimeout(tb, m, w, l, 0x0002, 3000, out r) != IntPtr.Zero ? r : IntPtr.Zero; } finally { forwarding--; }
+    }
+    if (m != 0x004A || l == IntPtr.Zero) return DefWindowProc(h, m, w, l); // the rest: WM_COPYDATA
     try {
       var cds = (COPYDATASTRUCT)Marshal.PtrToStructure(l, typeof(COPYDATASTRUCT));
       if (cds.dwData == new IntPtr(1)) ReadTray(cds);
@@ -1036,7 +1079,9 @@ static class Native {
     // Explorer still gets everything, tray icons and app bar requests alike, and its answer is the answer.
     var ex = ExplorerTray();
     IntPtr res = IntPtr.Zero;
-    if (ex != IntPtr.Zero && SendMessageTimeout(ex, m, w, l, 0x0002, 3000, out res) != IntPtr.Zero) return res; // SMTO_ABORTIFHUNG
+    if (ex == IntPtr.Zero || forwarding > 0) return new IntPtr(1);
+    forwarding++;
+    try { if (SendMessageTimeout(ex, m, w, l, 0x0002, 3000, out res) != IntPtr.Zero) return res; } finally { forwarding--; } // SMTO_ABORTIFHUNG
     return new IntPtr(1);
   }
 

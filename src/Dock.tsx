@@ -12,7 +12,7 @@ import { tr } from './i18n'
  * it has several windows, brings up the next one. Right-click: open a new window, pin or unpin, close.
  * The mark under an icon: a dot per open window (up to three), wide for the app in use, pulsing for attention.
  */
-export default function Dock({ apps, tray, onHold }: { apps: DockApp[]; tray: TrayIcon[]; onHold: (held: boolean) => void }): React.JSX.Element {
+export default function Dock({ apps, tray, onHold, onInbox }: { apps: DockApp[]; tray: TrayIcon[]; onHold: (held: boolean) => void; onInbox: () => void }): React.JSX.Element {
   const click = (a: DockApp): void => {
     if (a.wins.length === 0) {
       void window.overlay.windowsLaunch(a.key)
@@ -89,11 +89,8 @@ export default function Dock({ apps, tray, onHold }: { apps: DockApp[]; tray: Tr
           <Icon name="chevron-right" size={18} />
         </button>
       )}
-      <button className="dock-app dock-sys" title={tr('Notifications and calendar')} aria-label={tr('Notifications and calendar')} onClick={() => void window.overlay.openFlyout('notifications')}>
+      <button className="dock-app dock-sys" title={tr('Inbox')} aria-label={tr('Inbox')} onClick={onInbox}>
         <Icon name="bell" size={18} />
-      </button>
-      <button className="dock-app dock-sys" title={tr('Quick Settings')} aria-label={tr('Quick Settings')} onClick={() => void window.overlay.openFlyout('quick')}>
-        <Icon name="sliders-horizontal" size={18} />
       </button>
       <button className="dock-app dock-desktop" title={tr('Show desktop')} aria-label={tr('Show desktop')} onClick={() => void window.overlay.showDesktop()}>
         <Icon name="monitor" size={18} />

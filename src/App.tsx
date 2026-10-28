@@ -876,7 +876,7 @@ export default function App(): React.JSX.Element {
   const rightPx = (battery ? 34 : 0) + (live && download ? 52 : live && media?.playing ? 20 : 0) + (privacy.cam.length || privacy.mic.length ? 12 : 0)
   const pillWidth = Math.max(live ? NOTCH.live.width : NOTCH.collapsed.width, 2 * Math.max(leftPx, rightPx) + 104)
   // The dock adds its own height on top of the usual cap, so tall tabs aren't squeezed by it.
-  const dockShown = dockOn && !welcome && wins.length > 0 && tab === 'Launch' // running apps live on Launch only
+  const dockShown = dockOn && !welcome && !tour && (wins.length > 0 || tray.length > 0) && tab === 'Launch' // running apps live on Launch only
   const panelCap = NOTCH.expanded.height + (dockShown ? NOTCH.expanded.dock : 0)
   const size = expanded
     ? { width: NOTCH.expanded.width, height: Math.min(panelHeight, panelCap) }
@@ -1045,7 +1045,7 @@ export default function App(): React.JSX.Element {
               {body}
             </motion.div>
           </AnimatePresence>
-          {dockShown && <Dock apps={wins} tray={tray} onHold={(h) => { hold('menu', h); if (!h) evaluate() }} />}
+          {dockShown && <Dock apps={wins} tray={tray} onInbox={() => setTab('Inbox')} onHold={(h) => { hold('menu', h); if (!h) evaluate() }} />}
           {hasBar && (
           <label className={parsed ? 'bar is-command' : 'bar'}>
             <Icon name={parsed ? 'command' : 'search'} size={16} />

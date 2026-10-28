@@ -27,7 +27,7 @@ const TOURS: Record<string, Step[]> = {
     {
       icons: ['bell', 'sliders-horizontal', 'monitor'],
       title: 'A fuller dock',
-      text: 'With the taskbar hidden, the dock at the bottom of this panel now opens Notifications, Quick Settings and Show desktop. Right-click a pinned app to move it left or right.'
+      text: 'With the taskbar hidden, the dock at the bottom of this panel now has buttons for your Inbox and Show desktop. Right-click a pinned app to move it left or right.'
     },
     {
       icons: ['layers', 'pin'],
