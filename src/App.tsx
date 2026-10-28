@@ -19,6 +19,7 @@ import NotchToast, { type Toast } from './NotchToast'
 import { chime, leftOf, useTimers } from './useTimers'
 import { useRecorder } from './useRecorder'
 import { applyAccent, resolveAccent } from './accent'
+import type { IconName } from './icons'
 import Welcome from './Welcome'
 import UpdateTour, { hasTour } from './UpdateTour'
 import NotesPanel from './NotesPanel'
@@ -26,8 +27,10 @@ import { notesFor } from './whatsNew'
 import { useFocusTimer } from './useFocusTimer'
 import { tr, setLanguage, type Language } from './i18n'
 
-const TABS = ['Controls', 'Today', 'Inbox', 'Notes', 'System', 'Clipboard', 'Launch', 'Power', 'Settings'] as const
+// Most used first. The last four show as icons (their name is the tooltip and the screen reader label).
+const TABS = ['Today', 'Controls', 'Inbox', 'Notes', 'System', 'Launch', 'Clipboard', 'Power', 'Settings'] as const
 type Tab = (typeof TABS)[number]
+const TAB_ICONS: Partial<Record<Tab, IconName>> = { Launch: 'search', Clipboard: 'scissors', Power: 'power', Settings: 'settings' }
 
 const dot = (c: string): string => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="${c}"/></svg>`)}`
 const SAMPLE_TRAY: TrayIcon[] = [
@@ -1003,12 +1006,12 @@ export default function App(): React.JSX.Element {
                 role="tab"
                 aria-selected={t === tab}
                 title={`${tr(t)} (Ctrl+${i + 1})`}
-                aria-label={t === 'Inbox' && unseen > 0 && tab !== 'Inbox' ? `${tr(t)}, ${tr('New')}` : undefined}
-                className={t === tab ? 'tab on' : 'tab'}
+                aria-label={t === 'Inbox' && unseen > 0 && tab !== 'Inbox' ? `${tr(t)}, ${tr('New')}` : TAB_ICONS[t] ? tr(t) : undefined}
+                className={['tab', t === tab && 'on', TAB_ICONS[t] && 'tab-icon', t === 'Launch' && 'tab-icons-start'].filter(Boolean).join(' ')}
                 tabIndex={expanded ? 0 : -1}
                 onClick={() => selectTab(t)}
               >
-                {tr(t)}
+                {TAB_ICONS[t] ? <Icon name={TAB_ICONS[t]} size={16} /> : tr(t)}
                 {t === 'Inbox' && unseen > 0 && tab !== 'Inbox' && <span className="tab-badge" aria-hidden="true" />}
                 {/* One marker shared by all tabs: Motion slides it from the old tab to the new one. */}
                 {t === tab && <motion.span layoutId="tab-marker" className="tab-marker" transition={SPRING} />}

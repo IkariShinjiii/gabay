@@ -122,6 +122,18 @@ body,
   color: #fff;
 }
 
+/* Launch, Clipboard, Power and Settings: icons, set a little apart from the named tabs */
+.tab-icon {
+  display: grid;
+  place-items: center;
+  height: 30px;
+  padding: 0 8px;
+}
+
+.tab-icons-start {
+  margin-left: 10px;
+}
+
 /* Active marker: a short bar under the label, the same accent as the focus ring */
 .tab-marker {
   position: absolute;
