@@ -677,10 +677,25 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, liveH
         </div>
         {settings.hideTaskbar && (
           <div className="set-note muted">
-            {tr('Your open apps are at the bottom of this panel: click one to switch to it, or the one you\'re using to minimize it. The taskbar is still there if you push the pointer to the bottom edge. Turning this off or quitting Gabay puts it back.')}
+            {settings.taskbarFull
+              ? tr('Your open apps are at the bottom of this panel: click one to switch to it, or the one you\'re using to minimize it. Turning this off or quitting Gabay puts the taskbar back.')
+              : tr('Your open apps are at the bottom of this panel: click one to switch to it, or the one you\'re using to minimize it. The taskbar is still there if you push the pointer to the bottom edge. Turning this off or quitting Gabay puts it back.')}
           </div>
         )}
       </div>
+      {settings.hideTaskbar && (
+        <div className="set-row">
+          <div className="set-label">{tr('At the bottom edge')}</div>
+          <div className="set-opts">
+            <button className={!settings.taskbarFull ? 'chip on' : 'chip'} onClick={() => void save({ taskbarFull: false })}>
+              {tr('Taskbar slides up')}
+            </button>
+            <button className={settings.taskbarFull ? 'chip on' : 'chip'} title={tr('Hides the taskbar completely. Icons in its corner (system tray) can\'t be reached while it\'s hidden.')} onClick={() => void save({ taskbarFull: true })}>
+              {tr('Nothing')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

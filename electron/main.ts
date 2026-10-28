@@ -745,8 +745,10 @@ app.whenReady().then(async () => {
         await saveSettings(settings)
       }
       await nativeCall('tbset', `1 ${settings.taskbarWasAutoHide ? 1 : 0}`)
+      await nativeCall('tbhide', settings.taskbarFull ? '1' : '0')
       await nativeCall('wins', 'on')
     } else {
+      await nativeCall('tbhide', '0') // also undoes a hide left over from a run that was killed
       await nativeCall('wins', 'off')
       openWins = []
       send('overlay:windows', [])
@@ -813,6 +815,7 @@ app.whenReady().then(async () => {
     const prevFollow = settings.followMouse
     const prevReserve = settings.reserveTop
     const prevHide = settings.hideTaskbar
+    const prevFull = settings.taskbarFull
     const prevChannel = settings.updateChannel
     // taskbarWasAutoHide is main's own record; a patch (or Reset's defaults) never overwrites it.
     const next: Settings = { ...sanitize(patch, settings), taskbarWasAutoHide: settings.taskbarWasAutoHide }
@@ -825,7 +828,7 @@ app.whenReady().then(async () => {
     void nativeCall('notes', settings.notifications ? 'on' : 'off')
     if (next.reserveTop !== prevReserve) applyReserve()
     await saveSettings(settings)
-    if (next.hideTaskbar !== prevHide) await applyTaskbar()
+    if (next.hideTaskbar !== prevHide || next.taskbarFull !== prevFull) await applyTaskbar()
     if (next.updateChannel !== prevChannel && app.isPackaged) void lookForUpdate()
     return snapshot()
   }
