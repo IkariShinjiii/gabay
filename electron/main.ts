@@ -234,6 +234,7 @@ app.whenReady().then(async () => {
   }
   const str = (v: unknown, max: number): string | null => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null)
   let fsNow = false
+  let startShown = false // Gabay is up because the Start menu is
   // Whether Windows lets Gabay read notifications; null until the helper reports.
   let noteAccess: string | null = null
   let media: Record<string, unknown> | null = null
@@ -344,6 +345,21 @@ app.whenReady().then(async () => {
         trayIcons = settings.hideTaskbar && settings.trayIcons ? takeTray(raw) : []
         send('overlay:tray', trayIcons)
       },
+      // While Gabay stands in for the taskbar, it comes up with the Start menu, as the taskbar does. This is the way
+      // in over a full-screen game: Start is in front of the game then, so nothing of the game's is in the way.
+      start: (open) => {
+        const show = open && settings.hideTaskbar && !PREVIEW
+        if (show === startShown) return
+        startShown = show
+        if (show) {
+          if (mouseLocked) {
+            mouseLocked = false
+            win.setIgnoreMouseEvents(true, { forward: true })
+          }
+          if (fsNow) send('overlay:fullscreen', (fsNow = false))
+        }
+        send('overlay:start', show)
+      },
       windows: (raw) => {
         openWins = settings.hideTaskbar ? takeWins(raw) : []
         void pushWins()
@@ -386,11 +402,16 @@ app.whenReady().then(async () => {
     fromUi(e)
     return trayIcons
   })
-  ipcMain.handle('tray:click', (e, id: unknown, button: unknown) => {
+  ipcMain.handle('tray:click', async (e, id: unknown, button: unknown) => {
     fromUi(e)
     // only an icon the helper listed, and only a left or right click
     if (typeof id !== 'string' || !trayIcons.some((t) => t.id === id) || (button !== 'l' && button !== 'r')) return false
-    return nativeCall('trayclick', `${id} ${button}`)
+    const ok = await nativeCall('trayclick', `${id} ${button}`)
+    if (ok !== true || button !== 'r') return ok === true
+    // A right-click opens the app's menu: answer once it has closed, so the panel stays open under it till then.
+    let grace = 1500
+    for (let i = 0; i < 100 && (await nativeCall('traywait', `${id} ${grace}`)) === true; i++) grace = 0
+    return true
   })
   ipcMain.handle('windows:get', async (e) => {
     fromUi(e)

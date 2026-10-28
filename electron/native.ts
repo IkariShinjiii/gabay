@@ -79,6 +79,8 @@ export interface NativeEvents {
   noteAccess: (status: string) => void
   windows: (raw: unknown) => void
   tray: (raw: unknown) => void
+  /** The Start menu (or its search) came to the front, or left it. */
+  start: (open: boolean) => void
 }
 
 let child: ChildProcess | null = null
@@ -122,6 +124,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
         else if (kind === 'priv') on.privacy(JSON.parse(rest))
         else if (kind === 'wins') on.windows(JSON.parse(rest))
         else if (kind === 'tray') on.tray(JSON.parse(rest))
+        else if (kind === 'start') on.start(rest === '1')
         else if (kind === 'noteaccess') on.noteAccess(rest.slice(0, 40))
         else if (kind === 'r') {
           const s2 = rest.indexOf(' ')
@@ -149,6 +152,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
     if (fsOn) on.fullscreen(null, false) // never leave the notch hidden because the helper went away
     on.media(null)
     on.windows([])
+    on.start(false)
     on.privacy({ mic: [], cam: [] }) // never leave a camera or mic dot lit for a helper that's gone
     // Restart after a crash, at most 5 times in 10 minutes so a broken helper can't loop.
     const now = Date.now()
@@ -162,7 +166,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
 }
 
 /** One request. `arg` must already be validated by the caller: it is passed on as part of a single line. */
-export function nativeCall(cmd: 'vol' | 'volget' | 'micget' | 'micset' | 'outlist' | 'outset' | 'media' | 'bt' | 'notes' | 'appbar' | 'clipok' | 'clipseq' | 'mixer' | 'appvol' | 'seek' | 'wins' | 'windows' | 'focus' | 'minimize' | 'close' | 'tbget' | 'tbset' | 'tbhide' | 'tray' | 'trayclick' | 'net' | 'hw' | 'dnd' | 'notedismiss' | 'noteopen', arg = ''): Promise<unknown> {
+export function nativeCall(cmd: 'vol' | 'volget' | 'micget' | 'micset' | 'outlist' | 'outset' | 'media' | 'bt' | 'notes' | 'appbar' | 'clipok' | 'clipseq' | 'mixer' | 'appvol' | 'seek' | 'wins' | 'windows' | 'focus' | 'minimize' | 'close' | 'tbget' | 'tbset' | 'tbhide' | 'tray' | 'trayclick' | 'traywait' | 'net' | 'hw' | 'dnd' | 'notedismiss' | 'noteopen', arg = ''): Promise<unknown> {
   const p = child
   if (!p?.stdin || /[\r\n]/.test(arg)) return Promise.resolve(null)
   const id = nextId++

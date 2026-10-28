@@ -19,10 +19,13 @@
 //            focus <h> | minimize <h>        (switch to / minimize an open window)
 //            tbget | tbset <0|1> [restore]   (the Windows taskbar's auto-hide; restore is applied when Gabay exits)
 //            tray on <gabay pid> | tray off | trayclick <id> l|r   (Gabay as the notification area)
+//            traywait <id> <grace ms>        (after a right-click: true while that app's menu is still open, checked
+//                                             for up to 6 s; false once it closed, or if none opened within the grace)
 //            tbhide <0|1>                    (hide the taskbar windows outright; always shown again when Gabay exits)
 //   pushes   priv <json>                     camera / microphone in use, and by which apps
 //            wins <json>                     open windows, in z-order, while wins is on
 //            tray <json>                     tray icons, while tray is on
+//            start 0|1                       the Start menu (or its search) is in front
 export const NATIVE_SOURCE = String.raw`
 using System;
 using System.Collections.Generic;
@@ -288,6 +291,51 @@ static class Native {
 
   static void Send(string line) { lock (outLock) { Console.Out.WriteLine(line); Console.Out.Flush(); } }
 
+  // ---------- the Start menu is open: its host (or Windows search) is the foreground app ----------
+  // Watched with a foreground hook so Gabay can come up together with Start, as the taskbar does.
+  delegate void WinEventFn(IntPtr hook, uint ev, IntPtr h, int obj, int child, uint thread, uint time);
+  [DllImport("user32.dll")] static extern IntPtr SetWinEventHook(uint min, uint max, IntPtr mod, WinEventFn fn, uint pid, uint tid, uint flags);
+  static WinEventFn startHook; // kept alive: Windows calls it
+  static readonly Dictionary<uint, bool> startPids = new Dictionary<uint, bool>();
+  static readonly object startLock = new object();
+  static int startState = -1;
+  static bool IsStartPid(uint pid) {
+    if (pid == 0) return false;
+    lock (startLock) {
+      bool known;
+      if (startPids.TryGetValue(pid, out known)) return known;
+      bool yes = false;
+      try {
+        string n = Process.GetProcessById((int)pid).ProcessName;
+        yes = n == "StartMenuExperienceHost" || n == "SearchHost" || n == "SearchApp";
+      } catch { }
+      if (startPids.Count > 64) startPids.Clear(); // process ids are reused: keep the cache small
+      startPids[pid] = yes;
+      return yes;
+    }
+  }
+  static void CheckStart() {
+    var fg = GetForegroundWindow();
+    uint pid = 0;
+    if (fg != IntPtr.Zero) GetWindowThreadProcessId(fg, out pid);
+    int now = IsStartPid(pid) ? 1 : 0;
+    lock (startLock) {
+      if (now == startState) return;
+      startState = now;
+      Send("start " + now);
+    }
+  }
+  static void WatchStart() {
+    var th = new Thread(() => {
+      startHook = (hk, ev, h, obj, child, thread, time) => { try { CheckStart(); } catch { } };
+      SetWinEventHook(0x0003, 0x0003, IntPtr.Zero, startHook, 0, 0, 0); // EVENT_SYSTEM_FOREGROUND, out of context
+      Application.Run();
+    });
+    th.SetApartmentState(ApartmentState.STA);
+    th.IsBackground = true;
+    th.Start();
+  }
+
   static T W<T>(IAsyncOperation<T> op) {
     var until = DateTime.UtcNow.AddSeconds(5);
     while (op.Status == AsyncStatus.Started) { if (DateTime.UtcNow > until) { op.Cancel(); throw new TimeoutException(); } Thread.Sleep(5); }
@@ -331,9 +379,11 @@ static class Native {
     new Thread(MediaLoop) { IsBackground = true }.Start();
     new Thread(NotesLoop) { IsBackground = true }.Start();
     new Thread(PrivacyLoop) { IsBackground = true }.Start();
+    WatchStart();
     string last = null;
     while (true) {
       try {
+        CheckStart(); // the hook is the fast path; this catches a missed event
         string now = FullScreen();
         if (now != null) fsActive = now.StartsWith("fs 1");
         if (now != null && now != last) { Send(now); last = now; }
@@ -369,6 +419,7 @@ static class Native {
     if (h == IntPtr.Zero || h == GetShellWindow() || h == GetDesktopWindow() || !IsWindowVisible(h)) return "fs 0";
     uint pid; GetWindowThreadProcessId(h, out pid);
     if (pid == self) return null;
+    if (IsStartPid(pid)) return "fs 0"; // Start (or its search) is over the game: the game isn't in front now
     string c = ClassOf(h);
     if (c == "Progman" || c == "WorkerW" || c == "Shell_TrayWnd") return "fs 0";
     if ((GetWindowLong(h, -16) & 0x00C00000) == 0x00C00000) return "fs 0";
@@ -472,6 +523,7 @@ static class Native {
       case "tbhide": TaskbarHide(arg == "1"); return "true";
       case "tray": return Tray(arg);
       case "trayclick": return TrayClick(arg) ? "true" : "false";
+      case "traywait": return TrayWait(arg);
       case "net": return "\"" + Net() + "\"";
       case "hw": return Hardware();
       case "dnd": return WindowsDnd() ? "true" : "false";
@@ -1175,8 +1227,14 @@ static class Native {
     POINT p; GetCursorPos(out p);
     bool right = a[1] == "r";
     uint down = right ? 0x0204u : 0x0201u, up = right ? 0x0205u : 0x0202u;
-    // Gabay is in front (it was just clicked): let the app come forward to show its window or menu.
+    // Gabay is in front (it was just clicked): let the app come forward to show its window or menu. Only the
+    // foreground app may grant that, so join Gabay's input queue for the call (as Focus does).
+    uint dummy;
+    uint fgThread = GetWindowThreadProcessId(GetForegroundWindow(), out dummy);
+    uint me = GetCurrentThreadId();
+    bool attached = fgThread != 0 && fgThread != me && AttachThreadInput(me, fgThread, true);
     AllowSetForegroundWindow(it.pid);
+    if (attached) AttachThreadInput(me, fgThread, false);
     var hwnd = it.hwnd; var cb = it.cb; var uid = it.uid;
     Func<uint, bool> post;
     if (it.ver >= 4) {
@@ -1188,6 +1246,36 @@ static class Native {
     post(down); post(up);
     if (it.ver >= 3) post(right ? 0x007Bu : 0x0400u); // WM_CONTEXTMENU or NIN_SELECT
     return true;
+  }
+
+  // After a right-click, while the app's menu is open, Gabay stays open under it. A menu is a visible popup menu
+  // window of that app, or (for apps that draw their own) a visible caption-less window of that app in front.
+  static bool MenuOpen(uint pid) {
+    var h = IntPtr.Zero;
+    while ((h = FindWindowEx(IntPtr.Zero, h, "#32768", null)) != IntPtr.Zero) {
+      if (!IsWindowVisible(h)) continue;
+      uint p; GetWindowThreadProcessId(h, out p);
+      if (p == pid) return true;
+    }
+    var fg = GetForegroundWindow();
+    if (fg == IntPtr.Zero || !IsWindowVisible(fg)) return false;
+    uint q; GetWindowThreadProcessId(fg, out q);
+    return q == pid && (GetWindowLong(fg, -16) & 0x00C00000) != 0x00C00000; // WS_CAPTION
+  }
+  static string TrayWait(string arg) {
+    var a = arg.Split(' ');
+    if (a.Length < 2) return "false";
+    TrayItem it;
+    lock (trayLock) { if (!trayItems.TryGetValue(a[0], out it)) return "false"; }
+    int grace = Math.Max(0, Math.Min(3000, int.Parse(a[1])));
+    int t0 = Environment.TickCount;
+    bool seen = false;
+    while (Environment.TickCount - t0 < 6000) {
+      if (MenuOpen(it.pid)) seen = true;
+      else if (seen || Environment.TickCount - t0 >= grace) return "false";
+      Thread.Sleep(80);
+    }
+    return "true";
   }
 
   // ---------- now playing ----------

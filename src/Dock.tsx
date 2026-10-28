@@ -31,9 +31,17 @@ export default function Dock({ apps, tray, onHold, onInbox }: { apps: DockApp[];
   // screenshot previews can start with the drawer open (#…&tray=1)
   const [trayOpen, setTrayOpen] = useState(() => new URLSearchParams(location.hash.slice(1)).get('tray') === '1')
   const showTray = trayOpen && tray.length > 0
-  const trayClick = (id: string, button: 'l' | 'r'): void => {
-    setTrayOpen(false)
-    void window.overlay.trayClick(id, button)
+  // Left: the app opens its window, so the row closes. Right: the app opens its menu; the panel and the row stay
+  // open under it until it closes, so the menu never floats on its own.
+  const trayClick = async (id: string, button: 'l' | 'r'): Promise<void> => {
+    if (button === 'l') {
+      setTrayOpen(false)
+      void window.overlay.trayClick(id, 'l')
+      return
+    }
+    onHold(true)
+    await window.overlay.trayClick(id, 'r').catch(() => false)
+    onHold(false)
   }
   return (
     <>
@@ -120,10 +128,10 @@ export default function Dock({ apps, tray, onHold, onInbox }: { apps: DockApp[];
                 initial={{ y: -6, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: Math.min(i, 12) * 0.02, duration: 0.18 }}
-                onClick={() => trayClick(t.id, 'l')}
+                onClick={() => void trayClick(t.id, 'l')}
                 onContextMenu={(e) => {
                   e.preventDefault()
-                  trayClick(t.id, 'r')
+                  void trayClick(t.id, 'r')
                 }}
               >
                 <img src={t.icon} alt="" draggable={false} />
