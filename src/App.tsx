@@ -19,7 +19,7 @@ import NotchToast, { type Toast } from './NotchToast'
 import { chime, leftOf, useTimers } from './useTimers'
 import { useRecorder } from './useRecorder'
 import { applyAccent, resolveAccent } from './accent'
-import type { IconName } from './icons'
+import { ICONS, type IconName } from './icons'
 import Welcome from './Welcome'
 import UpdateTour, { hasTour } from './UpdateTour'
 import NotesPanel from './NotesPanel'
@@ -35,24 +35,34 @@ type Tab = (typeof TABS)[number]
 const TAB_ICONS: Partial<Record<Tab, IconName>> = { Launch: 'search', Settings: 'sliders-horizontal' } // not a gear: Controls' gear opens Windows Settings
 const barTab = (t: Tab): Tab => (t === 'Clipboard' || t === 'Power' ? 'Controls' : t)
 
-const dot = (c: string): string => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="${c}"/></svg>`)}`
+// Preview-only sample icons: a Gabay glyph on a coloured tile (no real app's branding), as an SVG data URL.
+const sampleIcon = (name: IconName, from: string, to: string, round = false): string => {
+  const shapes = (ICONS[name] as readonly (readonly [string, Record<string, string>])[])
+    .map(([tag, attrs]) => `<${tag} ${Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ')}/>`)
+    .join('')
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs>` +
+    `<rect width="48" height="48" rx="${round ? 24 : 12}" fill="url(#g)"/>` +
+    `<g transform="translate(12 12)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${shapes}</g></svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
 const SAMPLE_TRAY: TrayIcon[] = [
-  { id: '1-1', tip: 'Chat', icon: dot('#5865f2') },
-  { id: '2-1', tip: 'Games', icon: dot('#9aa4b2') },
-  { id: '3-1', tip: 'Music', icon: dot('#1db954') },
-  { id: '4-1', tip: 'Security', icon: dot('#3b82f6') },
-  { id: '5-1', tip: 'Cloud', icon: dot('#f5a524') },
-  { id: '6-1', tip: 'Updates', icon: dot('#e5484d') }
+  { id: '1-1', tip: 'Chat', icon: sampleIcon('message-square', '#7c86ff', '#4f5bd5', true) },
+  { id: '2-1', tip: 'Cloud', icon: sampleIcon('cloud', '#5ab0ff', '#2f7bd6', true) },
+  { id: '3-1', tip: 'Music', icon: sampleIcon('music', '#3ddc84', '#1a9e55', true) },
+  { id: '4-1', tip: 'Downloads', icon: sampleIcon('download', '#ffb547', '#e07b12', true) },
+  { id: '5-1', tip: 'Bluetooth', icon: sampleIcon('bluetooth', '#6aa8ff', '#3567c9', true) },
+  { id: '6-1', tip: 'Camera', icon: sampleIcon('camera', '#ff7a7a', '#d64545', true) }
 ]
 
 const SAMPLE_WINS: DockApp[] = [
-  { key: 'a', name: 'Mail', icon: null, pinned: true, wins: [{ id: '1', title: tr('Inbox - Mail'), minimized: false, active: true, attention: false }] },
-  { key: 'b', name: 'Browser', icon: null, pinned: true, wins: [
+  { key: 'a', name: 'Calendar', icon: sampleIcon('calendar', '#4ea1ff', '#1f6fd1'), pinned: true, wins: [{ id: '1', title: tr('Inbox - Mail'), minimized: false, active: true, attention: false }] },
+  { key: 'b', name: 'Browser', icon: sampleIcon('search', '#ff9a5a', '#e0602a'), pinned: true, wins: [
     { id: '2', title: tr('Project notes'), minimized: false, active: false, attention: false },
     { id: '3', title: tr('Recipes'), minimized: true, active: false, attention: false }
   ] },
-  { key: 'c', name: 'Files', icon: null, pinned: true, wins: [] },
-  { key: 'd', name: 'Chat', icon: null, pinned: false, wins: [{ id: '4', title: tr('Chat'), minimized: false, active: false, attention: true }] }
+  { key: 'c', name: 'Notes', icon: sampleIcon('sticky-note', '#ffd35a', '#e0a21f'), pinned: true, wins: [] },
+  { key: 'd', name: 'Chat', icon: sampleIcon('message-square', '#a78bfa', '#7c4ddb'), pinned: false, wins: [{ id: '4', title: tr('Chat'), minimized: false, active: false, attention: true }] }
 ]
 
 const SPRING = { type: 'spring', stiffness: 380, damping: 34 } as const
@@ -494,11 +504,11 @@ export default function App(): React.JSX.Element {
       {
         // &hover shows the buttons that normally appear when the pointer is over the toast
         if (new URLSearchParams(location.hash.slice(1)).has('hover')) document.documentElement.setAttribute('data-preview-hover', '')
-        setToast({ id: 0, icon: 'message-square', noteId: 1, label: tr('Messenger'), title: tr('Kevin'), sub: tr('are you coming tonight? we are at the usual place'), ms: 60_000 })
+        setToast({ id: 0, icon: 'message-square', noteId: 1, label: tr('Messenger'), title: 'Trisha', sub: tr('are you coming tonight? we are at the usual place'), ms: 60_000 })
       }
     if (previewParam === 'Inbox')
       setInbox([
-        { key: 1, id: 1, app: 'Messenger', title: 'Kevin', body: 'are you coming tonight? we are at the usual place', at: Date.now() - 120_000 },
+        { key: 1, id: 1, app: 'Messenger', title: 'Trisha', body: 'are you coming tonight? we are at the usual place', at: Date.now() - 120_000 },
         { key: 2, id: 2, app: 'Outlook', title: 'Weekly report due', body: null, at: Date.now() - 3_600_000 },
         { key: 3, id: 3, app: 'Discord', title: 'Server', body: 'Someone mentioned you in #general: the patch notes are up, take a look when you can', at: Date.now() - 7_200_000 }
       ])
