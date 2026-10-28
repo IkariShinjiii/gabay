@@ -918,6 +918,9 @@ html.pre-lock, html.pre-lock body { overflow: hidden; }
       var reviews = (Array.isArray(list) ? list : []).map(function (i) {
         var stars = parseInt((section(i.body, 'Rating').match(/[1-5]/) || [])[0], 10);
         var text = section(i.body, 'Your review').replace(/^_No response_$/, '');
+        // Some people type their review as the title and leave the box empty: show the title then (not the form's "Review").
+        var title = String(i.title || '').trim();
+        if (!text && title && !/^review$/i.test(title)) text = title;
         var user = i.user || {};
         return { stars: stars, text: text.slice(0, 1200), login: String(user.login || ''), avatar: String(user.avatar_url || ''), date: i.created_at };
       }).filter(function (r) { return r.stars >= 1 && r.stars <= 5; });
