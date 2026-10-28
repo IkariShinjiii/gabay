@@ -443,7 +443,7 @@ export default function App(): React.JSX.Element {
   tabRef.current = tab
   // Recent Windows notifications, newest first. In memory only (never saved), capped.
   const [inbox, setInbox] = useState<InboxItem[]>([])
-  const [unseen, setUnseen] = useState(0)
+  const [unseen, setUnseen] = useState(previewDock ? 3 : 0) // previews of the dock show a few, for the bell's badge
   const inboxKey = useRef(1)
   const showNext = useCallback((): void => {
     window.clearTimeout(toastTimer.current)
@@ -1071,7 +1071,7 @@ export default function App(): React.JSX.Element {
               {body}
             </motion.div>
           </AnimatePresence>
-          {dockShown && <Dock apps={wins} tray={tray} onInbox={() => setTab('Inbox')} onHold={(h) => { hold('menu', h); if (!h) evaluate() }} />}
+          {dockShown && <Dock apps={wins} tray={tray} unseen={unseen} onInbox={() => setTab('Inbox')} onHold={(h) => { hold('menu', h); if (!h) evaluate() }} />}
           {hasBar && (
           <label className={parsed ? 'bar is-command' : 'bar'}>
             <Icon name={parsed ? 'command' : 'search'} size={16} />

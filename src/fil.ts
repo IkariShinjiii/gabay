@@ -56,6 +56,7 @@ export const FIL: Record<string, string> = {
   "Clipboard": "Clipboard",
   "Inbox": "Inbox",
   "Show desktop": "Ipakita ang desktop",
+  "Inbox, {0} new": "Inbox, {0} bago",
   "Start": "Start",
   "Task view": "Task view",
   "Done": "Tapos na",

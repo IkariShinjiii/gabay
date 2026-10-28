@@ -13,7 +13,8 @@ import { tr } from './i18n'
  * Right-click: open a new window, pick one of its windows, pin or unpin, close. Start and Task view sit at the left end.
  * The mark under an icon: a dot per open window (up to three), wide for the app in use, pulsing for attention.
  */
-export default function Dock({ apps, tray, onHold, onInbox }: { apps: DockApp[]; tray: TrayIcon[]; onHold: (held: boolean) => void; onInbox: () => void }): React.JSX.Element {
+export default function Dock({ apps, tray, unseen, onHold, onInbox }: { apps: DockApp[]; tray: TrayIcon[]; unseen: number; onHold: (held: boolean) => void; onInbox: () => void }): React.JSX.Element {
+  const inboxLabel = unseen > 0 ? tr('Inbox, {0} new', unseen) : tr('Inbox')
   const click = (a: DockApp): void => {
     if (a.wins.length === 0) {
       void window.overlay.windowsLaunch(a.key)
@@ -112,8 +113,10 @@ export default function Dock({ apps, tray, onHold, onInbox }: { apps: DockApp[];
           <Icon name="chevron-right" size={18} />
         </button>
       )}
-      <button className="dock-app dock-sys" title={tr('Inbox')} aria-label={tr('Inbox')} onClick={onInbox}>
+      <button className="dock-app dock-sys" title={inboxLabel} aria-label={inboxLabel} onClick={onInbox}>
         <Icon name="bell" size={18} />
+        {/* new notifications since the Inbox was last looked at, as on the taskbar's bell */}
+        {unseen > 0 && <span className="dock-badge" aria-hidden="true">{unseen > 9 ? '9+' : unseen}</span>}
       </button>
       <button className="dock-app dock-desktop" title={tr('Show desktop')} aria-label={tr('Show desktop')} onClick={() => void window.overlay.showDesktop()}>
         <Icon name="monitor" size={18} />
