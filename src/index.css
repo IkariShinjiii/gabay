@@ -2913,6 +2913,18 @@ button.big-icon {
   font-weight: 600;
 }
 
+.dock-start {
+  display: flex;
+  gap: inherit;
+  margin-right: 6px;
+  padding-right: 6px;
+  border-right: 1px solid var(--line); /* Windows' Start and Task view on the left, then the apps */
+  position: sticky; /* stays reachable when the row scrolls */
+  left: 0;
+  z-index: 1;
+  background: #000;
+}
+
 .dock-corner {
   display: flex;
   gap: inherit;

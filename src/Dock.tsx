@@ -9,7 +9,8 @@ import { tr } from './i18n'
  * open apps. One icon per app, like the taskbar.
  *
  * Click: an app that isn't open starts; one that is comes to the front; clicking the app in use minimizes it, or, when
- * it has several windows, brings up the next one. Right-click: open a new window, pin or unpin, close.
+ * it has several windows, brings up the next one. Middle-click or Shift+click: a new window, as on the taskbar.
+ * Right-click: open a new window, pick one of its windows, pin or unpin, close. Start and Task view sit at the left end.
  * The mark under an icon: a dot per open window (up to three), wide for the app in use, pulsing for attention.
  */
 export default function Dock({ apps, tray, onHold, onInbox }: { apps: DockApp[]; tray: TrayIcon[]; onHold: (held: boolean) => void; onInbox: () => void }): React.JSX.Element {
@@ -54,6 +55,14 @@ export default function Dock({ apps, tray, onHold, onInbox }: { apps: DockApp[];
         e.currentTarget.scrollLeft += e.deltaY + e.deltaX
       }}
     >
+      <span className="dock-start">
+        <button className="dock-app dock-sys" title={tr('Start')} aria-label={tr('Start')} onClick={() => void window.overlay.startMenu()}>
+          <Icon name="layout-grid" size={18} />
+        </button>
+        <button className="dock-app dock-sys" title={tr('Task view')} aria-label={tr('Task view')} onClick={() => void window.overlay.taskView()}>
+          <Icon name="copy" size={18} />
+        </button>
+      </span>
       {apps.map((a) => {
         const open = a.wins.length > 0
         const inUse = a.wins.some((w) => w.active && !w.minimized)
@@ -68,7 +77,13 @@ export default function Dock({ apps, tray, onHold, onInbox }: { apps: DockApp[];
             className={['dock-app', inUse && 'on', allMin && 'min', attention && 'attn', !open && 'closed'].filter(Boolean).join(' ')}
             title={tip}
             aria-label={tip}
-            onClick={() => click(a)}
+            onClick={(e) => (e.shiftKey ? void window.overlay.windowsLaunch(a.key) : click(a))}
+            onAuxClick={(e) => {
+              if (e.button !== 1) return
+              e.preventDefault()
+              void window.overlay.windowsLaunch(a.key)
+            }}
+            onMouseDown={(e) => e.button === 1 && e.preventDefault() /* no autoscroll on middle-click */}
             onContextMenu={(e) => {
               e.preventDefault()
               void menu(a)

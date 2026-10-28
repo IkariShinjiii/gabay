@@ -15,6 +15,10 @@ export interface OverlayApi {
   hardware(): Promise<{ battery: boolean; wifi: boolean } | null>
   /** Show desktop: minimize every window, or bring them back. */
   showDesktop(): Promise<boolean>
+  /** Opens the Start menu (or closes it when it is open), as the taskbar's Start button does. */
+  startMenu(): Promise<boolean>
+  /** Opens Task view: every window, and the virtual desktops. */
+  taskView(): Promise<boolean>
   /** Microphone mute state of the default recording device; null when there is none. */
   micGet(): Promise<boolean | null>
   micSet(muted: boolean): Promise<boolean | null>
