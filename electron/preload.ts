@@ -58,6 +58,17 @@ contextBridge.exposeInMainWorld('overlay', {
   weatherFind: (city: string) => ipcRenderer.invoke('weather:find', city),
   lyricsGet: (title: string, artist: string, duration: number) => ipcRenderer.invoke('lyrics:get', title, artist, duration),
   accentColor: () => ipcRenderer.invoke('theme:accent'),
+  dockLook: () => ipcRenderer.invoke('dock:look'),
+  onDockClose: (cb: () => void): (() => void) => {
+    const handler = (): void => cb()
+    ipcRenderer.on('dock:close', handler)
+    return () => ipcRenderer.removeListener('dock:close', handler)
+  },
+  onDockLook: (cb: (look: unknown) => void): (() => void) => {
+    const handler = (_e: unknown, look: unknown): void => cb(look)
+    ipcRenderer.on('dock:look', handler)
+    return () => ipcRenderer.removeListener('dock:look', handler)
+  },
   reportBug: (description: string, how: 'github' | 'copy') => ipcRenderer.invoke('bug:report', description, how),
   openReview: () => ipcRenderer.invoke('review:open'),
   logError: (msg: string): void => ipcRenderer.send('log:error', msg),

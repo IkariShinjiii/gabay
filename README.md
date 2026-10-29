@@ -68,6 +68,10 @@ is killed).
   pictures stay in memory and only go to Gabay's own page.
 - Drag pinned apps sideways to put them in your order, or right-click one for Move left / Move right.
 - Start, Task view and Show desktop buttons do what the taskbar's do.
+- **Every screen:** hiding the taskbar hides it on all screens, so each other screen gets a slim notch with the time
+  that opens to the same dock on hover (window previews open below it there). It is the same page in a dock-only mode
+  (about 35 MB per screen) and may only use the dock's own IPC channels. It steps aside for full-screen apps on its
+  screen and follows the auto-hide setting.
 - **Taskbar slides up** keeps the real taskbar at the bottom edge; **Hidden** hides it completely. With **Tray icons**
   on (experimental), the icons from the taskbar's corner show in the dock instead.
 

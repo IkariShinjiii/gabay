@@ -46,7 +46,7 @@ const sampleIcon = (name: IconName, from: string, to: string, round = false): st
     `<g transform="translate(12 12)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${shapes}</g></svg>`
   return `data:image/svg+xml,${encodeURIComponent(svg)}`
 }
-const SAMPLE_TRAY: TrayIcon[] = [
+export const SAMPLE_TRAY: TrayIcon[] = [
   { id: '1-1', tip: 'Chat', icon: sampleIcon('message-square', '#7c86ff', '#4f5bd5', true) },
   { id: '2-1', tip: 'Cloud', icon: sampleIcon('cloud', '#5ab0ff', '#2f7bd6', true) },
   { id: '3-1', tip: 'Music', icon: sampleIcon('music', '#3ddc84', '#1a9e55', true) },
@@ -55,7 +55,7 @@ const SAMPLE_TRAY: TrayIcon[] = [
   { id: '6-1', tip: 'Camera', icon: sampleIcon('camera', '#ff7a7a', '#d64545', true) }
 ]
 
-const SAMPLE_WINS: DockApp[] = [
+export const SAMPLE_WINS: DockApp[] = [
   { key: 'a', name: 'Calendar', icon: sampleIcon('calendar', '#4ea1ff', '#1f6fd1'), pinned: true, wins: [{ id: '1', title: tr('Inbox - Mail'), minimized: false, active: true, attention: false }] },
   { key: 'b', name: 'Browser', icon: sampleIcon('search', '#ff9a5a', '#e0602a'), pinned: true, wins: [
     { id: '2', title: tr('Project notes'), minimized: false, active: false, attention: false },
