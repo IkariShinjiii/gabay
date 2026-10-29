@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { app, BrowserWindow, powerMonitor, globalShortcut, ipcMain, Menu, nativeImage, screen, session, shell, systemPreferences, Tray } from 'electron'
+import { app, BrowserWindow, desktopCapturer, powerMonitor, globalShortcut, ipcMain, Menu, nativeImage, screen, session, shell, systemPreferences, Tray } from 'electron'
 import { execFile } from 'node:child_process'
 import os from 'node:os'
 import { existsSync, writeFileSync } from 'node:fs'
@@ -434,6 +434,40 @@ app.whenReady().then(async () => {
     const w = openWins.find((x) => x.id === id) // only windows Gabay listed
     if (!w) return false
     return (await nativeCall(w.active && !w.minimized ? 'minimize' : 'focus', w.id)) === true
+  })
+  // Hover previews in the dock: a picture of each window of one app, as the taskbar shows. Only windows Gabay listed;
+  // the pictures stay in memory and go only to Gabay's own page. Minimized windows have nothing to show.
+  ipcMain.handle('windows:thumbs', async (e, key: unknown) => {
+    fromUi(e)
+    const g = dockGroups.find((x) => x.key === key)
+    if (!g || g.wins.length === 0) return []
+    const wins = g.wins.slice(0, 8)
+    let pics = new Map<string, string>()
+    if (wins.some((w) => !w.minimized)) {
+      try {
+        const sources = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 320, height: 200 }, fetchWindowIcons: false })
+        const want = new Set(wins.map((w) => w.id))
+        pics = new Map(
+          sources.flatMap((s) => {
+            const id = s.id.split(':')[1] // "window:<handle>:0"
+            return id && want.has(id) && !s.thumbnail.isEmpty() ? [[id, s.thumbnail.toDataURL()] as [string, string]] : []
+          })
+        )
+      } catch (err) {
+        logError('window previews', err)
+      }
+    }
+    return wins.map((w) => ({ id: w.id, title: w.title, thumb: w.minimized ? null : (pics.get(w.id) ?? null) }))
+  })
+  ipcMain.handle('windows:focus', async (e, id: unknown) => {
+    fromUi(e)
+    const w = openWins.find((x) => x.id === id)
+    return w ? (await nativeCall('focus', w.id)) === true : false
+  })
+  ipcMain.handle('windows:close', async (e, id: unknown) => {
+    fromUi(e)
+    const w = openWins.find((x) => x.id === id)
+    return w ? (await nativeCall('close', w.id)) === true : false
   })
   ipcMain.handle('windows:launch', async (e, key: unknown) => {
     fromUi(e)

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import type { DockApp, TrayIcon } from './global'
+import type { DockApp, TrayIcon, WindowThumb } from './global'
 import Icon from './Icon'
 import { tr } from './i18n'
 
@@ -12,6 +12,7 @@ import { tr } from './i18n'
  * it has several windows, brings up the next one. Middle-click or Shift+click: a new window, as on the taskbar.
  * Right-click: open a new window, pick one of its windows, pin or unpin, close. Start and Task view sit at the left end.
  * The mark under an icon: a dot per open window (up to three), wide for the app in use, pulsing for attention.
+ * Hover an open app: a picture of each of its windows; click one to bring it up, or its X to close it.
  */
 export default function Dock({ apps, tray, unseen, onHold, onInbox }: { apps: DockApp[]; tray: TrayIcon[]; unseen: number; onHold: (held: boolean) => void; onInbox: () => void }): React.JSX.Element {
   const inboxLabel = unseen > 0 ? tr('Inbox, {0} new', unseen) : tr('Inbox')
@@ -30,6 +31,76 @@ export default function Dock({ apps, tray, unseen, onHold, onInbox }: { apps: Do
     await window.overlay.windowsMenu(a.key).catch(() => false)
     onHold(false)
   }
+  // --- hover previews: after a short rest on an open app, then instantly while moving between apps ---
+  const [peek, setPeek] = useState<{ key: string; x: number; items: WindowThumb[] | null } | null>(null)
+  const areaRef = useRef<HTMLDivElement>(null)
+  const peekTimer = useRef(0)
+  const hideTimer = useRef(0)
+  const peekFor = useRef<string | null>(null)
+  useEffect(() => () => {
+    window.clearTimeout(peekTimer.current)
+    window.clearTimeout(hideTimer.current)
+  }, [])
+  const closePeek = (): void => {
+    window.clearTimeout(peekTimer.current)
+    window.clearTimeout(hideTimer.current)
+    peekFor.current = null
+    setPeek(null)
+  }
+  const peekEnter = (a: DockApp, el: HTMLElement): void => {
+    window.clearTimeout(hideTimer.current)
+    window.clearTimeout(peekTimer.current)
+    if (a.wins.length === 0) {
+      if (peek) hideTimer.current = window.setTimeout(closePeek, 200)
+      return
+    }
+    const open = (): void => {
+      const area = areaRef.current
+      if (!area) return
+      const r = el.getBoundingClientRect()
+      const p = area.getBoundingClientRect()
+      peekFor.current = a.key
+      setPeek({ key: a.key, x: r.left + r.width / 2 - p.left, items: null })
+      void window.overlay
+        .windowsThumbs(a.key)
+        .catch(() => [])
+        .then((items) => {
+          if (peekFor.current === a.key) setPeek((cur) => (cur && cur.key === a.key ? { ...cur, items } : cur))
+        })
+    }
+    if (peek) open()
+    else peekTimer.current = window.setTimeout(open, 450)
+  }
+  const peekLeave = (): void => {
+    window.clearTimeout(peekTimer.current)
+    window.clearTimeout(hideTimer.current)
+    hideTimer.current = window.setTimeout(closePeek, 220)
+  }
+  const peekApp = peek ? apps.find((a) => a.key === peek.key) : undefined
+  // while the pictures load, show the titles Gabay already knows
+  const peekItems: WindowThumb[] =
+    peek && peekApp
+      ? peek.items && peek.items.length > 0
+        ? peek.items
+        : peekApp.wins.slice(0, 8).map((w) => ({ id: w.id, title: w.title, thumb: null }))
+      : []
+  const CARD = 156
+  const peekWidth = peekItems.length * CARD + Math.max(0, peekItems.length - 1) * 6 + 14
+  const areaWidth = areaRef.current?.clientWidth ?? 480
+  const peekLeft = peek ? Math.max(0, Math.min(areaWidth - Math.min(peekWidth, areaWidth), peek.x - peekWidth / 2)) : 0
+
+  // screenshot previews can start with a hover preview open (#…&peek=1)
+  useEffect(() => {
+    if (new URLSearchParams(location.hash.slice(1)).get('peek') !== '1') return
+    const t = window.setTimeout(() => {
+      const a = apps.find((x) => x.wins.length > 1) ?? apps.find((x) => x.wins.length > 0)
+      const el = a && areaRef.current?.querySelector<HTMLElement>(`[data-key="${CSS.escape(a.key)}"]`)
+      if (a && el) peekEnter(a, el)
+    }, 300)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // screenshot previews can start with the drawer open (#…&tray=1)
   const [trayOpen, setTrayOpen] = useState(() => new URLSearchParams(location.hash.slice(1)).get('tray') === '1')
   const showTray = trayOpen && tray.length > 0
@@ -46,13 +117,66 @@ export default function Dock({ apps, tray, unseen, onHold, onInbox }: { apps: Do
     onHold(false)
   }
   return (
-    <>
+    <div className="dock-area" ref={areaRef}>
+    <AnimatePresence>
+      {peek && peekApp && peekItems.length > 0 && (
+        <motion.div
+          key="peek"
+          className="peek"
+          role="group"
+          aria-label={tr('{0} windows', peekApp.name)}
+          style={{ left: peekLeft, maxWidth: areaWidth }}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 4 }}
+          transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+          onMouseEnter={() => window.clearTimeout(hideTimer.current)}
+          onMouseLeave={peekLeave}
+        >
+          {peekItems.map((w) => (
+            <div key={w.id} className="peek-win">
+              <button
+                className="peek-pick"
+                title={w.title || peekApp.name}
+                onClick={() => {
+                  closePeek()
+                  void window.overlay.windowsFocus(w.id)
+                }}
+              >
+                <span className="peek-title">{w.title || peekApp.name}</span>
+                <span className="peek-thumb">
+                  {w.thumb ? (
+                    <img src={w.thumb} alt="" draggable={false} />
+                  ) : peekApp.icon ? (
+                    <img className="peek-icon" src={peekApp.icon} alt="" draggable={false} />
+                  ) : (
+                    <Icon name="app-window" size={24} />
+                  )}
+                </span>
+              </button>
+              <button
+                className="peek-close"
+                title={tr('Close window')}
+                aria-label={tr('Close {0}', w.title || peekApp.name)}
+                onClick={() => {
+                  void window.overlay.windowsClose(w.id)
+                  setPeek((cur) => (cur && cur.items ? { ...cur, items: cur.items.filter((x) => x.id !== w.id) } : cur))
+                }}
+              >
+                <Icon name="x" size={12} />
+              </button>
+            </div>
+          ))}
+        </motion.div>
+      )}
+    </AnimatePresence>
     <div
       className="dock"
       role="toolbar"
       aria-label={tr('Dock')}
       onWheel={(e) => {
         // A plain wheel scrolls the row sideways when there are more apps than fit.
+        closePeek()
         e.currentTarget.scrollLeft += e.deltaY + e.deltaX
       }}
     >
@@ -75,10 +199,17 @@ export default function Dock({ apps, tray, unseen, onHold, onInbox }: { apps: Do
         return (
           <button
             key={a.key}
+            data-key={a.key}
             className={['dock-app', inUse && 'on', allMin && 'min', attention && 'attn', !open && 'closed'].filter(Boolean).join(' ')}
             title={tip}
             aria-label={tip}
-            onClick={(e) => (e.shiftKey ? void window.overlay.windowsLaunch(a.key) : click(a))}
+            onClick={(e) => {
+              closePeek()
+              if (e.shiftKey) void window.overlay.windowsLaunch(a.key)
+              else click(a)
+            }}
+            onMouseEnter={(e) => peekEnter(a, e.currentTarget)}
+            onMouseLeave={peekLeave}
             onAuxClick={(e) => {
               if (e.button !== 1) return
               e.preventDefault()
@@ -87,6 +218,7 @@ export default function Dock({ apps, tray, unseen, onHold, onInbox }: { apps: Do
             onMouseDown={(e) => e.button === 1 && e.preventDefault() /* no autoscroll on middle-click */}
             onContextMenu={(e) => {
               e.preventDefault()
+              closePeek()
               void menu(a)
             }}
           >
@@ -159,6 +291,6 @@ export default function Dock({ apps, tray, unseen, onHold, onInbox }: { apps: Do
         </motion.div>
       )}
     </AnimatePresence>
-    </>
+    </div>
   )
 }

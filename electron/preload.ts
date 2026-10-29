@@ -84,6 +84,9 @@ contextBridge.exposeInMainWorld('overlay', {
   trayGet: () => ipcRenderer.invoke('tray:get'),
   trayClick: (id: string, button: 'l' | 'r') => ipcRenderer.invoke('tray:click', id, button),
   windowsClick: (id: string) => ipcRenderer.invoke('windows:click', id),
+  windowsThumbs: (key: string) => ipcRenderer.invoke('windows:thumbs', key),
+  windowsFocus: (id: string) => ipcRenderer.invoke('windows:focus', id),
+  windowsClose: (id: string) => ipcRenderer.invoke('windows:close', id),
   windowsLaunch: (key: string) => ipcRenderer.invoke('windows:launch', key),
   windowsMenu: (key: string) => ipcRenderer.invoke('windows:menu', key),
   onDownload: (cb: (d: unknown) => void): (() => void) => {

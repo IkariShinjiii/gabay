@@ -104,6 +104,12 @@ export interface OverlayApi {
   trayClick(id: string, button: 'l' | 'r'): Promise<boolean>
   /** Switch to an open window, or minimize it when it's the one in use. */
   windowsClick(id: string): Promise<boolean>
+  /** Pictures of one dock app's windows, for the hover preview (null for minimized windows). */
+  windowsThumbs(key: string): Promise<WindowThumb[]>
+  /** Brings this window to the front (never minimizes it). */
+  windowsFocus(id: string): Promise<boolean>
+  /** Asks this window to close, like its X button. */
+  windowsClose(id: string): Promise<boolean>
   /** Start a dock app (a pinned app that isn't open, or another window of one that is). */
   windowsLaunch(key: string): Promise<boolean>
   /** Right-click menu for a dock app; resolves when the menu closes. */
@@ -136,6 +142,14 @@ export interface OpenWindow {
   active: boolean
   /** Flashing for attention. */
   attention: boolean
+}
+
+/** One window in a dock hover preview. */
+export interface WindowThumb {
+  id: string
+  title: string
+  /** PNG data URL, or null when there is nothing to show (minimized). */
+  thumb: string | null
 }
 
 /** One tray icon (from another app's notification area icon). */
