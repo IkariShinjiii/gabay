@@ -12,9 +12,10 @@ interface Props {
   onHover: (index: number) => void
   onLaunch: (item: LauncherItem) => void
   onToggleStar: (item: LauncherItem) => void
+  onReveal: (item: LauncherItem) => void
 }
 
-export default function Launcher({ items, selected, emptyHint, onHover, onLaunch, onToggleStar }: Props): React.JSX.Element {
+export default function Launcher({ items, selected, emptyHint, onHover, onLaunch, onToggleStar, onReveal }: Props): React.JSX.Element {
   const listRef = useRef<HTMLDivElement>(null)
   // keep the row picked with the arrow keys in view when the list scrolls
   useEffect(() => {
@@ -33,6 +34,12 @@ export default function Launcher({ items, selected, emptyHint, onHover, onLaunch
           onMouseMove={() => onHover(i)}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onLaunch(it)}
+          onContextMenu={(e) => {
+            if (it.kind !== 'file') return
+            e.preventDefault()
+            onReveal(it)
+          }}
+          title={it.kind === 'file' ? tr('Right-click or Ctrl+Enter: open file location') : undefined}
         >
           <AppIcon id={it.id} />
           <span className="row-name">{it.name}</span>

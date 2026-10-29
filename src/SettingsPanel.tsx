@@ -34,7 +34,8 @@ function ShortcutsRow({ hotkey }: { hotkey: string | null }): React.JSX.Element 
         ['Ctrl + 1 to 7', 'Switch tabs'],
         ['Scroll over the tabs', 'Change the volume'],
         ['Middle-click', 'Play or pause'],
-        ['Esc', 'Clear the search, then let the notch close']
+        ['Esc', 'Clear the search, then let the notch close'],
+        ['Ctrl + Enter on a file', 'Open its folder']
       ]
     ],
     [
