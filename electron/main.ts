@@ -171,10 +171,13 @@ app.whenReady().then(async () => {
   // opaque ids: the paths stay here, and only the last search's results can be opened.
   const fileHits = new Map<string, string>()
   let fileSeq = 0
+  let fileAsk = 0 // the newest search; an older one that answers late must not replace its results
   ipcMain.handle('launcher:files', async (e, q: unknown) => {
     fromUi(e)
     if (typeof q !== 'string' || q.trim().length < 2 || q.length > 100) return []
+    const ask = ++fileAsk
     const raw = await nativeCall('files', Buffer.from(q.trim(), 'utf8').toString('base64')).catch(() => null)
+    if (ask !== fileAsk) return [] // the page has already moved on to a newer search
     fileHits.clear()
     return (Array.isArray(raw) ? raw : []).slice(0, 8).flatMap((f: Record<string, unknown>) => {
       if (!f || typeof f.p !== 'string' || typeof f.n !== 'string' || !/^[a-z]:\\/i.test(f.p)) return []
