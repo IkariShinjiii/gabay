@@ -13,6 +13,7 @@ import { tr } from './i18n'
  * Right-click: open a new window, pick one of its windows, pin or unpin, close. Start and Task view sit at the left end.
  * The mark under an icon: a dot per open window (up to three), wide for the app in use, pulsing for attention.
  * Hover an open app: a picture of each of its windows; click one to bring it up, or its X to close it.
+ * Drag a pinned app sideways to put it somewhere else among the pins.
  */
 export default function Dock({ apps, tray, unseen, onHold, onInbox }: { apps: DockApp[]; tray: TrayIcon[]; unseen: number; onHold: (held: boolean) => void; onInbox: () => void }): React.JSX.Element {
   const inboxLabel = unseen > 0 ? tr('Inbox, {0} new', unseen) : tr('Inbox')
@@ -88,6 +89,83 @@ export default function Dock({ apps, tray, unseen, onHold, onInbox }: { apps: Do
   const peekWidth = peekItems.length * CARD + Math.max(0, peekItems.length - 1) * 6 + 14
   const areaWidth = areaRef.current?.clientWidth ?? 480
   const peekLeft = peek ? Math.max(0, Math.min(areaWidth - Math.min(peekWidth, areaWidth), peek.x - peekWidth / 2)) : 0
+
+  // --- drag pinned apps into a new order: the dragged icon follows the pointer, the others make room ---
+  const [pending, setPending] = useState<string[] | null>(null) // the new order, until the main process confirms it
+  useEffect(() => setPending(null), [apps])
+  const shown = pending
+    ? [...pending.flatMap((k) => apps.filter((a) => a.key === k)), ...apps.filter((a) => !pending.includes(a.key))]
+    : apps
+  const pins = shown.filter((a) => a.pinned)
+  const drag = useRef<{ key: string; x0: number; on: boolean; centers: number[]; from: number; to: number; slot: number } | null>(null)
+  const [dragView, setDragView] = useState<{ key: string; dx: number; from: number; to: number; slot: number } | null>(null)
+  const dragged = useRef(false) // swallows the click that ends a drag
+  const pinDown = (a: DockApp, e: React.PointerEvent<HTMLButtonElement>): void => {
+    dragged.current = false // a drag that ended without a click must not eat this one
+    if (e.button !== 0 || !a.pinned || pins.length < 2) return
+    drag.current = { key: a.key, x0: e.clientX, on: false, centers: [], from: 0, to: 0, slot: 44 }
+  }
+  const pinMove = (e: React.PointerEvent<HTMLButtonElement>): void => {
+    const d = drag.current
+    if (!d) return
+    let dx = e.clientX - d.x0
+    if (!d.on) {
+      if (Math.abs(dx) < 6) return
+      const els = pins.map((p) => areaRef.current?.querySelector<HTMLElement>(`[data-key="${CSS.escape(p.key)}"]`) ?? null)
+      if (els.some((x) => !x)) {
+        drag.current = null
+        return
+      }
+      d.centers = els.map((el) => {
+        const r = (el as HTMLElement).getBoundingClientRect()
+        return r.left + r.width / 2
+      })
+      d.from = pins.findIndex((p) => p.key === d.key)
+      d.to = d.from
+      d.slot = d.centers[1] - d.centers[0] || 44
+      d.on = true
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId)
+      } catch {
+        // no capture: the drag still works while the pointer stays over the dock
+      }
+      closePeek()
+    }
+    // stay among the pins
+    const first = d.centers[0] - d.centers[d.from]
+    const last = d.centers[d.centers.length - 1] - d.centers[d.from]
+    dx = Math.max(first - d.slot / 3, Math.min(last + d.slot / 3, dx))
+    const x = d.centers[d.from] + dx
+    d.to = d.centers.filter((c, i) => i !== d.from && c < x).length
+    setDragView({ key: d.key, dx, from: d.from, to: d.to, slot: d.slot })
+  }
+  const pinUp = (): void => {
+    const d = drag.current
+    drag.current = null
+    if (!d?.on) return
+    dragged.current = true
+    setDragView(null)
+    if (d.to === d.from) return
+    const keys = pins.map((p) => p.key)
+    keys.splice(d.to, 0, ...keys.splice(d.from, 1))
+    setPending(keys)
+    void window.overlay.windowsPinOrder(keys).then((ok) => {
+      if (!ok) setPending(null)
+    })
+  }
+  const pinCancel = (): void => {
+    drag.current = null
+    setDragView(null)
+  }
+  const shiftOf = (a: DockApp): number => {
+    if (!dragView || !a.pinned) return 0
+    if (a.key === dragView.key) return dragView.dx
+    const i = pins.findIndex((p) => p.key === a.key)
+    const { from, to, slot } = dragView
+    if (from < to && i > from && i <= to) return -slot
+    if (to < from && i >= to && i < from) return slot
+    return 0
+  }
 
   // screenshot previews can start with a hover preview open (#…&peek=1)
   useEffect(() => {
@@ -188,7 +266,7 @@ export default function Dock({ apps, tray, unseen, onHold, onInbox }: { apps: Do
           <Icon name="copy" size={18} />
         </button>
       </span>
-      {apps.map((a) => {
+      {shown.map((a) => {
         const open = a.wins.length > 0
         const inUse = a.wins.some((w) => w.active && !w.minimized)
         const attention = a.wins.some((w) => w.attention)
@@ -200,15 +278,25 @@ export default function Dock({ apps, tray, unseen, onHold, onInbox }: { apps: Do
           <button
             key={a.key}
             data-key={a.key}
-            className={['dock-app', inUse && 'on', allMin && 'min', attention && 'attn', !open && 'closed'].filter(Boolean).join(' ')}
+            className={['dock-app', inUse && 'on', allMin && 'min', attention && 'attn', !open && 'closed', dragView?.key === a.key && 'dragging'].filter(Boolean).join(' ')}
+            style={dragView && a.pinned ? { transform: `translateX(${shiftOf(a)}px)` } : undefined}
+            onPointerDown={(e) => pinDown(a, e)}
+            onPointerMove={pinMove}
+            onPointerUp={pinUp}
+            onPointerCancel={pinCancel}
+            onLostPointerCapture={pinCancel}
             title={tip}
             aria-label={tip}
             onClick={(e) => {
+              if (dragged.current) {
+                dragged.current = false
+                return
+              }
               closePeek()
               if (e.shiftKey) void window.overlay.windowsLaunch(a.key)
               else click(a)
             }}
-            onMouseEnter={(e) => peekEnter(a, e.currentTarget)}
+            onMouseEnter={(e) => !drag.current?.on && peekEnter(a, e.currentTarget)}
             onMouseLeave={peekLeave}
             onAuxClick={(e) => {
               if (e.button !== 1) return

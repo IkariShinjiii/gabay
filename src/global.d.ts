@@ -106,6 +106,8 @@ export interface OverlayApi {
   windowsClick(id: string): Promise<boolean>
   /** Pictures of one dock app's windows, for the hover preview (null for minimized windows). */
   windowsThumbs(key: string): Promise<WindowThumb[]>
+  /** The pinned apps' dock keys in a new order, after a drag. */
+  windowsPinOrder(keys: string[]): Promise<boolean>
   /** Brings this window to the front (never minimizes it). */
   windowsFocus(id: string): Promise<boolean>
   /** Asks this window to close, like its X button. */
