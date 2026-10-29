@@ -2832,7 +2832,7 @@ button.big-icon {
   font: 600 10px/15px var(--font);
   font-variant-numeric: tabular-nums;
   text-align: center;
-  box-shadow: 0 0 0 2px #000; /* cut out of the bell, like a badge on the taskbar */
+  box-shadow: 0 0 0 2px var(--notch); /* cut out of the bell, like a badge on the taskbar */
 }
 
 .tab-badge {
@@ -2939,7 +2939,7 @@ button.big-icon {
   position: sticky; /* stays reachable when the row scrolls */
   left: 0;
   z-index: 1;
-  background: #000;
+  background: var(--notch);
 }
 
 .dock-corner {
@@ -2950,7 +2950,7 @@ button.big-icon {
   border-left: 1px solid var(--line); /* apps on the left, Windows' corner on the right */
   position: sticky; /* stays reachable when the row scrolls */
   right: 0;
-  background: #000;
+  background: var(--notch);
 }
 
 .dock-tray-btn .icon {

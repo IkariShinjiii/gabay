@@ -243,7 +243,16 @@ Icons are from [Lucide](https://lucide.dev) (ISC license), stored as inline SVG 
 
 ## License
 
-Copyright (c) 2026 IkariShinjiii. **All rights reserved.** Gabay is free to download from the official website or GitHub
-releases and to use on your own computers, but its code, design, artwork and name may not be copied, modified or
-redistributed. See [LICENSE](LICENSE). Third-party software it includes is listed in
-[resources/THIRD-PARTY-NOTICES.txt](resources/THIRD-PARTY-NOTICES.txt).
+Copyright (c) 2026 IkariShinjiii. Gabay is free software under the **GNU General Public License v3.0 only**
+([LICENSE](LICENSE)). You may use, study, change and share it. If you share a changed version, you must share its source
+code under the same license. Gabay comes with no warranty.
+
+**Name and logo:** the GPL covers the code, not the name. A changed version you share must use a different name and
+icon, so people can tell it apart from official Gabay. Official downloads come only from
+https://gabay-desktop.vercel.app and https://github.com/IkariShinjiii/gabay/releases.
+
+Third-party software it includes is listed in [resources/THIRD-PARTY-NOTICES.txt](resources/THIRD-PARTY-NOTICES.txt).
+
+## Code signing
+
+See [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md) for how releases are built and signed, and what Gabay connects to.

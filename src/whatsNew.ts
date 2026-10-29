@@ -9,7 +9,8 @@ export const WHATS_NEW: [version: string, items: string[]][] = [
       'Every app shows its real icon in Launch and the dock, including Steam games and Windows tools',
       'Dock: Start and Task view buttons; middle-click an app for a new window; right-click to pick one of its windows',
       "The dock's bell shows how many notifications are new",
-      'If Gabay is closed from Task Manager, the Windows taskbar comes back on its own'
+      'If Gabay is closed from Task Manager, the Windows taskbar comes back on its own',
+      'Gabay is now free and open source (GPL-3.0)'
     ]
   ],
   [
