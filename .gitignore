@@ -19,3 +19,6 @@ Thumbs.db
 *.log
 .vscode/*
 !.vscode/extensions.json
+
+# Local AI tool settings
+.gemini/
