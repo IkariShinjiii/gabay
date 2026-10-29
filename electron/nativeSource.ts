@@ -23,6 +23,7 @@
 //                                             for up to 6 s; false once it closed, or if none opened within the grace)
 //            tbhide <0|1>                    (hide the taskbar windows outright; always shown again when Gabay exits)
 //            startmenu                       (open or close the Start menu, as the taskbar's Start button does)
+//            taskview                        (open Task view: presses Win+Tab, only when the dock button is clicked)
 //            appicon <base64 utf-8 path>     (the picture the shell shows for a file or a shell:AppsFolder item, as a
 //                                             base64 PNG string, or null)
 //   pushes   priv <json>                     camera / microphone in use, and by which apps
@@ -532,6 +533,12 @@ static class Native {
         // The taskbar's own message for its Start button (WM_SYSCOMMAND SC_TASKLIST); works while it is hidden.
         var tb = ExplorerTray();
         return tb != IntPtr.Zero && PostMessage(tb, 0x0112, new IntPtr(0xF130), IntPtr.Zero) ? "true" : "false";
+      }
+      case "taskview": {
+        // Windows 11 dropped the old Task View shell link, so press Win+Tab the way the keyboard would. Only on a click.
+        keybd_event(0x5B, 0, 1, UIntPtr.Zero); keybd_event(0x09, 0, 0, UIntPtr.Zero);
+        keybd_event(0x09, 0, 2, UIntPtr.Zero); keybd_event(0x5B, 0, 3, UIntPtr.Zero);
+        return "true";
       }
       case "appicon": {
         var png = ShellIcon(Encoding.UTF8.GetString(Convert.FromBase64String(arg)), 48);

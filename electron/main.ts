@@ -451,9 +451,8 @@ app.whenReady().then(async () => {
   // Task view: every window, and the virtual desktops. A fixed shell location: nothing from the UI is used.
   ipcMain.handle('shell:taskview', (e) => {
     fromUi(e)
-    return new Promise<boolean>((resolve) => {
-      execFile('explorer.exe', ['shell:::{3080F90E-D7AD-11D9-BD98-0010B5A6EB14}'], { windowsHide: true }, () => resolve(true))
-    })
+    // Windows 11 has no shell link for Task view any more (explorer shows "no app associated"); the helper presses Win+Tab.
+    return nativeCall('taskview').then((r) => r === true, () => false)
   })
   // Show desktop (minimize or restore every window), the taskbar's far corner. A fixed command: nothing from the UI is used.
   ipcMain.handle('desktop:toggle', (e) => {
