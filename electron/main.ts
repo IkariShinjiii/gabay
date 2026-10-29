@@ -82,6 +82,7 @@ function createOverlay(display: Electron.Display): BrowserWindow {
     backgroundColor: '#00000000',// fully transparent background
     hasShadow: false,            // no OS drop shadow around the (mostly empty) window
     resizable: false,            // fixed size; the notch animates INSIDE this window later
+    minimizable: false,          // Show desktop minimizes every window that can be; the notch stays
     alwaysOnTop: true,
     skipTaskbar: true,           // no taskbar button
     webPreferences: {
@@ -148,6 +149,7 @@ function createDockWindow(display: Electron.Display, shouldShow: () => boolean):
     backgroundColor: '#00000000',
     hasShadow: false,
     resizable: false,
+    minimizable: false, // Show desktop minimizes every window that can be; the notch stays
     alwaysOnTop: true,
     skipTaskbar: true,
     webPreferences: {
@@ -615,11 +617,25 @@ app.whenReady().then(async () => {
   ipcMain.handle('desktop:toggle', (e) => {
     fromDock(e)
     // The taskbar's own Show desktop command, through the helper; PowerShell only if the helper can't.
+    const done = (ok: boolean): boolean => {
+      setTimeout(keepNotchesUp, 400) // once Windows has finished moving everything
+      return ok
+    }
     return nativeCall('desktop').then(
-      (r) => r === true || toggleDesktopPs(),
-      () => toggleDesktopPs()
+      (r) => (r === true ? done(true) : toggleDesktopPs().then(done)),
+      () => toggleDesktopPs().then(done)
     )
   })
+  // After Show desktop: every notch back in front, as it was. A dock notch hidden on purpose (Follow mouse) stays hidden.
+  const keepNotchesUp = (): void => {
+    const shown = [win, ...[...docks].filter(([id]) => id !== placedOn).map(([, d]) => d)]
+    for (const w of shown) {
+      if (w.isDestroyed()) continue
+      if (w.isMinimized() || !w.isVisible()) w.showInactive()
+      w.setAlwaysOnTop(true, 'screen-saver')
+      w.moveTop()
+    }
+  }
   const toggleDesktopPs = (): Promise<boolean> =>
     new Promise<boolean>((resolve) => {
       execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', '(New-Object -ComObject Shell.Application).ToggleDesktop()'], { windowsHide: true, timeout: 10_000 }, (err) => resolve(!err))

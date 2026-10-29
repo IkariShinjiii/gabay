@@ -114,7 +114,11 @@ export default function Dock({ apps, tray, unseen, onHold, onInbox, peekBelow = 
     if (e.button !== 0 || !a.pinned || pins.length < 2) return
     drag.current = { key: a.key, x0: e.clientX, on: false, centers: [], from: 0, to: 0, slot: 44 }
   }
-  const pinMove = (e: React.PointerEvent<HTMLButtonElement>): void => {
+  // Once a drag starts it is followed on the whole window, so letting go anywhere (past the end of the row, over Start)
+  // still drops the app where it shows.
+  const offDrag = useRef<(() => void) | null>(null)
+  useEffect(() => () => offDrag.current?.(), [])
+  const pinMove = (e: React.PointerEvent<HTMLButtonElement> | PointerEvent): void => {
     const d = drag.current
     if (!d) return
     let dx = e.clientX - d.x0
@@ -134,21 +138,35 @@ export default function Dock({ apps, tray, unseen, onHold, onInbox, peekBelow = 
       d.slot = d.centers[1] - d.centers[0] || 44
       d.on = true
       try {
-        e.currentTarget.setPointerCapture(e.pointerId)
+        ;(e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId)
       } catch {
-        // no capture: the drag still works while the pointer stays over the dock
+        // no capture: the window listeners below follow the drag anyway
+      }
+      const move = (ev: PointerEvent): void => pinMove(ev)
+      const up = (): void => pinUp()
+      const cancel = (): void => pinCancel()
+      window.addEventListener('pointermove', move)
+      window.addEventListener('pointerup', up)
+      window.addEventListener('pointercancel', cancel)
+      offDrag.current = () => {
+        window.removeEventListener('pointermove', move)
+        window.removeEventListener('pointerup', up)
+        window.removeEventListener('pointercancel', cancel)
+        offDrag.current = null
       }
       closePeek()
     }
-    // stay among the pins
+    // stay among the pins, up to half a slot past either end
     const first = d.centers[0] - d.centers[d.from]
     const last = d.centers[d.centers.length - 1] - d.centers[d.from]
-    dx = Math.max(first - d.slot / 3, Math.min(last + d.slot / 3, dx))
+    dx = Math.max(first - d.slot / 2, Math.min(last + d.slot / 2, dx))
     const x = d.centers[d.from] + dx
-    d.to = d.centers.filter((c, i) => i !== d.from && c < x).length
+    // the nearest slot: an app takes a place once it is more than halfway onto it, the first place included
+    d.to = Math.max(0, Math.min(d.centers.length - 1, Math.round((x - d.centers[0]) / d.slot)))
     setDragView({ key: d.key, dx, from: d.from, to: d.to, slot: d.slot })
   }
   const pinUp = (): void => {
+    offDrag.current?.()
     const d = drag.current
     drag.current = null
     if (!d?.on) return
@@ -163,6 +181,7 @@ export default function Dock({ apps, tray, unseen, onHold, onInbox, peekBelow = 
     })
   }
   const pinCancel = (): void => {
+    offDrag.current?.()
     drag.current = null
     setDragView(null)
   }
@@ -293,7 +312,6 @@ export default function Dock({ apps, tray, unseen, onHold, onInbox, peekBelow = 
             onPointerMove={pinMove}
             onPointerUp={pinUp}
             onPointerCancel={pinCancel}
-            onLostPointerCapture={pinCancel}
             title={tip}
             aria-label={tip}
             onClick={(e) => {
