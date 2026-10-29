@@ -57,6 +57,20 @@ Settings > Personalization > Taskbar > Taskbar behaviors > **Automatically hide 
 - Reach the tray by moving the pointer to the bottom edge; Windows reveals the taskbar natively (kill-test item 6 passed).
 - Fully reversible: turn the setting off again. Gabay changes no Windows settings.
 
+### Hide the taskbar and use the dock (Settings)
+
+**Hide the Windows taskbar** in Settings turns on auto-hide for you and shows your open apps in a dock at the bottom of
+the panel. Turning it off, or quitting Gabay, puts the taskbar back as it was (a small watchdog does this even if Gabay
+is killed).
+
+- Click an app to switch to it, or the one you're using to minimize it. Middle-click opens a new window of it.
+- Hover an open app to see a picture of each of its windows: click one to bring it up, or its X to close it. The
+  pictures stay in memory and only go to Gabay's own page.
+- Drag pinned apps sideways to put them in your order, or right-click one for Move left / Move right.
+- Start, Task view and Show desktop buttons do what the taskbar's do.
+- **Taskbar slides up** keeps the real taskbar at the bottom edge; **Hidden** hides it completely. With **Tray icons**
+  on (experimental), the icons from the taskbar's corner show in the dock instead.
+
 ## Launcher and hotkey
 
 - **Ctrl+Alt+G** (default) opens the panel with the search field focused. Pick another in the Settings tab (Ctrl+Shift+G,
@@ -64,6 +78,9 @@ Settings > Personalization > Taskbar > Taskbar behaviors > **Automatically hide 
   No Win-key shortcuts. Ctrl+Alt+Space is taken by the Claude desktop app on the dev machine.
 - Search covers everything the Start menu shows, including Store apps (via `Get-StartApps`), with Start Menu `.lnk`
   shortcuts as fallback. Fuzzy matching is a small built-in matcher. Enter launches, arrows move, Esc clears then releases focus.
+- Files and folders in your user folder show below the apps, newest first, from Windows' own search index (what
+  Explorer's search box uses; Gabay indexes nothing itself). Enter opens one; Ctrl+Enter or right-click opens its
+  folder. App data and hidden folders are left out.
 - Star an app with the star button to pin it to the Launch tab; recent launches are remembered.
 - Recents and stars live in `launcher.json` in Electron's userData folder (`%APPDATA%\gabay`). The renderer only handles opaque ids; paths never leave the main process.
 - While the search field has focus the panel stays open even if the pointer is elsewhere.
