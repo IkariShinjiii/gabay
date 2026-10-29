@@ -2,6 +2,15 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.4.4',
+    [
+      'With the taskbar hidden, your other screens get a small notch too: hover it for the dock',
+      'Dragging a pinned app to the front of the dock works, and a drag follows the pointer anywhere',
+      'Show desktop no longer hides the notch',
+      'Files found in Launch always open, even while you keep typing'
+    ]
+  ],
+  [
     '1.4.3',
     [
       'Hover an app in the dock to see its windows; click one to bring it up, or its X to close it',
