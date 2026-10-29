@@ -652,6 +652,15 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onSho
           onSettings(r.settings)
         }}
       />
+      <div className="set-row">
+        <div className="set-label">{tr('Quit Gabay')}</div>
+        <div className="set-opts">
+          <button className="chip" onClick={() => void window.overlay.quit()}>
+            {tr('Quit')}
+          </button>
+        </div>
+        <div className="set-note muted">{tr('Closes Gabay and brings back the taskbar. Open it again from the Start menu.')}</div>
+      </div>
 
       <div className="set-section">{tr('Experiments')}</div>
       <div className="set-row">

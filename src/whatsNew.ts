@@ -2,6 +2,13 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.4.2',
+    [
+      "The dock's Task view button works on Windows 11",
+      'Quit Gabay from Settings, even with the taskbar hidden'
+    ]
+  ],
+  [
     '1.4.1',
     [
       'With the taskbar hidden, Gabay opens with the Start menu, even over a full-screen game',

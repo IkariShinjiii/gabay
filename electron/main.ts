@@ -912,6 +912,13 @@ app.whenReady().then(async () => {
   })
   // Reset to defaults: settings only. To-dos, notes, pinned clips and the calendar address are left alone, and the
   // welcome tour isn't shown again.
+  // Quit from Settings: with the taskbar hidden, Gabay's tray icon has nowhere to show, so this is the way out.
+  // The taskbar is shown again on exit as usual.
+  ipcMain.handle('app:quit', (e) => {
+    fromUi(e)
+    setTimeout(() => app.quit(), 50) // let the reply reach the page first
+    return true
+  })
   ipcMain.handle('settings:reset', (e) => {
     fromUi(e)
     return applyPatch({ ...DEFAULTS, hotkey: DEFAULTS.hotkey, welcomed: true, reviewAt: settings.reviewAt, seenVersion: settings.seenVersion })

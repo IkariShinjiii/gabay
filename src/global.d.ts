@@ -57,6 +57,8 @@ export interface OverlayApi {
   setSettings(patch: Partial<Settings>): Promise<SettingsSnapshot>
   /** Settings back to defaults (to-dos, notes, pinned clips and calendar are kept). */
   resetSettings(): Promise<SettingsSnapshot>
+  /** Quits Gabay (the taskbar comes back). */
+  quit(): Promise<boolean>
   getNotes(): Promise<string>
   /** Saves the whole scratchpad; false if it is too long. */
   setNotes(text: string): Promise<boolean>
