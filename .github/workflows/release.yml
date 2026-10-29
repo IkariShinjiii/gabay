@@ -1,0 +1,44 @@
+# Builds the Windows installer on GitHub's servers from a version tag (or by hand), so every published installer can be
+# traced to a commit. The installer is uploaded as a workflow artifact; publishing the GitHub release stays a manual step.
+# Code signing through SignPath Foundation plugs in after the build step once the project is approved (docs/CODE_SIGNING.md).
+name: Release build
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+  # Also check the build when the build setup itself changes.
+  pull_request:
+    paths: ['.github/workflows/release.yml', 'package.json', 'package-lock.json', 'electron-builder.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Build the installer (unsigned)
+        run: npm run dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Rename the installer
+        shell: pwsh
+        run: |
+          $v = (Get-Content package.json | ConvertFrom-Json).version
+          Copy-Item "dist/Gabay Setup $v.exe" "dist/Gabay-Setup-$v.exe"
+          Get-FileHash "dist/Gabay-Setup-$v.exe" -Algorithm SHA256 | Format-List
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gabay-installer
+          path: |
+            dist/Gabay-Setup-*.exe
+            dist/latest.yml
+          if-no-files-found: error
