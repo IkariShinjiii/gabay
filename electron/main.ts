@@ -18,7 +18,7 @@ import { currentProjectMode, isProjectMode, setProjectMode } from './project'
 import { isSettingsKey, networkKind, quickGet, quickPeek, quickSet, quickSlide, SETTINGS_PAGES, stopQuick } from './quick'
 import { COLLAPSE_MAX, COLLAPSE_MIN, DEFAULTS, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
 import { getNotes, setNotes } from './notes'
-import { ensureIndex, findByExe, getIcon, isStarred, shellIcon, launch, movePin, pinnedApps, search, toggleStar } from './launcher'
+import { ensureIndex, findByExe, getIcon, isStarred, shellIcon, launch, movePin, pinnedApps, pinPlace, search, toggleStar } from './launcher'
 import { isPowerAction, runPower } from './power'
 import { addTodo, listTodos, removeTodo, toggleTodo } from './todos'
 import { clearHistory, copyBack, listClipboard, setClipboardGuard, startClipboardHistory, stopClipboardHistory, togglePin } from './clipboardHistory'
@@ -417,7 +417,8 @@ app.whenReady().then(async () => {
     if (ok !== true || button !== 'r') return ok === true
     // A right-click opens the app's menu: answer once it has closed, so the panel stays open under it till then.
     let grace = 1500
-    for (let i = 0; i < 100 && (await nativeCall('traywait', `${id} ${grace}`)) === true; i++) grace = 0
+    // At most 2 minutes: a menu left open longer than that no longer keeps the panel down over the screen.
+    for (let i = 0; i < 20 && (await nativeCall('traywait', `${id} ${grace}`)) === true; i++) grace = 0
     return true
   })
   ipcMain.handle('windows:get', async (e) => {
@@ -457,10 +458,16 @@ app.whenReady().then(async () => {
   // Show desktop (minimize or restore every window), the taskbar's far corner. A fixed command: nothing from the UI is used.
   ipcMain.handle('desktop:toggle', (e) => {
     fromUi(e)
-    return new Promise<boolean>((resolve) => {
+    // The taskbar's own Show desktop command, through the helper; PowerShell only if the helper can't.
+    return nativeCall('desktop').then(
+      (r) => r === true || toggleDesktopPs(),
+      () => toggleDesktopPs()
+    )
+  })
+  const toggleDesktopPs = (): Promise<boolean> =>
+    new Promise<boolean>((resolve) => {
       execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', '(New-Object -ComObject Shell.Application).ToggleDesktop()'], { windowsHide: true, timeout: 10_000 }, (err) => resolve(!err))
     })
-  })
   // Right-click on a dock icon: a native menu, so it can spill outside the notch.
   ipcMain.handle('windows:menu', async (e, key: unknown) => {
     fromUi(e)
@@ -482,8 +489,9 @@ app.whenReady().then(async () => {
       })
     }
     if (pinId && pinned) {
-      items.push({ label: 'Move left', click: () => void movePin(pinId, -1).then(() => pushWins()) })
-      items.push({ label: 'Move right', click: () => void movePin(pinId, 1).then(() => pushWins()) })
+      const at = await pinPlace(pinId)
+      if (!at.first) items.push({ label: 'Move left', click: () => void movePin(pinId, -1).then(() => pushWins()) })
+      if (!at.last) items.push({ label: 'Move right', click: () => void movePin(pinId, 1).then(() => pushWins()) })
     }
     // The app's windows, to pick one (what the taskbar's thumbnails are for). The one in front is ticked.
     if (g.wins.length > 1) {

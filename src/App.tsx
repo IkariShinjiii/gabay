@@ -21,7 +21,7 @@ import { useRecorder } from './useRecorder'
 import { applyAccent, resolveAccent } from './accent'
 import { ICONS, type IconName } from './icons'
 import Welcome from './Welcome'
-import UpdateTour, { hasTour } from './UpdateTour'
+import UpdateTour, { tourBetween } from './UpdateTour'
 import NotesPanel from './NotesPanel'
 import { notesFor } from './whatsNew'
 import { useFocusTimer } from './useFocusTimer'
@@ -215,7 +215,7 @@ export default function App(): React.JSX.Element {
   const accentRef = useRef('mint')
   const versionRef = useRef('')
   // Set once pushToast exists (further down); called from the settings load above.
-  const announceUpdate = useRef<(version: string) => void>(() => undefined)
+  const announceUpdate = useRef<(version: string, from: string) => void>(() => undefined)
   const pushToastRef = useRef<(t: Omit<Toast, 'id'>) => void>(() => undefined)
   accentRef.current = accentName
   const [place, setPlace] = useState<string | null>(null)
@@ -242,7 +242,7 @@ export default function App(): React.JSX.Element {
       // After an update (not on a first run, which gets the tour): say once what's new.
       if (r.settings.welcomed && r.settings.seenVersion !== r.version && !previewParam) {
         // An automatic update can finish while nobody is at the PC: wait until someone is, then say it.
-        void window.overlay.whenPresent().then(() => window.setTimeout(() => announceUpdate.current(r.version), 2500))
+        void window.overlay.whenPresent().then(() => window.setTimeout(() => announceUpdate.current(r.version, r.settings.seenVersion), 2500))
         void window.overlay.setSettings({ seenVersion: r.version })
       }
       // Once, a few days in: ask for a review (never over a game, and not on top of the update note).
@@ -472,14 +472,15 @@ export default function App(): React.JSX.Element {
   }, [expanded, showNext])
   useEffect(() => () => window.clearTimeout(toastTimer.current), [])
 
-  announceUpdate.current = (version: string): void => {
-    if (hasTour(version)) {
+  announceUpdate.current = (version: string, from: string): void => {
+    const t = tourBetween(from, version)
+    if (t) {
       // never over a game or video: try again in a while
       if (fullscreenRef.current) {
-        window.setTimeout(() => announceUpdate.current(version), 60_000)
+        window.setTimeout(() => announceUpdate.current(version, from), 60_000)
         return
       }
-      startTour(version)
+      startTour(t)
       return
     }
     const items = notesFor(version)
@@ -553,7 +554,7 @@ export default function App(): React.JSX.Element {
         noteId: n.id,
         label: n.app,
         title: n.title ?? n.app,
-        sub: n.body ?? (n.title ? undefined : 'New notification'),
+        sub: n.body ?? (n.title ? undefined : tr('New notification')),
         tone: 'plain',
         ms: 5200
       })
@@ -796,7 +797,7 @@ export default function App(): React.JSX.Element {
 
   // App results show on every tab except Clipboard, but only for text that is not a command.
   // The bar lives on Launch (apps and commands) and Clipboard (filter) only; other tabs show just their content.
-  const hasBar = !welcome && (tab === 'Launch' || tab === 'Clipboard')
+  const hasBar = !welcome && !tour && (tab === 'Launch' || tab === 'Clipboard')
   // React doesn't fire onBlur for an input that unmounts while focused, so release its hold here, or the panel
   // could never collapse after switching from Launch to a tab without the bar.
   useEffect(() => {
@@ -1021,7 +1022,7 @@ export default function App(): React.JSX.Element {
           transition={{ duration: expanded ? 0.2 : 0.1, delay: expanded ? 0.12 : 0 }}
           style={{ pointerEvents: expanded ? 'auto' : 'none', maxHeight: panelCap }}
         >
-          {!welcome && (
+          {!welcome && !tour && (
           <div className="tabs" role="tablist" aria-label={tr('Sections')} onWheel={onTabsWheel}>
             {BAR_TABS.map((t, i) => (
               <button
@@ -1061,7 +1062,7 @@ export default function App(): React.JSX.Element {
           )}
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={welcome ? 'welcome' : showResults ? 'results' : tab}
+              key={welcome ? 'welcome' : tour ? 'tour' : showResults ? 'results' : tab}
               className="body-wrap"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1071,7 +1072,7 @@ export default function App(): React.JSX.Element {
               {body}
             </motion.div>
           </AnimatePresence>
-          {dockShown && <Dock apps={wins} tray={tray} unseen={unseen} onInbox={() => setTab('Inbox')} onHold={(h) => { hold('menu', h); if (!h) evaluate() }} />}
+          {dockShown && <Dock apps={wins} tray={tray} unseen={unseen} onInbox={() => selectTab('Inbox')} onHold={(h) => { hold('menu', h); if (!h) evaluate() }} />}
           {hasBar && (
           <label className={parsed ? 'bar is-command' : 'bar'}>
             <Icon name={parsed ? 'command' : 'search'} size={16} />

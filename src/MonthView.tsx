@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Icon from './Icon'
-import { tr } from './i18n'
+import { dateLocale, tr } from './i18n'
 
 /** A month grid for the Today tab: step through months, today is marked. Weeks start on Sunday. */
 export default function MonthView({ today, onClose }: { today: Date; onClose: () => void }): React.JSX.Element {
@@ -11,7 +11,7 @@ export default function MonthView({ today, onClose }: { today: Date; onClose: ()
   const step = (d: number): void => setShown(new Date(shown.getFullYear(), shown.getMonth() + d, 1))
   const isToday = (d: number): boolean => d === today.getDate() && shown.getMonth() === today.getMonth() && shown.getFullYear() === today.getFullYear()
   // 2023-01-01 was a Sunday: the seven column headings in the user's language.
-  const heads = Array.from({ length: 7 }, (_, i) => new Date(2023, 0, 1 + i).toLocaleDateString([], { weekday: 'narrow' }))
+  const heads = Array.from({ length: 7 }, (_, i) => new Date(2023, 0, 1 + i).toLocaleDateString(dateLocale(), { weekday: 'narrow' }))
   return (
     <div className="month">
       <div className="month-head">
@@ -19,7 +19,7 @@ export default function MonthView({ today, onClose }: { today: Date; onClose: ()
           <Icon name="chevron-right" size={14} />
         </button>
         <button className="month-title" onClick={onClose} title={tr('Back')}>
-          {shown.toLocaleDateString([], { month: 'long', year: 'numeric' })}
+          {shown.toLocaleDateString(dateLocale(), { month: 'long', year: 'numeric' })}
         </button>
         <button className="month-step" onClick={() => step(1)} aria-label={tr('Next month')}>
           <Icon name="chevron-right" size={14} />

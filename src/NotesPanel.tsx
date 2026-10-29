@@ -112,7 +112,7 @@ export default function NotesPanel({ onHold }: { onHold: (held: boolean) => void
           <span className="notes-actions">
             <button className="chip" disabled={!text} onClick={() => void copy()} title={tr('Copy the whole note')}>
               <Icon name={copied ? 'check' : 'copy'} size={13} />
-              {copied ? 'Copied' : 'Copy'}
+              {copied ? tr('Copied') : tr('Copy')}
             </button>
             <button className="chip" disabled={!text} onClick={() => setConfirmClear(true)}>
               {tr('Clear')}

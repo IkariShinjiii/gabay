@@ -674,7 +674,7 @@ export default function QuickPanel(props: {
                 icon={volIcon}
                 label={tr('Volume')}
                 value={state.muted ? 0 : volume}
-                format={(v) => (state.muted ? 'Muted' : `${v}%`)}
+                format={(v) => (state.muted ? tr('Muted') : `${v}%`)}
                 onSlide={(v, done) => slide('volume', v, done)}
                 onIcon={() => void act({ kind: 'mute' })}
                 iconLabel={state.muted ? tr('Unmute') : tr('Mute')}
@@ -908,7 +908,7 @@ function WifiView({ onBack }: { onBack: () => void }): React.JSX.Element {
               <Bars level={n.signal} />
               <span className="net-name">{n.ssid}</span>
               <span className="net-state">
-                {joining === n.ssid ? 'Connecting…' : n.connected ? 'Connected' : n.known ? 'Saved' : ''}
+                {joining === n.ssid ? tr('Connecting…') : n.connected ? tr('Connected') : n.known ? tr('Saved') : ''}
                 {n.secure && !n.connected && <Icon name="lock" size={11} />}
               </span>
             </motion.button>

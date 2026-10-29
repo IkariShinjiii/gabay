@@ -111,9 +111,9 @@ export default function Welcome({ hotkey, accent, onAccent, onDone }: Props): Re
         </motion.div>
       </AnimatePresence>
       <div className="wl-foot">
-        <span className="q-dots" aria-label={`Step ${step + 1} of ${STEPS}`}>
+        <span className="q-dots" aria-label={tr('Step {0} of {1}', step + 1, STEPS)}>
           {Array.from({ length: STEPS }, (_, i) => (
-            <button key={i} className={i === step ? 'q-dot on' : 'q-dot'} aria-label={`Step ${i + 1}`} onClick={() => go(i)} />
+            <button key={i} className={i === step ? 'q-dot on' : 'q-dot'} aria-label={tr('Step {0}', i + 1)} onClick={() => go(i)} />
           ))}
         </span>
         <span className="wl-buttons">
