@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { hasTour } from './UpdateTour'
+import { latestTour } from './UpdateTour'
 import type { SettingsSnapshot, UpdateInfo } from './global'
 import { ACCENT_PRESETS } from './accent'
 import Icon from './Icon'
@@ -82,20 +82,21 @@ function ShortcutsRow({ hotkey }: { hotkey: string | null }): React.JSX.Element 
 }
 
 function WhatsNewRow({ version, onTour }: { version: string; onTour: (version: string) => void }): React.JSX.Element {
+  const tourVersion = latestTour(version)
   return (
     <details className="set-row set-details" open={PREVIEW_OPEN || undefined}>
       <summary className="set-label">
         <Icon name="sparkles" size={14} />
-        What's new in {version}
+        {tr("What's new in {0}", version)}
       </summary>
       <ul className="news">
         {notesFor(version).map((n) => (
           <li key={n}>{n}</li>
         ))}
       </ul>
-      {hasTour(version) && (
+      {tourVersion && (
         <div className="set-opts">
-          <button className="chip" onClick={() => onTour(version)}>
+          <button className="chip" onClick={() => onTour(tourVersion)}>
             {tr('Take the tour')}
           </button>
         </div>

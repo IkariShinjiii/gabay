@@ -37,7 +37,21 @@ const TOURS: Record<string, Step[]> = {
   ]
 }
 
-export const hasTour = (version: string): boolean => Object.hasOwn(TOURS, version)
+const cmp = (a: string, b: string): number => {
+  const x = a.split('.').map(Number)
+  const y = b.split('.').map(Number)
+  for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0)
+  return 0
+}
+/** The tour to show after updating from `from` to `to`: the newest one released in between, so skipping a
+ *  version (1.3.8 straight to 1.4.2) still shows the 1.4.0 tour. */
+export const tourBetween = (from: string, to: string): string | null =>
+  Object.keys(TOURS)
+    .filter((v) => (!from || cmp(v, from) > 0) && cmp(v, to) <= 0)
+    .sort(cmp)
+    .pop() ?? null
+/** The newest tour up to this version, for Settings › What's new. */
+export const latestTour = (version: string): string | null => tourBetween('', version)
 
 interface Props {
   version: string

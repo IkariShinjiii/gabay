@@ -11,6 +11,11 @@ export function setLanguage(l: Language): void {
   if (typeof document !== 'undefined') document.documentElement.lang = l === 'fil' ? 'fil' : 'en'
 }
 
+/** Locale for day and month names: Filipino when Gabay is in Filipino, else the PC's own. */
+export function dateLocale(): string | undefined {
+  return current === 'fil' ? 'fil-PH' : undefined
+}
+
 export function tr(text: string, ...args: (string | number)[]): string {
   let out = current === 'fil' ? (FIL[text] ?? text) : text
   for (let i = 0; i < args.length; i++) out = out.split(`{${i}}`).join(String(args[i]))

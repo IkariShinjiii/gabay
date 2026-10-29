@@ -54,7 +54,7 @@ export default function ClipboardPanel({ query, onCopied }: Props): React.JSX.El
       query.trim() ? (
         <Empty icon="search" title={tr('No matching clips')} />
       ) : (
-        <Empty icon="copy" title={tr('Nothing copied yet')} hint="Text and images you copy show up here. Pin text to keep it." />
+        <Empty icon="copy" title={tr('Nothing copied yet')} hint={tr('Text and images you copy show up here. Pin text to keep it.')} />
       )
     )
   }

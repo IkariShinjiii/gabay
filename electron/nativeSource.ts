@@ -23,7 +23,8 @@
 //                                             for up to 6 s; false once it closed, or if none opened within the grace)
 //            tbhide <0|1>                    (hide the taskbar windows outright; always shown again when Gabay exits)
 //            startmenu                       (open or close the Start menu, as the taskbar's Start button does)
-//            taskview                        (open Task view: presses Win+Tab, only when the dock button is clicked)
+//            desktop                         (Show desktop and back, as the taskbar's far corner does)
+//            taskview                       (open Task view: presses Win+Tab, only when the dock button is clicked)
 //            appicon <base64 utf-8 path>     (the picture the shell shows for a file or a shell:AppsFolder item, as a
 //                                             base64 PNG string, or null)
 //   pushes   priv <json>                     camera / microphone in use, and by which apps
@@ -377,7 +378,7 @@ static class Native {
   }
 
   static void Main(string[] args) {
-    if (args.Length == 2 && args[0] == "--watch") { Watch(uint.Parse(args[1])); return; }
+    if (args.Length == 3 && args[0] == "--watch") { Watch(uint.Parse(args[1]), uint.Parse(args[2])); return; }
     SetProcessDPIAware();
     self = args.Length > 0 ? uint.Parse(args[0]) : 0;
     new Thread(ReadCommands) { IsBackground = true }.Start();
@@ -533,6 +534,11 @@ static class Native {
         // The taskbar's own message for its Start button (WM_SYSCOMMAND SC_TASKLIST); works while it is hidden.
         var tb = ExplorerTray();
         return tb != IntPtr.Zero && PostMessage(tb, 0x0112, new IntPtr(0xF130), IntPtr.Zero) ? "true" : "false";
+      }
+      case "desktop": {
+        // Show desktop and back, as the taskbar's far corner does (WM_COMMAND 407 to Explorer's taskbar).
+        var dt = ExplorerTray();
+        return dt != IntPtr.Zero && PostMessage(dt, 0x0111, new IntPtr(407), IntPtr.Zero) ? "true" : "false";
       }
       case "taskview": {
         // Windows 11 dropped the old Task View shell link, so press Win+Tab the way the keyboard would. Only on a click.
@@ -992,17 +998,23 @@ static class Native {
     try {
       string exe = Process.GetCurrentProcess().MainModule.FileName;
       // started through cmd, which exits at once: the watcher's parent is then gone, so it isn't in Gabay's tree
-      var psi = new ProcessStartInfo("cmd.exe", "/d /c start \"\" /b \"" + exe + "\" --watch " + self);
+      var psi = new ProcessStartInfo("cmd.exe", "/d /c start \"\" /b \"" + exe + "\" --watch " + self + " " + Process.GetCurrentProcess().Id);
       psi.UseShellExecute = false; psi.CreateNoWindow = true;
       Process.Start(psi);
     } catch { watching = false; }
   }
-  static void Watch(uint pid) {
+  // It waits for Gabay or this helper, whichever ends first: a restarted helper hides the taskbar again and starts its
+  // own watcher, and a helper that is not restarted no longer leaves the taskbar hidden.
+  static void Watch(uint pid, uint helper) {
     bool fresh;
-    using (new Mutex(true, "Local\\GabayTaskbarWatch" + pid, out fresh)) {
-      if (!fresh) return; // one watcher per Gabay
-      try { using (var g = Process.GetProcessById((int)pid)) g.WaitForExit(); } catch { } // gone already: restore now
-      Thread.Sleep(1500); // a normal quit has already restored it; a restarted Gabay hides it again if it wants
+    using (new Mutex(true, "Local\\GabayTaskbarWatch" + helper, out fresh)) {
+      if (!fresh) return; // one watcher per helper
+      Process g = null, me = null;
+      try { g = Process.GetProcessById((int)pid); me = Process.GetProcessById((int)helper); } catch { } // gone already
+      try { while (g != null && me != null && !g.HasExited && !me.HasExited) Thread.Sleep(500); } catch { }
+      if (g != null) g.Dispose();
+      if (me != null) me.Dispose();
+      Thread.Sleep(1500); // a normal quit has already restored it; a restarted Gabay or helper hides it again if it wants
       foreach (var h in Taskbars()) if (!IsWindowVisible(h)) ShowWindow(h, 8); // SW_SHOWNA
     }
   }
@@ -1304,7 +1316,11 @@ static class Native {
     var fg = GetForegroundWindow();
     if (fg == IntPtr.Zero || !IsWindowVisible(fg)) return false;
     uint q; GetWindowThreadProcessId(fg, out q);
-    return q == pid && (GetWindowLong(fg, -16) & 0x00C00000) != 0x00C00000; // WS_CAPTION
+    if (q != pid || (GetWindowLong(fg, -16) & 0x00C00000) == 0x00C00000) return false; // WS_CAPTION: a real window
+    // apps with frameless main windows (Discord, Spotify, Steam) come to the front after "Open": that is no menu
+    RECT r; var mi = new MONITORINFO(); mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+    if (!GetWindowRect(fg, out r) || !GetMonitorInfo(MonitorFromWindow(fg, 2), ref mi)) return false;
+    return (r.R - r.L) * 2 <= mi.rcMonitor.R - mi.rcMonitor.L && (r.B - r.T) * 10 <= (mi.rcMonitor.B - mi.rcMonitor.T) * 8;
   }
   static string TrayWait(string arg) {
     var a = arg.Split(' ');
@@ -1369,7 +1385,19 @@ static class Native {
             Marshal.Copy(row, 0, bd.Scan0 + y * bd.Stride, row.Length);
           }
           bmp.UnlockBits(bd);
-          using (var ms = new System.IO.MemoryStream()) { bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png); result = ms.ToArray(); }
+          var outBmp = bmp;
+          if (w > px || h > px) { // SIIGBF_BIGGERSIZEOK can return up to 256 px; keep what is sent over IPC small
+            outBmp = new System.Drawing.Bitmap(px, px, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = System.Drawing.Graphics.FromImage(outBmp)) {
+              g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+              g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+              g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+              g.DrawImage(bmp, 0, 0, px, px);
+            }
+          }
+          try {
+            using (var ms = new System.IO.MemoryStream()) { outBmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png); result = ms.ToArray(); }
+          } finally { if (outBmp != bmp) outBmp.Dispose(); }
         }
       } catch { result = null; }
       finally { if (hbm != IntPtr.Zero) DeleteObject(hbm); }

@@ -295,10 +295,16 @@ export async function toggleStar(id: string): Promise<boolean> {
 
 /** Moves a starred app one place earlier (-1) or later (1) in the dock; false if it isn't starred or is already at that end. */
 export async function movePin(id: string, delta: -1 | 1): Promise<boolean> {
+  await ensureIndex()
   const s = await loadStore()
-  const i = s.starred.indexOf(id)
-  const j = i + delta
-  if (i < 0 || j < 0 || j >= s.starred.length) return false
+  // Swap with the next pin the dock shows: a pin whose app is missing right now (uninstalled, or on a drive that isn't
+  // connected) is skipped, not taken as the neighbour, and stays in the list.
+  const shown = s.starred.map((x, k) => (entries.has(x) ? k : -1)).filter((k) => k >= 0)
+  const at = shown.indexOf(s.starred.indexOf(id))
+  const to = at + delta
+  if (at < 0 || to < 0 || to >= shown.length) return false
+  const i = shown[at]
+  const j = shown[to]
   ;[s.starred[i], s.starred[j]] = [s.starred[j], s.starred[i]]
   await saveStore()
   return true
@@ -330,6 +336,13 @@ export async function pinnedApps(): Promise<{ id: string; name: string; exe: str
     const e = entries.get(id)
     return e ? [{ id, name: e.name, exe: exeOf(e) }] : []
   })
+}
+
+/** Where a pin sits among the pins the dock shows, to offer only the moves that do something. */
+export async function pinPlace(id: string): Promise<{ first: boolean; last: boolean }> {
+  const shown = (await pinnedApps()).map((p) => p.id)
+  const i = shown.indexOf(id)
+  return { first: i <= 0, last: i < 0 || i === shown.length - 1 }
 }
 
 /** The Start menu entry that runs this program, if any (so an open app can be pinned). */

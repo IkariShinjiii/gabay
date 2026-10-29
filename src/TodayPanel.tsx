@@ -4,7 +4,7 @@ import type { CalEvent, Todo, Weather } from './global'
 import { formatClock, leftOf, MAX_TIMERS, type Timers } from './useTimers'
 import { weatherLook } from './weatherIcon'
 import { formatMs, type FocusTimer } from './useFocusTimer'
-import { tr } from './i18n'
+import { dateLocale, tr } from './i18n'
 import MonthView from './MonthView'
 
 interface Props {
@@ -99,7 +99,7 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
       <div className="today-left">
         <div className="clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
         <button className="date date-btn" onClick={() => setMonth((m) => !m)} title={tr('Calendar')}>
-          {now.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
+          {now.toLocaleDateString(dateLocale(), { weekday: 'long', month: 'short', day: 'numeric' })}
           <Icon name="calendar" size={11} />
         </button>
         {weather && (
@@ -188,7 +188,7 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
           <div className={timers.stopwatch.running ? 'sw-time running' : 'sw-time'}>{formatClock(timers.elapsedMs, true)}</div>
           <div className="timer-buttons">
             <button className="btn small" onClick={timers.swToggle}>
-              {timers.stopwatch.running ? 'Stop' : timers.elapsedMs > 0 ? 'Resume' : 'Start'}
+              {timers.stopwatch.running ? tr('Stop') : timers.elapsedMs > 0 ? tr('Resume') : tr('Start')}
             </button>
             {timers.stopwatch.running ? (
               <button className="btn small" onClick={timers.swLap}>
