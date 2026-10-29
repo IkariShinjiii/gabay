@@ -185,6 +185,13 @@ app.whenReady().then(async () => {
       return [{ id, name: f.n.slice(0, 200), starred: false, kind: 'file', folder: (parts[parts.length - 2] ?? '').slice(0, 80) }]
     })
   })
+  ipcMain.handle('launcher:reveal', (e, id: unknown) => {
+    fromUi(e)
+    const file = typeof id === 'string' ? fileHits.get(id) : undefined
+    if (!file) return false
+    shell.showItemInFolder(file)
+    return true
+  })
   ipcMain.handle('launcher:icon', (e, id: unknown) => {
     fromUi(e)
     if (typeof id !== 'string') return null
@@ -459,6 +466,22 @@ app.whenReady().then(async () => {
     if (!w) return false
     return (await nativeCall(w.active && !w.minimized ? 'minimize' : 'focus', w.id)) === true
   })
+  // One capture of every window serves the next 2 s of hovering, so sliding along the dock doesn't capture again
+  // for each app (a capture takes about half a second).
+  let shotCache: { at: number; shots: Promise<Map<string, Electron.NativeImage>> } | null = null
+  const windowShots = (): Promise<Map<string, Electron.NativeImage>> => {
+    if (shotCache && Date.now() - shotCache.at < 2000) return shotCache.shots
+    const shots = desktopCapturer
+      .getSources({ types: ['window'], thumbnailSize: { width: 320, height: 200 }, fetchWindowIcons: false })
+      .then((sources) => new Map(sources.map((s) => [s.id.split(':')[1] ?? '', s.thumbnail] as [string, Electron.NativeImage]))) // "window:<handle>:0"
+      .catch((err: unknown) => {
+        logError('window previews', err)
+        shotCache = null
+        return new Map<string, Electron.NativeImage>()
+      })
+    shotCache = { at: Date.now(), shots }
+    return shots
+  }
   // Hover previews in the dock: a picture of each window of one app, as the taskbar shows. Only windows Gabay listed;
   // the pictures stay in memory and go only to Gabay's own page. Minimized windows have nothing to show.
   ipcMain.handle('windows:thumbs', async (e, key: unknown) => {
@@ -466,22 +489,11 @@ app.whenReady().then(async () => {
     const g = dockGroups.find((x) => x.key === key)
     if (!g || g.wins.length === 0) return []
     const wins = g.wins.slice(0, 8)
-    let pics = new Map<string, string>()
-    if (wins.some((w) => !w.minimized)) {
-      try {
-        const sources = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 320, height: 200 }, fetchWindowIcons: false })
-        const want = new Set(wins.map((w) => w.id))
-        pics = new Map(
-          sources.flatMap((s) => {
-            const id = s.id.split(':')[1] // "window:<handle>:0"
-            return id && want.has(id) && !s.thumbnail.isEmpty() ? [[id, s.thumbnail.toDataURL()] as [string, string]] : []
-          })
-        )
-      } catch (err) {
-        logError('window previews', err)
-      }
-    }
-    return wins.map((w) => ({ id: w.id, title: w.title, thumb: w.minimized ? null : (pics.get(w.id) ?? null) }))
+    const shots = wins.some((w) => !w.minimized) ? await windowShots() : new Map<string, Electron.NativeImage>()
+    return wins.map((w) => {
+      const img = w.minimized ? undefined : shots.get(w.id)
+      return { id: w.id, title: w.title, thumb: img && !img.isEmpty() ? img.toDataURL() : null }
+    })
   })
   ipcMain.handle('windows:focus', async (e, id: unknown) => {
     fromUi(e)

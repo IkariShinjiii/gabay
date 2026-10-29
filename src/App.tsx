@@ -874,7 +874,9 @@ export default function App(): React.JSX.Element {
       if (parsed) {
         void Promise.resolve(parsed.run()).then(() => release())
       } else if (showResults && items[selected]) {
-        void launch(items[selected])
+        const it = items[selected]
+        if (e.ctrlKey && it.kind === 'file') void window.overlay.revealFile(it.id).then(() => release())
+        else void launch(it)
       }
     } else if (e.key === 'Escape') {
       // First Esc clears the text, second releases focus so the panel can close.
@@ -955,6 +957,7 @@ export default function App(): React.JSX.Element {
         onHover={setSelected}
         onLaunch={(it) => void launch(it)}
         onToggleStar={(it) => void toggleStar(it)}
+        onReveal={(it) => void window.overlay.revealFile(it.id).then(() => release())}
       />
     )
   } else if (expanded && tab === 'Clipboard') {

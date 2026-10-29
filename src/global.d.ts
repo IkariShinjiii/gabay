@@ -34,6 +34,8 @@ export interface OverlayApi {
   searchApps(query: string): Promise<LauncherItem[]>
   /** Files and folders in the user's folders whose names match, from Windows' search index (2+ letters). */
   searchFiles(query: string): Promise<LauncherItem[]>
+  /** Opens the folder of a file result in Explorer, with the file selected. */
+  revealFile(id: string): Promise<boolean>
   /** Small PNG data URL for an app's icon, or null. Resolved in main; the renderer never sees a path. */
   appIcon(id: string): Promise<string | null>
   launchApp(id: string): Promise<boolean>
