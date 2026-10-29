@@ -700,6 +700,7 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onSho
             {settings.taskbarFull
               ? tr('Your open apps are at the bottom of this panel: click one to switch to it, or the one you\'re using to minimize it. Turning this off or quitting Gabay puts the taskbar back.')
               : tr('Your open apps are at the bottom of this panel: click one to switch to it, or the one you\'re using to minimize it. The taskbar is still there if you push the pointer to the bottom edge. Turning this off or quitting Gabay puts it back.')}
+            {displays.length > 1 && ' ' + tr('Your other screens get a small notch too: hover it for the dock.')}
           </div>
         )}
       </div>

@@ -329,6 +329,7 @@ export const FIL: Record<string, string> = {
   "Auto-hides the taskbar and shows your open apps at the bottom of this panel": "Awtomatikong itinatago ang taskbar at ipinapakita ang mga bukas mong app sa ibaba ng panel na ito",
   "Your open apps are at the bottom of this panel: click one to switch to it, or the one you're using to minimize it. The taskbar is still there if you push the pointer to the bottom edge. Turning this off or quitting Gabay puts it back.": "Nasa ibaba ng panel na ito ang mga bukas mong app: i-click ang isa para lumipat dito, o ang ginagamit mo para i-minimize. Nandiyan pa rin ang taskbar kapag itinulak mo ang pointer sa ibabang gilid. Babalik ito kapag in-off mo ito o isinara ang Gabay.",
   "Your open apps are at the bottom of this panel: click one to switch to it, or the one you're using to minimize it. Turning this off or quitting Gabay puts the taskbar back.": "Nasa ibaba ng panel na ito ang mga bukas mong app: i-click ang isa para lumipat dito, o ang ginagamit mo para i-minimize. Babalik ang taskbar kapag in-off mo ito o isinara ang Gabay.",
+  "Your other screens get a small notch too: hover it for the dock.": "May maliit na notch din ang iba mong screen: i-hover ito para sa dock.",
   "At the bottom edge": "Sa ibabang gilid",
   "Taskbar slides up": "Lilitaw ang taskbar",
   "Nothing": "Wala",

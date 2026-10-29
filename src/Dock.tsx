@@ -15,7 +15,16 @@ import { tr } from './i18n'
  * Hover an open app: a picture of each of its windows; click one to bring it up, or its X to close it.
  * Drag a pinned app sideways to put it somewhere else among the pins.
  */
-export default function Dock({ apps, tray, unseen, onHold, onInbox }: { apps: DockApp[]; tray: TrayIcon[]; unseen: number; onHold: (held: boolean) => void; onInbox: () => void }): React.JSX.Element {
+export default function Dock({ apps, tray, unseen, onHold, onInbox, peekBelow = false }: {
+  apps: DockApp[]
+  tray: TrayIcon[]
+  unseen: number
+  onHold: (held: boolean) => void
+  /** The bell; left out on the other screens' dock notches, where there is no Inbox to open. */
+  onInbox?: () => void
+  /** Window previews open below the dock (the other screens' notches, where the dock is at the top). */
+  peekBelow?: boolean
+}): React.JSX.Element {
   const inboxLabel = unseen > 0 ? tr('Inbox, {0} new', unseen) : tr('Inbox')
   const click = (a: DockApp): void => {
     if (a.wins.length === 0) {
@@ -200,13 +209,13 @@ export default function Dock({ apps, tray, unseen, onHold, onInbox }: { apps: Do
       {peek && peekApp && peekItems.length > 0 && (
         <motion.div
           key="peek"
-          className="peek"
+          className={peekBelow ? 'peek below' : 'peek'}
           role="group"
           aria-label={tr('{0} windows', peekApp.name)}
           style={{ left: peekLeft, maxWidth: areaWidth }}
-          initial={{ opacity: 0, y: 6 }}
+          initial={{ opacity: 0, y: peekBelow ? -6 : 6 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 4 }}
+          exit={{ opacity: 0, y: peekBelow ? -4 : 4 }}
           transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
           onMouseEnter={() => window.clearTimeout(hideTimer.current)}
           onMouseLeave={peekLeave}
@@ -333,11 +342,13 @@ export default function Dock({ apps, tray, unseen, onHold, onInbox }: { apps: Do
           <Icon name="chevron-right" size={18} />
         </button>
       )}
-      <button className="dock-app dock-sys" title={inboxLabel} aria-label={inboxLabel} onClick={onInbox}>
-        <Icon name="bell" size={18} />
-        {/* new notifications since the Inbox was last looked at, as on the taskbar's bell */}
-        {unseen > 0 && <span className="dock-badge" aria-hidden="true">{unseen > 9 ? '9+' : unseen}</span>}
-      </button>
+      {onInbox && (
+        <button className="dock-app dock-sys" title={inboxLabel} aria-label={inboxLabel} onClick={onInbox}>
+          <Icon name="bell" size={18} />
+          {/* new notifications since the Inbox was last looked at, as on the taskbar's bell */}
+          {unseen > 0 && <span className="dock-badge" aria-hidden="true">{unseen > 9 ? '9+' : unseen}</span>}
+        </button>
+      )}
       <button className="dock-app dock-desktop" title={tr('Show desktop')} aria-label={tr('Show desktop')} onClick={() => void window.overlay.showDesktop()}>
         <Icon name="monitor" size={18} />
       </button>

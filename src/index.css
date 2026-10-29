@@ -3155,3 +3155,32 @@ button.big-icon {
   cursor: grabbing;
   transition: background-color 120ms ease; /* no transform easing: it tracks the pointer */
 }
+
+/* The other screens' notches while the taskbar is hidden: the time, opening to just the dock.
+   Clipped at the sides (the dock appears while the notch is still widening) but not below, where window previews hang. */
+.notch.mini {
+  min-height: 24px; /* NOTCH.collapsed.height */
+  clip-path: inset(0 calc(-1 * var(--shoulder)) -260px);
+}
+
+.mini-clock {
+  height: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.mini-body {
+  width: 520px; /* NOTCH.expanded.width: fixed, so it never reflows while the notch widens */
+  box-sizing: border-box;
+  padding: 0 20px 12px;
+}
+
+/* window previews below the dock, for a dock at the top of the screen */
+.peek.below {
+  top: calc(100% + 20px); /* clear of the notch's bottom padding */
+  bottom: auto;
+}

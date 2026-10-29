@@ -1,3 +1,9 @@
+export interface DockLook {
+  accent: string
+  language: string
+  visibility: string
+}
+
 export interface OverlayApi {
   /** true: window captures the mouse. false: click-through (events forwarded for mousemove only). */
   setInteractive(interactive: boolean): void
@@ -92,6 +98,11 @@ export interface OverlayApi {
   lyricsGet(title: string, artist: string, duration: number): Promise<{ t: number; text: string }[] | null>
   /** The Windows accent colour as #rrggbb. */
   accentColor(): Promise<string | null>
+  /** For the other screens' dock notches: the few settings that set their look. */
+  dockLook(): Promise<DockLook>
+  onDockLook(cb: (look: DockLook) => void): () => void
+  /** The dock notch is being hidden (the main notch moved onto its screen): close it. */
+  onDockClose(cb: () => void): () => void
   /** Opens a prefilled GitHub issue ('github') or copies the report ('copy'). Personal paths are scrubbed. */
   reportBug(description: string, how: 'github' | 'copy'): Promise<boolean>
   logError(msg: string): void

@@ -128,6 +128,49 @@ function createOverlay(display: Electron.Display): BrowserWindow {
   return win
 }
 
+// The other screens' notches while the taskbar is hidden: a slim notch that opens to just the dock. Room below it for
+// the open dock and its window previews. Same locked-down page as the main notch, loaded in its dock-only mode.
+const DOCK_WIN_WIDTH = 560
+const DOCK_WIN_HEIGHT = 300
+
+function dockBounds(display: Electron.Display): Electron.Rectangle {
+  const { x, y, width } = display.bounds
+  return { x: Math.round(x + (width - DOCK_WIN_WIDTH) / 2), y, width: DOCK_WIN_WIDTH, height: DOCK_WIN_HEIGHT }
+}
+
+function createDockWindow(display: Electron.Display, shouldShow: () => boolean): BrowserWindow {
+  const b = dockBounds(display)
+  const w = new BrowserWindow({
+    ...b,
+    frame: false,
+    show: false,
+    transparent: true,
+    backgroundColor: '#00000000',
+    hasShadow: false,
+    resizable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      spellcheck: false
+    }
+  })
+  // Created on another screen with its own scaling, the first bounds can come out the wrong size; the second sticks.
+  w.setBounds(b)
+  w.setBounds(b)
+  w.setAlwaysOnTop(true, 'screen-saver')
+  w.setIgnoreMouseEvents(true, { forward: true })
+  w.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  w.webContents.on('will-navigate', (e) => e.preventDefault())
+  if (process.env['ELECTRON_RENDERER_URL']) w.loadURL(process.env['ELECTRON_RENDERER_URL'] + '#mini=1')
+  else w.loadFile(join(__dirname, '../renderer/index.html'), { hash: 'mini=1' })
+  w.once('ready-to-show', () => !w.isDestroyed() && shouldShow() && w.showInactive())
+  return w
+}
+
 let tray: Tray | null = null // module-level so it isn't garbage-collected (the icon would vanish)
 
 // Errors are kept (scrubbed, messages only) for bug reports; Gabay keeps running rather than showing a crash dialog.
@@ -148,20 +191,30 @@ app.whenReady().then(async () => {
   // Renderer reports whether the pointer is over the notch.
   // true  -> window captures the mouse (interactive)
   // false -> mouse passes through to whatever is underneath (click-through)
+  // The other screens' dock notches, by display id (see syncDocks).
+  const docks = new Map<number, BrowserWindow>()
+  const dockOf = (wc: Electron.WebContents): BrowserWindow | undefined =>
+    [...docks.values()].find((d) => !d.isDestroyed() && d.webContents === wc)
   ipcMain.on('overlay:set-interactive', (event, interactive: unknown) => {
-    if (event.sender !== win.webContents || typeof interactive !== 'boolean') return
+    if (typeof interactive !== 'boolean') return
+    const target = event.sender === win.webContents ? win : dockOf(event.sender)
+    if (!target) return
     if (mouseLocked) return // a game has the mouse: nothing on the notch may take it
-    if (interactive) win.setIgnoreMouseEvents(false)
+    if (interactive) target.setIgnoreMouseEvents(false)
     else {
-      win.setIgnoreMouseEvents(true, { forward: true })
+      target.setIgnoreMouseEvents(true, { forward: true })
       // Hand keyboard focus back to the app underneath if a summon had given it to us.
-      if (win.isFocused()) win.blur()
+      if (target.isFocused()) target.blur()
     }
   })
 
   // Launcher. The renderer only ever handles opaque ids; paths stay in the main process.
   const fromUi = (e: Electron.IpcMainInvokeEvent): void => {
     if (e.sender !== win.webContents) throw new Error('forbidden')
+  }
+  // The dock's own channels also answer the other screens' dock notches. Nothing else does.
+  const fromDock = (e: Electron.IpcMainInvokeEvent): void => {
+    if (e.sender !== win.webContents && !dockOf(e.sender)) throw new Error('forbidden')
   }
   ipcMain.handle('launcher:search', (e, q: unknown) => {
     fromUi(e)
@@ -266,6 +319,14 @@ app.whenReady().then(async () => {
   const send = (channel: string, value: unknown): void => {
     if (!win.isDestroyed()) win.webContents.send(channel, value)
   }
+  const sendDocks = (channel: string, value: unknown): void => {
+    for (const d of docks.values()) if (!d.isDestroyed()) d.webContents.send(channel, value)
+  }
+  const sendAll = (channel: string, value: unknown): void => {
+    send(channel, value)
+    sendDocks(channel, value)
+  }
+  const dockFs = new Map<number, boolean>() // full screen on each dock's screen, as last told
   const str = (v: unknown, max: number): string | null => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null)
   let fsNow = false
   let startShown = false // Gabay is up because the Start menu is
@@ -341,7 +402,7 @@ app.whenReady().then(async () => {
       }))
     )
   }
-  const pushWins = async (): Promise<void> => send('overlay:windows', await winsForUi())
+  const pushWins = async (): Promise<void> => sendAll('overlay:windows', await winsForUi())
   {
     void startNative({
       fullscreen: (r, captured) => {
@@ -350,18 +411,30 @@ app.whenReady().then(async () => {
         const locked = captured
         if (locked !== mouseLocked) {
           mouseLocked = locked
-          if (locked) win.setIgnoreMouseEvents(true)
-          else win.setIgnoreMouseEvents(true, { forward: true })
+          for (const w of [win, ...docks.values()]) {
+            if (w.isDestroyed()) continue
+            if (locked) w.setIgnoreMouseEvents(true)
+            else w.setIgnoreMouseEvents(true, { forward: true })
+          }
         }
-        if (r) {
-          // Physical pixels -> DIP, then: is the full-screen monitor the one the notch is on?
-          const dip = screen.screenToDipRect(null, { x: r.l, y: r.t, width: r.r - r.l, height: r.b - r.t })
-          const d = targetDisplay(settings).bounds
+        // Physical pixels -> DIP, then: which screen is the full-screen window on?
+        const dip = r ? screen.screenToDipRect(null, { x: r.l, y: r.t, width: r.r - r.l, height: r.b - r.t }) : null
+        const on = (d: Electron.Rectangle): boolean => {
+          if (!dip) return false
           const cx = dip.x + dip.width / 2
           const cy = dip.y + dip.height / 2
-          fs = cx >= d.x && cx < d.x + d.width && cy >= d.y && cy < d.y + d.height
+          return cx >= d.x && cx < d.x + d.width && cy >= d.y && cy < d.y + d.height
         }
+        fs = on(targetDisplay(settings).bounds)
         if (fs !== fsNow) send('overlay:fullscreen', (fsNow = fs))
+        // each other screen's dock notch steps aside for a full-screen app on its own screen
+        for (const [id, d] of docks) {
+          const disp = screen.getAllDisplays().find((x) => x.id === id)
+          const dfs = disp ? on(disp.bounds) : false
+          if (d.isDestroyed() || dockFs.get(id) === dfs) continue
+          dockFs.set(id, dfs)
+          d.webContents.send('overlay:fullscreen', dfs)
+        }
       },
       media: (raw) => {
         const m = raw as Record<string, unknown> | null
@@ -382,7 +455,7 @@ app.whenReady().then(async () => {
       },
       tray: (raw) => {
         trayIcons = settings.hideTaskbar && settings.trayIcons ? takeTray(raw) : []
-        send('overlay:tray', trayIcons)
+        sendAll('overlay:tray', trayIcons)
       },
       // While Gabay stands in for the taskbar, it comes up with the Start menu, as the taskbar does. This is the way
       // in over a full-screen game: Start is in front of the game then, so nothing of the game's is in the way.
@@ -440,11 +513,11 @@ app.whenReady().then(async () => {
     })
   })
   ipcMain.handle('tray:get', (e) => {
-    fromUi(e)
+    fromDock(e)
     return trayIcons
   })
   ipcMain.handle('tray:click', async (e, id: unknown, button: unknown) => {
-    fromUi(e)
+    fromDock(e)
     // only an icon the helper listed, and only a left or right click
     if (typeof id !== 'string' || !trayIcons.some((t) => t.id === id) || (button !== 'l' && button !== 'r')) return false
     const ok = await nativeCall('trayclick', `${id} ${button}`)
@@ -456,7 +529,7 @@ app.whenReady().then(async () => {
     return true
   })
   ipcMain.handle('windows:get', async (e) => {
-    fromUi(e)
+    fromDock(e)
     if (!settings.hideTaskbar) return []
     // Asked when the panel opens: catches what no shell message reports (a switch of virtual desktop).
     const raw = await nativeCall('windows')
@@ -464,7 +537,7 @@ app.whenReady().then(async () => {
     return winsForUi()
   })
   ipcMain.handle('windows:click', async (e, id: unknown) => {
-    fromUi(e)
+    fromDock(e)
     const w = openWins.find((x) => x.id === id) // only windows Gabay listed
     if (!w) return false
     return (await nativeCall(w.active && !w.minimized ? 'minimize' : 'focus', w.id)) === true
@@ -488,7 +561,7 @@ app.whenReady().then(async () => {
   // Hover previews in the dock: a picture of each window of one app, as the taskbar shows. Only windows Gabay listed;
   // the pictures stay in memory and go only to Gabay's own page. Minimized windows have nothing to show.
   ipcMain.handle('windows:thumbs', async (e, key: unknown) => {
-    fromUi(e)
+    fromDock(e)
     const g = dockGroups.find((x) => x.key === key)
     if (!g || g.wins.length === 0) return []
     const wins = g.wins.slice(0, 8)
@@ -499,18 +572,18 @@ app.whenReady().then(async () => {
     })
   })
   ipcMain.handle('windows:focus', async (e, id: unknown) => {
-    fromUi(e)
+    fromDock(e)
     const w = openWins.find((x) => x.id === id)
     return w ? (await nativeCall('focus', w.id)) === true : false
   })
   ipcMain.handle('windows:close', async (e, id: unknown) => {
-    fromUi(e)
+    fromDock(e)
     const w = openWins.find((x) => x.id === id)
     return w ? (await nativeCall('close', w.id)) === true : false
   })
   // Pins dragged into a new order: the dock keys of every pinned app, in their new order.
   ipcMain.handle('windows:pinorder', async (e, keys: unknown) => {
-    fromUi(e)
+    fromDock(e)
     if (!Array.isArray(keys) || keys.length > 200) return false
     const ids = keys.map((k) => dockGroups.find((g) => g.key === k && g.launchId !== null)?.launchId)
     if (ids.some((id) => !id)) return false
@@ -519,7 +592,7 @@ app.whenReady().then(async () => {
     return ok
   })
   ipcMain.handle('windows:launch', async (e, key: unknown) => {
-    fromUi(e)
+    fromDock(e)
     const g = dockGroups.find((x) => x.key === key)
     if (!g) return false
     if (g.launchId) return launch(g.launchId)
@@ -528,19 +601,19 @@ app.whenReady().then(async () => {
   // The dock's Start button: opens Start, or closes it when it is open. A click on Gabay already closes an open Start
   // (it takes the focus) just before the click arrives, so a Start that closed a moment ago stays closed.
   ipcMain.handle('shell:start', async (e) => {
-    fromUi(e)
+    fromDock(e)
     if (startOpen || Date.now() - startClosedAt < 500) return false
     return (await nativeCall('startmenu')) === true
   })
   // Task view: every window, and the virtual desktops. A fixed shell location: nothing from the UI is used.
   ipcMain.handle('shell:taskview', (e) => {
-    fromUi(e)
+    fromDock(e)
     // Windows 11 has no shell link for Task view any more (explorer shows "no app associated"); the helper presses Win+Tab.
     return nativeCall('taskview').then((r) => r === true, () => false)
   })
   // Show desktop (minimize or restore every window), the taskbar's far corner. A fixed command: nothing from the UI is used.
   ipcMain.handle('desktop:toggle', (e) => {
-    fromUi(e)
+    fromDock(e)
     // The taskbar's own Show desktop command, through the helper; PowerShell only if the helper can't.
     return nativeCall('desktop').then(
       (r) => r === true || toggleDesktopPs(),
@@ -553,7 +626,7 @@ app.whenReady().then(async () => {
     })
   // Right-click on a dock icon: a native menu, so it can spill outside the notch.
   ipcMain.handle('windows:menu', async (e, key: unknown) => {
-    fromUi(e)
+    fromDock(e)
     const g = dockGroups.find((x) => x.key === key)
     if (!g) return false
     const pinId = g.launchId ?? (g.path ? await findByExe(g.path) : null)
@@ -600,7 +673,7 @@ app.whenReady().then(async () => {
     }
     if (!items.length) return false
     // Resolves when the menu closes, so the panel can stay open while it's up.
-    return new Promise<boolean>((resolve) => Menu.buildFromTemplate(items).popup({ window: win, callback: () => resolve(true) }))
+    return new Promise<boolean>((resolve) => Menu.buildFromTemplate(items).popup({ window: dockOf(e.sender) ?? win, callback: () => resolve(true) }))
   })
   // Microphone mute: the default recording device. null when the PC has none.
   ipcMain.handle('mic:get', async (e) => {
@@ -757,8 +830,8 @@ app.whenReady().then(async () => {
     setTimeout(() => !win.isDestroyed() && win.reload(), 1000)
   })
   ipcMain.on('log:error', (e, msg: unknown) => {
-    if (e.sender !== win.webContents || typeof msg !== 'string') return
-    logError('notch page', msg.slice(0, 300))
+    if ((e.sender !== win.webContents && !dockOf(e.sender)) || typeof msg !== 'string') return
+    logError(e.sender === win.webContents ? 'notch page' : 'dock page', msg.slice(0, 300))
   })
   ipcMain.handle('review:open', (e) => {
     fromUi(e)
@@ -770,7 +843,7 @@ app.whenReady().then(async () => {
   })
 
   ipcMain.handle('theme:accent', (e) => {
-    fromUi(e)
+    fromDock(e)
     try {
       return `#${systemPreferences.getAccentColor().slice(0, 6)}`
     } catch {
@@ -930,6 +1003,50 @@ app.whenReady().then(async () => {
     win.setBounds(b)
     win.setBounds(b)
     applyReserve()
+    syncDocks()
+  }
+  // While the taskbar is hidden, every other screen gets a dock notch (the taskbar is gone there too). Following the
+  // mouse moves the main notch between screens, so then each screen keeps one and the notch's own screen hides it.
+  const syncDocks = (): void => {
+    const all = settings.hideTaskbar && !PREVIEW ? screen.getAllDisplays() : []
+    const want = settings.followMouse ? all : all.filter((d) => d.id !== placedOn)
+    for (const [id, d] of docks) {
+      if (want.some((x) => x.id === id) && !d.isDestroyed()) continue
+      docks.delete(id)
+      dockFs.delete(id)
+      if (!d.isDestroyed()) d.destroy()
+    }
+    for (const disp of want) {
+      let d = docks.get(disp.id)
+      if (!d) {
+        const id = disp.id
+        d = createDockWindow(disp, () => id !== placedOn)
+        const made = d
+        // a crashed dock page is made again a moment later
+        made.webContents.on('render-process-gone', () => {
+          if (docks.get(id) !== made) return
+          docks.delete(id)
+          dockFs.delete(id)
+          setTimeout(() => {
+            if (!made.isDestroyed()) made.destroy()
+            syncDocks()
+          }, 1000)
+        })
+        docks.set(id, d)
+      } else {
+        const b = dockBounds(disp)
+        d.setBounds(b)
+        d.setBounds(b)
+      }
+      if (disp.id === placedOn) {
+        // closed as it hides, so it can't come back open and holding the mouse
+        if (d.isVisible()) {
+          d.setIgnoreMouseEvents(true, { forward: true })
+          d.webContents.send('dock:close')
+        }
+        d.hide()
+      } else if (!d.isVisible() && !d.webContents.isLoading()) d.showInactive()
+    }
   }
   // Follow mouse: a cheap pointer check, only with more than one display. The panel stays put while it is open
   // (the pointer is on it anyway) and the notch moves once the pointer settles on another screen.
@@ -944,6 +1061,7 @@ app.whenReady().then(async () => {
     }, 500)
   }
   syncFollow()
+  syncDocks()
   screen.on('display-added', placeNotch)
   screen.on('display-removed', placeNotch)
   screen.on('display-metrics-changed', placeNotch)
@@ -969,6 +1087,12 @@ app.whenReady().then(async () => {
       }))
     }
   }
+  // What a dock notch needs to look like the main one; nothing else of the settings.
+  const dockLook = (): unknown => ({ accent: settings.accent, language: settings.language, visibility: settings.visibility })
+  ipcMain.handle('dock:look', (e) => {
+    fromDock(e)
+    return dockLook()
+  })
   ipcMain.handle('settings:get', (e) => {
     fromUi(e)
     return snapshot()
@@ -994,6 +1118,8 @@ app.whenReady().then(async () => {
     if (next.reserveTop !== prevReserve) applyReserve()
     await saveSettings(settings)
     if (next.hideTaskbar !== prevHide || next.taskbarFull !== prevFull || next.trayIcons !== prevTray) await applyTaskbar()
+    if (next.hideTaskbar !== prevHide || next.followMouse !== prevFollow) syncDocks()
+    sendDocks('dock:look', dockLook())
     if (next.updateChannel !== prevChannel && app.isPackaged) void lookForUpdate()
     return snapshot()
   }
