@@ -3127,3 +3127,11 @@ button.big-icon {
   background: var(--well);
   color: var(--text);
 }
+
+/* A pinned app being dragged to a new place: it follows the pointer; the others slide aside */
+.dock-app.dragging {
+  z-index: 2;
+  background: var(--surface);
+  cursor: grabbing;
+  transition: background-color 120ms ease; /* no transform easing: it tracks the pointer */
+}

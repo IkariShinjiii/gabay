@@ -18,7 +18,7 @@ import { currentProjectMode, isProjectMode, setProjectMode } from './project'
 import { isSettingsKey, networkKind, quickGet, quickPeek, quickSet, quickSlide, SETTINGS_PAGES, stopQuick } from './quick'
 import { COLLAPSE_MAX, COLLAPSE_MIN, DEFAULTS, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
 import { getNotes, setNotes } from './notes'
-import { ensureIndex, findByExe, getIcon, isStarred, shellIcon, launch, movePin, pinnedApps, pinPlace, search, toggleStar } from './launcher'
+import { ensureIndex, findByExe, getIcon, isStarred, shellIcon, launch, movePin, pinnedApps, pinPlace, search, setPinOrder, toggleStar } from './launcher'
 import { isPowerAction, runPower } from './power'
 import { addTodo, listTodos, removeTodo, toggleTodo } from './todos'
 import { clearHistory, copyBack, listClipboard, setClipboardGuard, startClipboardHistory, stopClipboardHistory, togglePin } from './clipboardHistory'
@@ -468,6 +468,16 @@ app.whenReady().then(async () => {
     fromUi(e)
     const w = openWins.find((x) => x.id === id)
     return w ? (await nativeCall('close', w.id)) === true : false
+  })
+  // Pins dragged into a new order: the dock keys of every pinned app, in their new order.
+  ipcMain.handle('windows:pinorder', async (e, keys: unknown) => {
+    fromUi(e)
+    if (!Array.isArray(keys) || keys.length > 200) return false
+    const ids = keys.map((k) => dockGroups.find((g) => g.key === k && g.launchId !== null)?.launchId)
+    if (ids.some((id) => !id)) return false
+    const ok = await setPinOrder(ids as string[])
+    void pushWins()
+    return ok
   })
   ipcMain.handle('windows:launch', async (e, key: unknown) => {
     fromUi(e)

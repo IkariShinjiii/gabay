@@ -86,6 +86,7 @@ contextBridge.exposeInMainWorld('overlay', {
   windowsClick: (id: string) => ipcRenderer.invoke('windows:click', id),
   windowsThumbs: (key: string) => ipcRenderer.invoke('windows:thumbs', key),
   windowsFocus: (id: string) => ipcRenderer.invoke('windows:focus', id),
+  windowsPinOrder: (keys: string[]) => ipcRenderer.invoke('windows:pinorder', keys),
   windowsClose: (id: string) => ipcRenderer.invoke('windows:close', id),
   windowsLaunch: (key: string) => ipcRenderer.invoke('windows:launch', key),
   windowsMenu: (key: string) => ipcRenderer.invoke('windows:menu', key),

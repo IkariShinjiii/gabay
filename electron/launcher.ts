@@ -338,6 +338,19 @@ export async function pinnedApps(): Promise<{ id: string; name: string; exe: str
   })
 }
 
+/** A new order for the pins the dock shows (from a drag). Pins it doesn't show keep their place in the list. */
+export async function setPinOrder(ids: string[]): Promise<boolean> {
+  await ensureIndex()
+  const s = await loadStore()
+  const slots = s.starred.map((x, k) => (entries.has(x) ? k : -1)).filter((k) => k >= 0)
+  const shown = slots.map((k) => s.starred[k])
+  // must be exactly the shown pins, each once, in some order
+  if (ids.length !== shown.length || new Set(ids).size !== ids.length || !ids.every((id) => shown.includes(id))) return false
+  slots.forEach((k, i) => (s.starred[k] = ids[i]))
+  await saveStore()
+  return true
+}
+
 /** Where a pin sits among the pins the dock shows, to offer only the moves that do something. */
 export async function pinPlace(id: string): Promise<{ first: boolean; last: boolean }> {
   const shown = (await pinnedApps()).map((p) => p.id)
