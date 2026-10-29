@@ -33,6 +33,7 @@ contextBridge.exposeInMainWorld('overlay', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (patch: unknown) => ipcRenderer.invoke('settings:set', patch),
   resetSettings: () => ipcRenderer.invoke('settings:reset'),
+  quit: () => ipcRenderer.invoke('app:quit'),
   getNotes: () => ipcRenderer.invoke('notes:get'),
   setNotes: (text: string) => ipcRenderer.invoke('notes:set', text),
   runPower: (action: string) => ipcRenderer.invoke('power:run', action),
