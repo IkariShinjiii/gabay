@@ -22,3 +22,7 @@ Thumbs.db
 
 # Local AI tool settings
 .gemini/
+
+# Impeccable per-machine files (hook cache holds local paths)
+.impeccable/config.local.json
+.impeccable/hook.cache.json

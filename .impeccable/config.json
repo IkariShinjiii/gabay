@@ -1,0 +1,35 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/index.css"
+        ],
+        "createdAt": "2026-10-29T08:26:27.519Z",
+        "reason": "Claude triage: .ev.live inset stripe marks the calendar event happening now (state, not decoration); predates this session"
+      },
+      {
+        "rule": "radial-halo",
+        "value": "*",
+        "files": [
+          "site/index.html"
+        ],
+        "createdAt": "2026-10-29T12:01:59.596Z",
+        "reason": "Claude triage: the warm gradient is the laptop mockup's desktop wallpaper, not a decorative page glow"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "site/index.html"
+        ],
+        "createdAt": "2026-10-29T12:01:59.760Z",
+        "reason": "Claude triage: the notch (.island) and screenshot cards (.shot) hang from the top edge on purpose, like the real notch; .list li already has 12px bottom padding"
+      }
+    ]
+  }
+}
