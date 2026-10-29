@@ -807,17 +807,35 @@ export default function App(): React.JSX.Element {
     evaluate()
   }, [hasBar, hold, evaluate])
   const showResults = expanded && tab === 'Launch' && !parsed
-  // Stale responses are dropped so a slow reply can't overwrite a newer query.
+  // Stale responses are dropped so a slow reply can't overwrite a newer query. Apps come at once; files (from Windows'
+  // search index) follow after a short pause in typing, below the apps. Either can answer first (the first app search
+  // builds the index), so each answer shows both lists as they stand.
   useEffect(() => {
     if (!showResults) return
     let stale = false
+    let apps: LauncherItem[] | null = null
+    let files: LauncherItem[] = []
+    const show = (): void => {
+      if (stale || apps === null) return
+      setItems([...apps, ...files.slice(0, Math.max(3, 10 - apps.length))]) // ten rows fit
+    }
     window.overlay.searchApps(query).then((r) => {
-      if (stale) return
-      setItems(r)
-      setSelected(0)
+      apps = r
+      if (!stale) setSelected(0)
+      show()
     })
+    const q = query.trim()
+    const t = q.length >= 2
+      ? window.setTimeout(() => {
+          void window.overlay.searchFiles(q).catch(() => []).then((f) => {
+            files = f
+            show()
+          })
+        }, 250)
+      : 0
     return () => {
       stale = true
+      window.clearTimeout(t)
     }
   }, [query, showResults])
 

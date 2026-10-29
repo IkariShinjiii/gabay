@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('overlay', {
   projectSet: (mode: string) => ipcRenderer.invoke('project:set', mode),
   getStats: () => ipcRenderer.invoke('stats:get'),
   searchApps: (query: string) => ipcRenderer.invoke('launcher:search', query),
+  searchFiles: (query: string) => ipcRenderer.invoke('launcher:files', query),
   appIcon: (id: string) => ipcRenderer.invoke('launcher:icon', id),
   launchApp: (id: string) => ipcRenderer.invoke('launcher:launch', id),
   toggleStar: (id: string) => ipcRenderer.invoke('launcher:toggle-star', id),

@@ -32,6 +32,8 @@ export interface OverlayApi {
   projectSet(mode: ProjectMode): Promise<boolean>
   /** Fuzzy-search Start Menu apps. Empty query returns starred, then recent. */
   searchApps(query: string): Promise<LauncherItem[]>
+  /** Files and folders in the user's folders whose names match, from Windows' search index (2+ letters). */
+  searchFiles(query: string): Promise<LauncherItem[]>
   /** Small PNG data URL for an app's icon, or null. Resolved in main; the renderer never sees a path. */
   appIcon(id: string): Promise<string | null>
   launchApp(id: string): Promise<boolean>
@@ -228,6 +230,10 @@ export interface LauncherItem {
   id: string
   name: string
   starred: boolean
+  /** A file or folder from Windows' search index, not an app (no star; opens with its default app). */
+  kind?: 'file'
+  /** For files: the name of the folder it is in. */
+  folder?: string
 }
 
 export interface QuickState {

@@ -24,6 +24,8 @@
 //            tbhide <0|1>                    (hide the taskbar windows outright; always shown again when Gabay exits)
 //            startmenu                       (open or close the Start menu, as the taskbar's Start button does)
 //            desktop                         (Show desktop and back, as the taskbar's far corner does)
+//            files <base64 utf-8 query>      (up to 8 files and folders in the user's folders whose names match, from
+//                                             Windows' search index, newest first: [{p,n}])
 //            taskview                       (open Task view: presses Win+Tab, only when the dock button is clicked)
 //            appicon <base64 utf-8 path>     (the picture the shell shows for a file or a shell:AppsFolder item, as a
 //                                             base64 PNG string, or null)
@@ -546,6 +548,7 @@ static class Native {
         keybd_event(0x09, 0, 2, UIntPtr.Zero); keybd_event(0x5B, 0, 3, UIntPtr.Zero);
         return "true";
       }
+      case "files": return Files(arg);
       case "appicon": {
         var png = ShellIcon(Encoding.UTF8.GetString(Convert.FromBase64String(arg)), 48);
         return png == null ? "null" : "\"" + Convert.ToBase64String(png) + "\"";
@@ -1407,6 +1410,51 @@ static class Native {
     th.Start();
     th.Join(6000);
     return result;
+  }
+
+  // ---------- files: Windows' own search index (what Explorer's search box uses) ----------
+  // Only names in the user's own folders, newest first; nothing is indexed or stored by Gabay itself.
+  // Each word becomes a filename prefix match. Words keep only letters, digits and . - _ so no query text can reach
+  // the SQL as anything but a search term.
+  static string Files(string arg) {
+    string q = Encoding.UTF8.GetString(Convert.FromBase64String(arg));
+    var words = new List<string>();
+    foreach (var w in q.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)) {
+      var clean = new StringBuilder();
+      foreach (char c in w) if (char.IsLetterOrDigit(c) || c == '.' || c == '-' || c == '_') clean.Append(c);
+      if (clean.Length > 0 && clean.Length <= 40) words.Add(clean.ToString());
+      if (words.Count == 4) break;
+    }
+    if (words.Count == 0) return "[]";
+    string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    if (string.IsNullOrEmpty(home) || home.IndexOf('\'') >= 0) return "[]";
+    var sql = new StringBuilder("SELECT TOP 30 System.ItemPathDisplay, System.ItemNameDisplay FROM SystemIndex WHERE SCOPE='file:");
+    sql.Append(home).Append("'");
+    foreach (var w in words) sql.Append(" AND CONTAINS(System.FileName, '\"").Append(w).Append("*\"')");
+    sql.Append(" ORDER BY System.DateModified DESC");
+    var b = new StringBuilder("[");
+    int n = 0;
+    try {
+      using (var c = new System.Data.OleDb.OleDbConnection("Provider=Search.CollatorDSO;Extended Properties='Application=Windows';")) {
+        c.Open();
+        using (var cmd = new System.Data.OleDb.OleDbCommand(sql.ToString(), c)) {
+          cmd.CommandTimeout = 5;
+          using (var r = cmd.ExecuteReader()) {
+            while (r.Read() && n < 8) {
+              string p = r.IsDBNull(0) ? null : r.GetString(0);
+              string name = r.IsDBNull(1) ? null : r.GetString(1);
+              if (p == null || name == null) continue;
+              // app data, hidden and dot folders are noise here
+              if (p.IndexOf("\\AppData\\", StringComparison.OrdinalIgnoreCase) >= 0 || p.IndexOf("\\.", StringComparison.Ordinal) >= 0) continue;
+              if (n > 0) b.Append(',');
+              b.Append("{\"p\":").Append(J(p)).Append(",\"n\":").Append(J(name)).Append('}');
+              n++;
+            }
+          }
+        }
+      }
+    } catch { return "[]"; } // Windows Search off or not ready: no file results, apps still work
+    return b.Append(']').ToString();
   }
 
   // ---------- now playing ----------
