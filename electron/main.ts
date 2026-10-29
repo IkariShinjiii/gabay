@@ -167,13 +167,37 @@ app.whenReady().then(async () => {
     fromUi(e)
     return search(typeof q === 'string' ? q : '')
   })
+  // Files, from Windows' own search index (the helper asks it; Gabay indexes nothing). Like apps, the page only gets
+  // opaque ids: the paths stay here, and only the last search's results can be opened.
+  const fileHits = new Map<string, string>()
+  let fileSeq = 0
+  ipcMain.handle('launcher:files', async (e, q: unknown) => {
+    fromUi(e)
+    if (typeof q !== 'string' || q.trim().length < 2 || q.length > 100) return []
+    const raw = await nativeCall('files', Buffer.from(q.trim(), 'utf8').toString('base64')).catch(() => null)
+    fileHits.clear()
+    return (Array.isArray(raw) ? raw : []).slice(0, 8).flatMap((f: Record<string, unknown>) => {
+      if (!f || typeof f.p !== 'string' || typeof f.n !== 'string' || !/^[a-z]:\\/i.test(f.p)) return []
+      if (/\.(lnk|url)$/i.test(f.p)) return [] // shortcuts: the apps above already cover them
+      const id = 'f:' + ++fileSeq // never reused, so a cached icon always belongs to its file
+      fileHits.set(id, f.p)
+      const parts = f.p.split('\\')
+      return [{ id, name: f.n.slice(0, 200), starred: false, kind: 'file', folder: (parts[parts.length - 2] ?? '').slice(0, 80) }]
+    })
+  })
   ipcMain.handle('launcher:icon', (e, id: unknown) => {
     fromUi(e)
-    return typeof id === 'string' ? getIcon(id) : null
+    if (typeof id !== 'string') return null
+    const file = fileHits.get(id)
+    if (file) return app.getFileIcon(file, { size: 'normal' }).then((img) => (img.isEmpty() ? null : img.toDataURL()), () => null)
+    return getIcon(id)
   })
-  ipcMain.handle('launcher:launch', (e, id: unknown) => {
+  ipcMain.handle('launcher:launch', async (e, id: unknown) => {
     fromUi(e)
-    return typeof id === 'string' ? launch(id) : false
+    if (typeof id !== 'string') return false
+    const file = fileHits.get(id)
+    if (file) return (await shell.openPath(file)) === ''
+    return launch(id)
   })
   ipcMain.handle('launcher:toggle-star', (e, id: unknown) => {
     fromUi(e)

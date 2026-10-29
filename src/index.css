@@ -191,7 +191,27 @@ body,
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow-y: auto; /* apps and files together can outgrow the panel */
+  scrollbar-width: none;
+}
+
+.results-head {
+  padding: 10px 10px 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.row-sub {
+  flex: none;
+  max-width: 40%;
   overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .row {

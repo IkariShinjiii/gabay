@@ -342,6 +342,7 @@ export const FIL: Record<string, string> = {
   "Quit Gabay": "Isara ang Gabay",
   "{0} windows": "Mga window ng {0}",
   "Close window": "Isara ang window",
+  "Files": "Mga file",
   "Close {0}": "Isara ang {0}",
   "Copy": "Kopyahin",
   "Copied": "Nakopya",
