@@ -2,10 +2,15 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
-    '1.4.2',
+    '1.4.3',
     [
-      "The dock's Task view button works on Windows 11",
-      'Quit Gabay from Settings, even with the taskbar hidden'
+      'Hover an app in the dock to see its windows; click one to bring it up, or its X to close it',
+      'Drag pinned apps in the dock to put them in your order',
+      'Launch finds your files and folders too (right-click one, or Ctrl+Enter, to open its folder)',
+      "The dock's Task view button works on Windows 11, and Show desktop is instant",
+      'Quit Gabay from Settings, even with the taskbar hidden',
+      'Gabay no longer stays open after you open an app from its tray menu',
+      'More of Gabay in Filipino, including the date'
     ]
   ],
   [
