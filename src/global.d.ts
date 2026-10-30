@@ -72,6 +72,8 @@ export interface OverlayApi {
   getNotes(): Promise<string>
   /** Saves the whole scratchpad; false if it is too long. */
   setNotes(text: string): Promise<boolean>
+  /** Lets go of the global hotkey while a new one is recorded (true), or takes it back (false). */
+  pauseHotkey(on: boolean): Promise<boolean>
   /** Fires when the global hotkey is pressed. Returns an unsubscribe function. */
   onSummon(cb: () => void): () => void
   /** Now playing, from the native helper (art is a data URL). */

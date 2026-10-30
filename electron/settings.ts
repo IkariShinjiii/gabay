@@ -53,7 +53,23 @@ export interface Settings {
 
 /** Never a Win-key combo (Windows reserves those). The first free one is used when the saved one is taken. */
 export const HOTKEYS = ['Control+Alt+G', 'Control+Shift+G', 'Control+Alt+Space', 'Control+Alt+J']
-export const ACCENTS = ['mint', 'windows', 'blue', 'purple', 'pink', 'orange', 'red', 'green']
+/** Keys a custom hotkey may end with: letters, digits, F1-F24 and Space. */
+const HOTKEY_KEY = /^([A-Z]|[0-9]|F([1-9]|1[0-9]|2[0-4])|Space)$/
+/**
+ * A custom hotkey in canonical form ("Control+Alt+Shift+Key"), or null when it is not allowed.
+ * It needs two of Ctrl, Alt and Shift, one of them Ctrl or Alt, so it can never take over typing or
+ * everyday shortcuts like Ctrl+C. Never the Win key (Windows reserves those).
+ */
+export function validHotkey(raw: unknown): string | null {
+  if (typeof raw !== 'string' || raw.length > 40) return null
+  const parts = raw.split('+')
+  const key = parts.pop() ?? ''
+  const mods = new Set(parts)
+  if (mods.size !== parts.length || ![...mods].every((m) => m === 'Control' || m === 'Alt' || m === 'Shift')) return null
+  if (mods.size < 2 || !HOTKEY_KEY.test(key)) return null
+  return [...['Control', 'Alt', 'Shift'].filter((m) => mods.has(m)), key].join('+')
+}
+export const ACCENTS =['mint', 'windows', 'blue', 'purple', 'pink', 'orange', 'red', 'green']
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
@@ -64,7 +80,7 @@ const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 /** Coerce anything into a valid Settings. Unknown or out-of-range values fall back to the current/default value. */
 export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
   const r = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>
-  const hotkey = typeof r.hotkey === 'string' && HOTKEYS.includes(r.hotkey) ? r.hotkey : base.hotkey
+  const hotkey = validHotkey(r.hotkey) ?? base.hotkey
   const collapseMs =
     typeof r.collapseMs === 'number' && Number.isFinite(r.collapseMs)
       ? Math.min(COLLAPSE_MAX, Math.max(COLLAPSE_MIN, Math.round(r.collapseMs)))

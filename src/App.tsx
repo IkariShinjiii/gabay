@@ -233,6 +233,12 @@ export default function App(): React.JSX.Element {
     setVisibility(v)
   }, [])
 
+  // Settings hands back what main registered too, so the shortcut list and the welcome stay current.
+  const onSettingsSaved = useCallback((s: Settings, hotkey: string | null): void => {
+    applySettings(s)
+    setActiveHotkey(hotkey)
+  }, [applySettings])
+
   useEffect(() => {
     void window.overlay.getSettings().then((r) => {
       applySettings(r.settings)
@@ -994,7 +1000,7 @@ export default function App(): React.JSX.Element {
       />
     )
   } else if (expanded && tab === 'Settings') {
-    body = <SettingsPanel onSettings={applySettings} onHold={onTodoHold} onShowWelcome={startWelcome} onShowTour={startTour} liveHotkey={activeHotkey} />
+    body = <SettingsPanel onSettings={onSettingsSaved} onHold={onTodoHold} onShowWelcome={startWelcome} onShowTour={startTour} liveHotkey={activeHotkey} />
   } else if (expanded && tab === 'System') {
     // StatsPanel exists only while visible, so its polling stops when the notch collapses or the tab changes.
     body = <StatsPanel />

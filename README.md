@@ -78,7 +78,9 @@ is killed).
 ## Launcher and hotkey
 
 - **Ctrl+Alt+G** (default) opens the panel with the search field focused. Pick another in the Settings tab (Ctrl+Shift+G,
-  Ctrl+Alt+Space or Ctrl+Alt+J). If another app owns the chosen combo, Gabay uses the next free one and Settings says so.
+  Ctrl+Alt+Space or Ctrl+Alt+J), or choose **Custom…** and press your own: two of Ctrl, Alt and Shift with a letter,
+  number, F-key or Space (so it can never take over typing or shortcuts like Ctrl+C). The current hotkey is paused while
+  you record, and Esc cancels. If another app owns the chosen combo, Gabay uses the next free one and Settings says so.
   No Win-key shortcuts. Ctrl+Alt+Space is taken by the Claude desktop app on the dev machine.
 - Search covers everything the Start menu shows, including Store apps (via `Get-StartApps`), with Start Menu `.lnk`
   shortcuts as fallback. Fuzzy matching is a small built-in matcher. Enter launches, arrows move, Esc clears then releases focus.

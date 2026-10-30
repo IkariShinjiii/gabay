@@ -950,6 +950,24 @@ app.whenReady().then(async () => {
     else console.warn(`[gabay] no global hotkey available (tried ${HOTKEYS.join(', ')})`)
   }
   if (!PREVIEW) applyHotkey(settings.hotkey)
+  // While Settings records a new hotkey, the current one is let go so pressing it is recorded instead of
+  // summoning. It comes back on its own after 20 s in case the page never says it is done.
+  let hotkeyPause: NodeJS.Timeout | null = null
+  ipcMain.handle('hotkey:pause', (e, on: unknown) => {
+    fromUi(e)
+    if (PREVIEW) return false
+    if (hotkeyPause) clearTimeout(hotkeyPause)
+    hotkeyPause = null
+    if (on === true) {
+      if (activeHotkey) globalShortcut.unregister(activeHotkey)
+      activeHotkey = null
+      hotkeyPause = setTimeout(() => {
+        hotkeyPause = null
+        if (!activeHotkey) applyHotkey(settings.hotkey)
+      }, 20_000)
+    } else if (!activeHotkey) applyHotkey(settings.hotkey)
+    return true
+  })
 
   // Gabay is never what a game should wait for: run it, its helper and its renderers below normal priority.
   const lowerPriority = (): void => {
