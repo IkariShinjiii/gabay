@@ -437,6 +437,9 @@ export default function App(): React.JSX.Element {
 
   // --- toasts: the collapsed notch grows for a moment (notification, new track, charging, meeting, update) ---
   const [toast, setToast] = useState<Toast | null>(null)
+  const toastRef = useRef(toast)
+  toastRef.current = toast
+  const dndRef = useRef(false)
   const queue = useRef<Toast[]>([])
   const toastId = useRef(1)
   const toastTimer = useRef<number | undefined>(undefined)
@@ -466,6 +469,8 @@ export default function App(): React.JSX.Element {
     (t: Omit<Toast, 'id'>): void => {
       // Nothing pops over a full-screen video or game; the newest few wait their turn, older ones drop.
       if (fullscreenRef.current) return
+      // Do not disturb: no pop-ups at all, except alarms and the result of what the user just did.
+      if (dndRef.current && !t.breaksQuiet) return
       queue.current = [...queue.current, { ...t, id: toastId.current++ }].slice(-3)
       if (!showing.current) showNext()
     },
@@ -578,8 +583,13 @@ export default function App(): React.JSX.Element {
   // --- do not disturb: silences notification toasts until a time, or until turned off (-1) ---
   const [dndTick, setDndTick] = useState(0)
   const dndOn = dndUntil === -1 || Date.now() < dndUntil
-  const dndRef = useRef(dndOn)
   dndRef.current = dndOn
+  // Turning it on clears what is waiting and closes a toast that would not have been let through.
+  useEffect(() => {
+    if (!dndOn) return
+    queue.current = queue.current.filter((t) => t.breaksQuiet)
+    if (showing.current && !toastRef.current?.breaksQuiet) showNext()
+  }, [dndOn, showNext])
   useEffect(() => {
     if (dndUntil <= 0) return
     const ms = dndUntil - Date.now()
@@ -645,13 +655,13 @@ export default function App(): React.JSX.Element {
   // --- timers, stopwatch, focus timer: a chime and a toast when one ends ---
   const timers = useTimers((c) => {
     chime()
-    pushToast({ icon: 'timer', label: tr('Timer done'), title: c.label, tone: 'accent', ms: 8000 })
+    pushToast({ icon: 'timer', label: tr('Timer done'), title: c.label, tone: 'accent', ms: 8000, breaksQuiet: true })
   })
   const focusDone = useRef(false)
   useEffect(() => {
     if (focusTimer.status === 'done' && !focusDone.current) {
       chime()
-      pushToast({ icon: 'timer', label: tr('Focus timer'), title: tr('Time is up'), sub: tr('Take a short break'), tone: 'accent', ms: 8000 })
+      pushToast({ icon: 'timer', label: tr('Focus timer'), title: tr('Time is up'), sub: tr('Take a short break'), tone: 'accent', ms: 8000, breaksQuiet: true })
     }
     focusDone.current = focusTimer.status === 'done'
   }, [focusTimer.status, pushToast])
@@ -660,8 +670,8 @@ export default function App(): React.JSX.Element {
   const recorder = useRecorder((ok) =>
     pushToast(
       ok
-        ? { icon: 'video', label: tr('Recording saved'), title: tr('Videos › Gabay'), tone: 'accent' }
-        : { icon: 'video', title: tr('Couldn\'t record the screen'), sub: tr('Try again in a moment'), tone: 'warn' }
+        ? { icon: 'video', label: tr('Recording saved'), title: tr('Videos › Gabay'), tone: 'accent', breaksQuiet: true }
+        : { icon: 'video', title: tr('Couldn\'t record the screen'), sub: tr('Try again in a moment'), tone: 'warn', breaksQuiet: true }
     )
   )
   const [recTick, setRecTick] = useState(0)
@@ -675,8 +685,8 @@ export default function App(): React.JSX.Element {
     const r = await window.overlay.screenshot().catch(() => null)
     pushToast(
       r
-        ? { icon: 'image', art: r.thumb, label: tr('Screenshot saved'), title: tr('Copied to the clipboard'), sub: tr('Pictures › Screenshots'), tone: 'accent' }
-        : { icon: 'image', title: tr('Couldn\'t take a screenshot'), tone: 'warn' }
+        ? { icon: 'image', art: r.thumb, label: tr('Screenshot saved'), title: tr('Copied to the clipboard'), sub: tr('Pictures › Screenshots'), tone: 'accent', breaksQuiet: true }
+        : { icon: 'image', title: tr('Couldn\'t take a screenshot'), tone: 'warn', breaksQuiet: true }
     )
   }, [pushToast])
 
@@ -922,9 +932,10 @@ export default function App(): React.JSX.Element {
   // Only while the pill is on screen: no meter animating behind a full-screen video or an auto-hidden notch.
   const onScreen = revealed || (visibility === 'always' && !fullscreen)
   const recording = recorder.startedAt !== null
-  const live = !expanded && !showToast && onScreen && (!!media?.playing || !!download || recording)
+  // Do not disturb keeps the pill to the time and battery: no live activity, weather or other icons.
+  const live = !dndOn && !expanded && !showToast && onScreen && (!!media?.playing || !!download || recording)
   // The pill is as wide as its two sides need (they are equal, so the clock stays centred): about 12 px per icon.
-  const leftPx = 12 + (live && media?.playing ? 21 : 0) + (weather ? 41 : 0) + (dndOn ? 16 : 0) + (attention ? 12 : 0)
+  const leftPx = dndOn ? 0 : 12 + (live && media?.playing ? 21 : 0) + (weather ? 41 : 0) + (attention ? 12 : 0)
   const rightPx = (battery ? 34 : 0) + (live && download ? 52 : live && media?.playing ? 20 : 0) + (privacy.cam.length || privacy.mic.length ? 12 : 0)
   const pillWidth = Math.max(live ? NOTCH.live.width : NOTCH.collapsed.width, 2 * Math.max(leftPx, rightPx) + 104)
   // The dock adds its own height on top of the usual cap, so tall tabs aren't squeezed by it.
@@ -1148,7 +1159,7 @@ export default function App(): React.JSX.Element {
             net={net}
             media={live ? media : null}
             weather={weather}
-            dnd={dndOn}
+            minimal={dndOn}
             privacy={privacy}
             attention={attention}
             recordingMs={recording ? Date.now() - (recorder.startedAt ?? Date.now()) : null}

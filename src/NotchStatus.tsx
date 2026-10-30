@@ -34,7 +34,8 @@ interface Props {
   /** Playing media: art on the left, a moving level meter on the right. */
   media: LiveMedia | null
   weather: Weather | null
-  dnd: boolean
+  /** Do not disturb: only the time and battery (plus the camera/mic and recording dots, which guard privacy). */
+  minimal: boolean
   /** Apps using the camera / microphone right now (iPhone-style dot on the right; hover names them). */
   privacy: { mic: string[]; cam: string[] }
   /** An open app is flashing for attention (only while the Windows taskbar is hidden). */
@@ -83,6 +84,8 @@ export default function NotchStatus(p: Props): React.JSX.Element {
         {formatClock(p.recordingMs)}
       </span>
     )
+  } else if (p.minimal) {
+    center = <span className="status-clock">{p.clock}</span>
   } else if (p.stopwatchMs !== null) {
     center = (
       <span className="status-timer">
@@ -120,7 +123,8 @@ export default function NotchStatus(p: Props): React.JSX.Element {
 
   return (
     <div className="status-row">
-      <span className={net === 'offline' ? 'st-side st-left st-warn' : 'st-side st-left'}>
+      <span className={net === 'offline' && !p.minimal ? 'st-side st-left st-warn' : 'st-side st-left'}>
+        {!p.minimal && <>
         {live && (
           <span className="st-art" title={`${live.title} · ${live.artist}`}>
             {live.art ? <img src={live.art} alt="" draggable={false} /> : <Icon name="music" size={10} />}
@@ -136,11 +140,7 @@ export default function NotchStatus(p: Props): React.JSX.Element {
           </span>
         )}
         {p.attention && <span className="st-attn" title={tr('An app wants your attention')} />}
-        {p.dnd && (
-          <span className="st-icon st-dnd" title={tr('Do not disturb')}>
-            <Icon name="moon" size={11} />
-          </span>
-        )}
+        </>}
       </span>
 
       {center}

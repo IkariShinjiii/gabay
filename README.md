@@ -154,8 +154,7 @@ The taskbar's system-tray features, built into the notch.
 
 ## Live activities and alerts
 
-- **The collapsed pill** shows, besides the clock, network and battery: the weather (Settings > Weather), a moon while
-  Focus is on, and an iPhone-style dot while an app uses the camera (green) or microphone (orange). It widens as needed.
+- **The collapsed pill** shows, besides the clock, network and battery: the weather (Settings > Weather), and an iPhone-style dot while an app uses the camera (green) or microphone (orange). It widens as needed.
 - **Live activity:** while music or a video plays, the pill shows the album art and a moving level meter; while a browser
   download runs (Chrome, Edge, Brave, Firefox), how much has arrived; while recording, a red dot and the time. The middle
   shows a running stopwatch or the next timer instead of the clock.
@@ -170,7 +169,10 @@ The taskbar's system-tray features, built into the notch.
   - **Timers** ending (with a chime), a **finished download**, a **saved screenshot** (with a thumbnail) or **recording**.
   - **An available update.**
   Nothing pops up while something is full screen; toasts that arrive while the panel is open wait until it closes.
-- **Focus** (Controls): silences notification toasts until you turn it off, for an hour, until 6 PM or until 7 AM.
+- **Focus** (Controls, do not disturb): until you turn it off, for an hour, until 6 PM or until 7 AM, the pill shows
+  only the time and battery (plus the camera/microphone and recording dots, which guard your privacy), and nothing pops
+  up or plays a sound. Notifications still collect in the Inbox. Timers you set still ring, and your own screenshots and
+  recordings still confirm.
 - **Screenshot** (Controls): saves the notch's screen to Pictures\Screenshots and copies it; the arrow opens Windows'
   region snip. **Record** saves the screen with its sound to Videos\Gabay as WebM. Gabay hides itself from both.
 - **Volume per app** (Controls > Audio arrow): a slider for each app playing sound, like Windows' volume mixer.
