@@ -9,7 +9,7 @@ import { tr } from './i18n'
 
 interface Props {
   /** Tells the notch the new settings immediately, without a reload. */
-  onSettings: (s: SettingsSnapshot['settings']) => void
+  onSettings: (s: SettingsSnapshot['settings'], activeHotkey: string | null) => void
   /** A focused text field keeps the panel open. */
   onHold: (held: boolean) => void
   onShowWelcome: () => void
@@ -23,6 +23,108 @@ const previewFlags = new URLSearchParams(location.hash.slice(1))
 const PREVIEW_OPEN = previewFlags.has('open')
 
 const keysOf = (hotkey: string | null): string => (hotkey ? hotkey.replace('Control', 'Ctrl').split('+').join(' + ') : tr('No hotkey'))
+
+/** The accelerator for a key press ("Control+Alt+K"), or just the held modifiers while no key is down yet. */
+function comboOf(e: KeyboardEvent): { mods: string[]; key: string | null } {
+  const mods = [e.ctrlKey && 'Control', e.altKey && 'Alt', e.shiftKey && 'Shift'].filter((m): m is string => !!m)
+  const c = e.code
+  const key = /^Key[A-Z]$/.test(c) ? c.slice(3) : /^Digit[0-9]$/.test(c) ? c.slice(5) : /^F([1-9]|1[0-9]|2[0-4])$/.test(c) ? c : c === 'Space' ? 'Space' : null
+  return { mods, key }
+}
+
+/** Mirrors main's rule: two of Ctrl, Alt and Shift (one of them Ctrl or Alt), then a letter, digit, F-key or Space. */
+const allowedCombo = (mods: string[], key: string | null): boolean =>
+  key !== null && mods.length >= 2 && (mods.includes('Control') || mods.includes('Alt'))
+
+/** The preset hotkeys, the saved custom one, and a chip that records a new shortcut. */
+function HotkeyRow({ settings, activeHotkey, hotkeys, onHold, onPick }: {
+  settings: SettingsSnapshot['settings']
+  activeHotkey: string | null
+  hotkeys: string[]
+  onHold: (held: boolean) => void
+  onPick: (hotkey: string) => Promise<void>
+}): React.JSX.Element {
+  const [recording, setRecording] = useState(false)
+  const [held, setHeld] = useState<string[]>([])
+  const [bad, setBad] = useState(false)
+  // Read through refs so a parent re-render never restarts a recording in progress.
+  const cb = useRef({ onHold, onPick })
+  cb.current = { onHold, onPick }
+
+  useEffect(() => {
+    if (!recording) return
+    // The current hotkey is let go so pressing it again is recorded, and the panel stays open meanwhile.
+    void window.overlay.pauseHotkey(true).catch(() => undefined)
+    cb.current.onHold(true)
+    const stop = (): void => setRecording(false)
+    const onKey = (e: KeyboardEvent): void => {
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      if (e.repeat) return
+      const { mods, key } = comboOf(e)
+      if (e.key === 'Escape' && !mods.length) return stop()
+      setHeld(mods)
+      if (key === null) return // only modifiers so far
+      if (!allowedCombo(mods, key)) return setBad(true)
+      setBad(false)
+      stop()
+      void cb.current.onPick([...mods, key].join('+'))
+    }
+    const onUp = (e: KeyboardEvent): void => {
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      setHeld(comboOf(e).mods)
+    }
+    window.addEventListener('keydown', onKey, true)
+    window.addEventListener('keyup', onUp, true)
+    window.addEventListener('blur', stop)
+    return () => {
+      window.removeEventListener('keydown', onKey, true)
+      window.removeEventListener('keyup', onUp, true)
+      window.removeEventListener('blur', stop)
+      setHeld([])
+      cb.current.onHold(false)
+      // Saving already registered the new one; otherwise this takes the old one back.
+      void window.overlay.pauseHotkey(false).catch(() => undefined)
+    }
+  }, [recording])
+
+  const custom = hotkeys.includes(settings.hotkey) ? null : settings.hotkey
+  const hotkeyTaken = !recording && activeHotkey !== settings.hotkey
+  return (
+    <div className="set-row">
+      <div className="set-label">{tr('Hotkey')}</div>
+      <div className="set-opts">
+        {[...hotkeys, ...(custom ? [custom] : [])].map((k) => (
+          <button key={k} className={k === activeHotkey && !recording ? 'chip on' : 'chip'} onClick={() => void onPick(k)}>
+            {k.replace('Control', 'Ctrl')}
+          </button>
+        ))}
+        <button
+          className={recording ? 'chip on' : 'chip'}
+          aria-pressed={recording}
+          onClick={() => {
+            setBad(false)
+            setRecording((r) => !r)
+          }}
+        >
+          {recording ? (held.length ? held.join('+').replace('Control', 'Ctrl') + '+…' : tr('Press a shortcut…')) : tr('Custom…')}
+        </button>
+      </div>
+      {recording && (
+        <div className={bad ? 'set-note' : 'set-note quiet'} role="status">
+          {bad ? tr('Use two of Ctrl, Alt and Shift with a letter, number, F-key or Space.') : tr('Press the keys together. Esc cancels.')}
+        </div>
+      )}
+      {hotkeyTaken && (
+        <div className="set-note">
+          {tr('{0} is taken by another app.', settings.hotkey.replace('Control', 'Ctrl'))}{' '}
+          {activeHotkey ? tr('Using {0} instead.', activeHotkey.replace('Control', 'Ctrl')) : tr('No hotkey is active.')}
+        </div>
+      )}
+    </div>
+  )
+}
 
 /** Every hotkey, gesture and typed command in one place. */
 function ShortcutsRow({ hotkey }: { hotkey: string | null }): React.JSX.Element {
@@ -374,7 +476,7 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onSho
     try {
       const r = await window.overlay.setSettings(patch)
       setSnap(r)
-      onSettings(r.settings)
+      onSettings(r.settings, r.activeHotkey)
     } catch {
       // Main refused or is closing; the panel keeps showing the last good values.
     }
@@ -388,11 +490,11 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onSho
     saveTimer.current = window.setTimeout(() => void save({ collapseMs: ms }), 250)
   }
   useEffect(() => () => window.clearTimeout(saveTimer.current), [])
+  const pickHotkey = (hotkey: string): Promise<void> => save({ hotkey })
 
   if (!snap || delay === null) return <div className="body body-center">{tr('Loading…')}</div>
 
   const { settings, activeHotkey, hotkeys, displays, collapseRange } = snap
-  const hotkeyTaken = activeHotkey !== settings.hotkey
   const shownDisplay = displays.some((d) => d.id === settings.displayId) ? settings.displayId : null
 
   return (
@@ -402,26 +504,7 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onSho
         if (el && previewFlags.has('bottom')) el.scrollTop = el.scrollHeight
       }}
     >
-      <div className="set-row">
-        <div className="set-label">{tr('Hotkey')}</div>
-        <div className="set-opts">
-          {hotkeys.map((k) => (
-            <button
-              key={k}
-              className={k === activeHotkey ? 'chip on' : 'chip'}
-              onClick={() => void save({ hotkey: k })}
-            >
-              {k.replace('Control', 'Ctrl')}
-            </button>
-          ))}
-        </div>
-        {hotkeyTaken && (
-          <div className="set-note">
-            {tr('{0} is taken by another app.', settings.hotkey.replace('Control', 'Ctrl'))}{' '}
-            {activeHotkey ? tr('Using {0} instead.', activeHotkey.replace('Control', 'Ctrl')) : tr('No hotkey is active.')}
-          </div>
-        )}
-      </div>
+      <HotkeyRow settings={settings} activeHotkey={activeHotkey} hotkeys={hotkeys} onHold={onHold} onPick={pickHotkey} />
 
       <div className="set-row">
         <div className="set-label">
@@ -578,7 +661,7 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onSho
         </div>
       </div>
 
-      <WeatherRow place={settings.place?.name ?? null} onHold={onHold} onSaved={() => void window.overlay.getSettings().then((r) => { setSnap(r); onSettings(r.settings) })} />
+      <WeatherRow place={settings.place?.name ?? null} onHold={onHold} onSaved={() => void window.overlay.getSettings().then((r) => { setSnap(r); onSettings(r.settings, r.activeHotkey) })} />
 
       <div className="set-row">
         <div className="set-label">{tr('Lyrics in Now playing')}</div>
@@ -651,7 +734,7 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onSho
           const r = await window.overlay.resetSettings()
           setSnap(r)
           setDelay(r.settings.collapseMs)
-          onSettings(r.settings)
+          onSettings(r.settings, r.activeHotkey)
         }}
       />
       <div className="set-row">

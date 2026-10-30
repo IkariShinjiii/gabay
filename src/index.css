@@ -620,6 +620,11 @@ body,
   color: #e3b341;
 }
 
+/* Plain guidance, not a warning */
+.set-note.quiet {
+  color: var(--text-2);
+}
+
 .slider {
   width: 100%;
   margin: 0;
