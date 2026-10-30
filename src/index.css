@@ -2044,11 +2044,6 @@ button.big-icon {
   color: var(--text-2);
 }
 
-.st-dnd {
-  margin-left: 5px;
-  color: #b9a7ff;
-}
-
 .st-dl {
   display: inline-flex;
   align-items: center;

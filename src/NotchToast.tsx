@@ -18,6 +18,8 @@ export interface Toast {
   ms?: number
   /** A Windows notification: it can be dismissed or its app opened. */
   noteId?: number
+  /** Still shows while Do not disturb is on: an alarm the user set, or the result of something they just did. */
+  breaksQuiet?: boolean
 }
 
 const R = 17

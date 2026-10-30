@@ -644,10 +644,10 @@ export default function QuickPanel(props: {
                 label={tr('Focus')}
                 sub={props.dndOn ? (props.dndUntil === -1 ? tr('Silenced') : tr('Until {0}', new Date(props.dndUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))) : tr('Off')}
                 on={props.dndOn}
-                mainTitle={props.dndOn ? tr('Turn off') : tr('Silence notifications until you turn it off')}
+                mainTitle={props.dndOn ? tr('Turn off') : tr('Quiet the notch until you turn it off')}
                 onMain={() => props.onDnd(props.dndOn ? 0 : -1)}
                 onMore={() => setView('dnd')}
-                moreTitle={tr('Silence notifications for a while')}
+                moreTitle={tr('Quiet the notch for a while')}
               />
               <SplitTile
                 icon="camera"
@@ -1138,7 +1138,7 @@ function DndView({ on, until, onPick, onBack }: { on: boolean; until: number; on
           ? until === -1
             ? tr('On until you turn it off.')
             : tr('On until {0}.', new Date(until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))
-          : tr('Notifications stay out of the notch. Charging, timers and calendar alerts still show.')}
+          : tr('The notch shows only the time and battery, with no pop-ups or sounds. Notifications wait in the Inbox; timers still ring.')}
       </div>
       <div className="net-list">
         {options.map((o) => (
