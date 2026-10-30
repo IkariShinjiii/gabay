@@ -170,7 +170,7 @@ The taskbar's system-tray features, built into the notch.
   - **An available update.**
   Nothing pops up while something is full screen; toasts that arrive while the panel is open wait until it closes.
 - **Focus** (Controls, do not disturb): until you turn it off, for an hour, until 6 PM or until 7 AM, the pill shows
-  only the time and battery (plus the camera/microphone and recording dots, which guard your privacy), and nothing pops
+  only the time (plus the camera/microphone and recording dots, which guard your privacy), and nothing pops
   up or plays a sound. Notifications still collect in the Inbox. Timers you set still ring, and your own screenshots and
   recordings still confirm.
 - **Screenshot** (Controls): saves the notch's screen to Pictures\Screenshots and copies it; the arrow opens Windows'

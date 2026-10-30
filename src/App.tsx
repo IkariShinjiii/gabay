@@ -932,11 +932,11 @@ export default function App(): React.JSX.Element {
   // Only while the pill is on screen: no meter animating behind a full-screen video or an auto-hidden notch.
   const onScreen = revealed || (visibility === 'always' && !fullscreen)
   const recording = recorder.startedAt !== null
-  // Do not disturb keeps the pill to the time and battery: no live activity, weather or other icons.
+  // Do not disturb keeps the pill to the time: no live activity, weather, battery or other icons.
   const live = !dndOn && !expanded && !showToast && onScreen && (!!media?.playing || !!download || recording)
   // The pill is as wide as its two sides need (they are equal, so the clock stays centred): about 12 px per icon.
   const leftPx = dndOn ? 0 : 12 + (live && media?.playing ? 21 : 0) + (weather ? 41 : 0) + (attention ? 12 : 0)
-  const rightPx = (battery ? 34 : 0) + (live && download ? 52 : live && media?.playing ? 20 : 0) + (privacy.cam.length || privacy.mic.length ? 12 : 0)
+  const rightPx = (battery && !dndOn ? 34 : 0) + (live && download ? 52 : live && media?.playing ? 20 : 0) + (privacy.cam.length || privacy.mic.length ? 12 : 0)
   const pillWidth = Math.max(live ? NOTCH.live.width : NOTCH.collapsed.width, 2 * Math.max(leftPx, rightPx) + 104)
   // The dock adds its own height on top of the usual cap, so tall tabs aren't squeezed by it.
   const dockShown = dockOn && !welcome && !tour && (wins.length > 0 || tray.length > 0) && tab === 'Launch' // running apps live on Launch only

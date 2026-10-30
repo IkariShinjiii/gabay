@@ -1138,7 +1138,7 @@ function DndView({ on, until, onPick, onBack }: { on: boolean; until: number; on
           ? until === -1
             ? tr('On until you turn it off.')
             : tr('On until {0}.', new Date(until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))
-          : tr('The notch shows only the time and battery, with no pop-ups or sounds. Notifications wait in the Inbox; timers still ring.')}
+          : tr('The notch shows only the time, with no pop-ups or sounds. Notifications wait in the Inbox; timers still ring.')}
       </div>
       <div className="net-list">
         {options.map((o) => (

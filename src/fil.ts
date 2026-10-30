@@ -115,7 +115,7 @@ export const FIL: Record<string, string> = {
   "Record the screen to Videos › Gabay": "I-record ang screen sa Videos › Gabay",
   "Home Wi-Fi": "Home Wi-Fi",
   "Add or connect a device": "Magdagdag o magkonekta ng device",
-  "The notch shows only the time and battery, with no pop-ups or sounds. Notifications wait in the Inbox; timers still ring.": "Oras at baterya lang ang ipapakita ng notch, walang pop-up o tunog. Maghihintay sa Inbox ang mga notification; tutunog pa rin ang mga timer.",
+  "The notch shows only the time, with no pop-ups or sounds. Notifications wait in the Inbox; timers still ring.": "Oras lang ang ipapakita ng notch, walang pop-up o tunog. Maghihintay sa Inbox ang mga notification; tutunog pa rin ang mga timer.",
   "Focus · do not disturb": "Focus · huwag istorbohin",
   "For 1 hour": "Sa loob ng 1 oras",
   "Until this evening (6 PM)": "Hanggang gabi (6 PM)",
