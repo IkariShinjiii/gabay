@@ -34,7 +34,7 @@ interface Props {
   /** Playing media: art on the left, a moving level meter on the right. */
   media: LiveMedia | null
   weather: Weather | null
-  /** Do not disturb: only the time and battery (plus the camera/mic and recording dots, which guard privacy). */
+  /** Do not disturb: only the time (plus the camera/mic and recording dots, which guard privacy). */
   minimal: boolean
   /** Apps using the camera / microphone right now (iPhone-style dot on the right; hover names them). */
   privacy: { mic: string[]; cam: string[] }
@@ -145,8 +145,8 @@ export default function NotchStatus(p: Props): React.JSX.Element {
 
       {center}
 
-      <span className={low ? 'st-side st-right st-warn' : 'st-side st-right'}>
-        {battery && (
+      <span className={low && !p.minimal ? 'st-side st-right st-warn' : 'st-side st-right'}>
+        {battery && !p.minimal && (
           <>
             <Icon name={batteryIcon(battery)} size={13} />
             <span className="st-pct">{Math.round(battery.level * 100)}</span>
