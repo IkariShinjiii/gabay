@@ -470,7 +470,8 @@ app.whenReady().then(async () => {
         if (show) {
           if (mouseLocked) {
             mouseLocked = false
-            win.setIgnoreMouseEvents(true, { forward: true })
+            // every notch, or the other screens' ones stay deaf to the pointer until the next game
+            for (const w of [win, ...docks.values()]) if (!w.isDestroyed()) w.setIgnoreMouseEvents(true, { forward: true })
           }
           if (fsNow) send('overlay:fullscreen', (fsNow = false))
         }
@@ -1067,6 +1068,7 @@ app.whenReady().then(async () => {
           }, 1000)
         })
         docks.set(id, d)
+        if (mouseLocked) d.setIgnoreMouseEvents(true) // made while a game holds the mouse: deaf like the rest
       } else {
         const b = dockBounds(disp)
         d.setBounds(b)
