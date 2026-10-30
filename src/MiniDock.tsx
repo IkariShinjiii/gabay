@@ -37,8 +37,9 @@ export default function MiniDock(): React.JSX.Element {
   const closeTimer = useRef(0)
   const edgeTimer = useRef(0)
   const hideTimer = useRef(0)
-  const state = useRef({ auto: false, revealed: false, fullscreen: false })
-  state.current = { auto, revealed, fullscreen }
+  const hasDock = apps.length > 0 || tray.length > 0
+  const state = useRef({ auto: false, revealed: false, fullscreen: false, hasDock })
+  state.current = { auto, revealed, fullscreen, hasDock }
 
   // the look follows the main notch's settings
   useEffect(() => {
@@ -105,7 +106,8 @@ export default function MiniDock(): React.JSX.Element {
         closeTimer.current = 0
         window.clearTimeout(hideTimer.current)
         hideTimer.current = 0
-        if (!openRef.current && !openTimer.current) {
+        // nothing to switch to on this screen: stay a slim strip rather than open onto an empty bar
+        if (!openRef.current && !openTimer.current && s.hasDock) {
           openTimer.current = window.setTimeout(() => {
             openTimer.current = 0
             show(true)
@@ -173,8 +175,13 @@ export default function MiniDock(): React.JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preview])
 
+  // the last app closed while it was open: back to the strip, and the mouse back to what is underneath
+  useEffect(() => {
+    if (!hasDock && openRef.current && !preview) show(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasDock])
+
   const parked = fullscreen || (auto && !revealed && !open)
-  const hasDock = apps.length > 0 || tray.length > 0
   return (
     <motion.div
       ref={notchRef}
