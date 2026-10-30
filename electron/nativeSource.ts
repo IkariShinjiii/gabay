@@ -681,11 +681,11 @@ static class Native {
       var mic = new List<string>(regMic);
       try { foreach (var n in Recording()) if (!mic.Contains(n)) mic.Add(n); } catch { }
       var cam = new List<string>(regCam);
+      // A process that quit or crashed mid-stream may never get a closing report: it no longer counts once it is gone.
       if (cams != null) foreach (var pid in cams.Streaming) {
         if (pid == 0) continue;
-        string p = ProcPath(pid);
-        string name = p == null ? "An app" : System.IO.Path.GetFileNameWithoutExtension(p);
-        if (!cam.Contains(name)) cam.Add(name);
+        string name = LiveProcName(pid);
+        if (name != null && !cam.Contains(name)) cam.Add(name);
       }
       string now = "{\"mic\":" + Names(mic) + ",\"cam\":" + Names(cam) + "}";
       if (now != last) { Send("priv " + now); last = now; }
@@ -717,9 +717,8 @@ static class Native {
             if (state != 1) continue; // only sessions recording right now
             uint pid; s.GetProcessId(out pid);
             if (pid == 0) continue;
-            string p = ProcPath(pid);
-            string name = p == null ? "An app" : System.IO.Path.GetFileNameWithoutExtension(p);
-            if (!found.Contains(name)) found.Add(name);
+            string name = LiveProcName(pid);
+            if (name != null && !found.Contains(name)) found.Add(name);
           } catch { }
         }
       } catch { }
@@ -754,9 +753,12 @@ static class Native {
     }
     return found;
   }
+  [DllImport("kernel32.dll")] static extern ulong GetTickCount64();
+  // A start from before this boot with no stop is a leftover (the app was killed or the PC shut down mid-use), not use.
   static bool Active(RegistryKey k) {
     object start = k.GetValue("LastUsedTimeStart"), stop = k.GetValue("LastUsedTimeStop");
-    return start is long && (long)start != 0 && stop is long && (long)stop == 0;
+    long bootedAt = DateTime.UtcNow.ToFileTimeUtc() - (long)GetTickCount64() * 10000;
+    return start is long && (long)start >= bootedAt && stop is long && (long)stop == 0;
   }
 
   // ---------- clipboard privacy ----------
@@ -855,6 +857,19 @@ static class Native {
   }
 
   // ---------- open windows, in z-order (most recently used first) ----------
+  // The name of a running process for the camera and mic dots, or null once it has exited. A system process whose
+  // path can't be read still gives its own name, so the dot says who it is rather than "An app".
+  static string LiveProcName(uint pid) {
+    string p = ProcPath(pid);
+    if (p != null) return System.IO.Path.GetFileNameWithoutExtension(p);
+    try {
+      using (var proc = Process.GetProcessById((int)pid)) { // throws once the process is gone
+        string n = proc.ProcessName;
+        return string.IsNullOrEmpty(n) ? "An app" : n;
+      }
+    } catch (ArgumentException) { return null; } // not running
+    catch { return "An app"; } // running, but nothing about it can be read
+  }
   static string ProcPath(uint pid) {
     IntPtr p = OpenProcess(0x1000, false, pid); // PROCESS_QUERY_LIMITED_INFORMATION
     if (p == IntPtr.Zero) return null;
