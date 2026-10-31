@@ -998,8 +998,26 @@ app.whenReady().then(async () => {
     const d = targetDisplay(settings)
     const px = screen.dipToScreenRect(null, d.bounds)
     const h = Math.round(BAND_DIP * d.scaleFactor)
-    void nativeCall('appbar', [px.x, px.y, px.x + px.width, px.y + px.height, h].map((n) => Math.round(n)).join(' '))
+    // the notch's window, so the band goes right under it and never covers the clock (only the low 32 bits of a
+    // window handle count, so this reads the same on every Windows)
+    const notch = win.getNativeWindowHandle().readUInt32LE(0)
+    void nativeCall('appbar', [px.x, px.y, px.x + px.width, px.y + px.height, h, notch].map((n) => Math.round(n)).join(' '))
   }
+  // Windows and Chromium nudge a window out of space an app bar has just reserved, which would push the notch below
+  // its own band. It belongs at the very top edge, so it goes straight back. A couple of pixels of rounding at odd
+  // scales is left alone, and a few returns in a row is the limit, so this can never bounce back and forth.
+  let nudges: number[] = []
+  win.on('move', () => {
+    if (PREVIEW || win.isDestroyed()) return
+    const want = notchBounds(screen.getAllDisplays().find((x) => x.id === placedOn) ?? targetDisplay(settings))
+    const now = win.getBounds()
+    if (Math.abs(now.x - want.x) <= 2 && Math.abs(now.y - want.y) <= 2) return
+    const t = Date.now()
+    nudges = nudges.filter((n) => t - n < 10_000)
+    if (nudges.length >= 5) return
+    nudges.push(t)
+    win.setBounds(want)
+  })
   // Hide the Windows taskbar: Windows' own auto-hide, so the real taskbar is still there at the bottom edge. The
   // person's earlier choice is saved first and put back when this is turned off, when Gabay quits (the helper does it
   // as it exits), or on the next start if Gabay was killed.

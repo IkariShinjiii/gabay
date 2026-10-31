@@ -10,7 +10,8 @@
 //            noteaccess <status>        whether Windows lets Gabay read notifications (Allowed, Denied, ...)
 //   requests <id> <command> [args]  ->  r <id> <json>
 //            vol <0-100> | volget | micget | micset mute|unmute | media toggle|next|prev | bt | notes on|off
-//            appbar L T R B H | appbar off   (reserve a band at the top of a monitor, physical pixels)
+//            appbar L T R B H [notch] | appbar off   (reserve a band at the top of a monitor, physical pixels; it
+//                                             sits right under the notch window, given as a number)
 //            clipok                          (false when the copying app asked to keep it out of clipboard history)
 //            clipseq                         (clipboard sequence number: changes on every copy)
 //            mixer | appvol <pid> <0-100>    (per-app volume)
@@ -163,25 +164,55 @@ class CameraWatch : IMFSensorActivitiesReportCallback {
 }
 
 // The reserved band: a black, never-activated strip registered as an app bar, so Windows fits maximized and snapped
-// windows below it (the same mechanism the taskbar uses). It steps aside while an app is full screen.
+// windows below it (the same mechanism the taskbar uses). It sits just under Gabay's notch (never over it, or it
+// hides the clock) and steps aside while an app is full screen.
+// On some PCs Explorer keeps the band registered but its usable-area figure comes back as the whole screen, or it
+// isn't worked out again when the band goes. So the band checks the figure and puts it right, only ever by its own
+// height, and stops if something else keeps changing it.
 class Band : Form {
   [StructLayout(LayoutKind.Sequential)] struct RECT { public int L, T, R, B; }
+  [StructLayout(LayoutKind.Sequential)] struct MONITORINFO { public int cbSize; public RECT rcMonitor; public RECT rcWork; public uint dwFlags; }
   [StructLayout(LayoutKind.Sequential)] struct APPBARDATA { public int cbSize; public IntPtr hWnd; public uint uCallbackMessage; public uint uEdge; public RECT rc; public IntPtr lParam; }
   [DllImport("shell32.dll")] static extern UIntPtr SHAppBarMessage(uint msg, ref APPBARDATA d);
   [DllImport("user32.dll")] static extern uint RegisterWindowMessage(string s);
   [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int w, int hh, uint flags);
+  [DllImport("user32.dll")] static extern IntPtr MonitorFromRect(ref RECT r, uint flags);
+  [DllImport("user32.dll")] static extern bool GetMonitorInfo(IntPtr m, ref MONITORINFO mi);
+  [DllImport("user32.dll")] static extern bool SystemParametersInfo(uint a, uint b, ref RECT r, uint f);
+  [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
+  [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr h, int i);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr h, uint cmd);
   const uint ABM_NEW = 0, ABM_REMOVE = 1, ABM_QUERYPOS = 2, ABM_SETPOS = 3, ABE_TOP = 1;
   const int ABN_POSCHANGED = 1, ABN_FULLSCREENAPP = 2;
+  const int WM_SETTINGCHANGE = 0x001A, SPI_SETWORKAREA = 0x002F;
+  const uint NOMOVE_NOSIZE_NOACTIVATE = 0x0002 | 0x0001 | 0x0010;
+  static readonly IntPtr TOPMOST = new IntPtr(-1), BOTTOM = new IntPtr(1);
   readonly uint callback = RegisterWindowMessage("GabayAppBar");
-  bool registered;
+  readonly uint taskbarCreated = RegisterWindowMessage("TaskbarCreated");
+  readonly uint owner;    // Gabay's process: the band only ever goes under a window of Gabay's own
+  readonly bool physical; // this thread works in physical pixels, so the checks compare like with like
+  readonly System.Windows.Forms.Timer check = new System.Windows.Forms.Timer();
+  readonly System.Windows.Forms.Timer soon = new System.Windows.Forms.Timer();
+  bool registered, behind;
   int l, t, r, b, h;
+  IntPtr above;
+  RECT placed;       // where Explorer put the band
+  int strikes;       // usable-area fixes undone again within seconds
+  DateTime lastFix;
 
-  public Band() {
+  public Band(uint owner, bool physical) {
+    this.owner = owner;
+    this.physical = physical;
     FormBorderStyle = FormBorderStyle.None;
     ShowInTaskbar = false;
     BackColor = System.Drawing.Color.Black;
     StartPosition = FormStartPosition.Manual;
     TopMost = true;
+    check.Interval = 2000;
+    check.Tick += (s, e) => Check();
+    soon.Interval = 300;
+    soon.Tick += (s, e) => { soon.Stop(); Check(); };
   }
   protected override bool ShowWithoutActivation { get { return true; } }
   protected override CreateParams CreateParams {
@@ -190,11 +221,21 @@ class Band : Form {
 
   APPBARDATA Data() { var d = new APPBARDATA(); d.cbSize = Marshal.SizeOf(typeof(APPBARDATA)); d.hWnd = Handle; return d; }
 
-  public void Reserve(int l, int t, int r, int b, int h) {
+  public void Reserve(int l, int t, int r, int b, int h, IntPtr notch) {
+    bool changed = !registered || l != this.l || t != this.t || r != this.r || b != this.b || h != this.h;
     this.l = l; this.t = t; this.r = r; this.b = b; this.h = h;
+    uint pid = 0;
+    above = notch != IntPtr.Zero && owner != 0 && IsWindow(notch) && GetWindowThreadProcessId(notch, out pid) != 0 && pid == owner ? notch : IntPtr.Zero;
+    if (changed) strikes = 0;
+    bool had = registered;
+    var before = placed;
     if (!registered) { var d = Data(); d.uCallbackMessage = callback; SHAppBarMessage(ABM_NEW, ref d); registered = true; }
     Place();
+    // moved to another screen (Follow mouse): that screen gets its space back if Explorer kept it
+    if (had && physical && Monitor(before) != Monitor(placed)) GiveBack(before);
     if (!Visible) Show();
+    if (!behind) Raise();
+    if (physical) { check.Start(); Check(); }
   }
 
   void Place() {
@@ -204,11 +245,80 @@ class Band : Form {
     SHAppBarMessage(ABM_QUERYPOS, ref d); // Windows may move it below another top bar
     d.rc.B = d.rc.T + h;
     SHAppBarMessage(ABM_SETPOS, ref d);
-    SetWindowPos(Handle, new IntPtr(-1), d.rc.L, d.rc.T, d.rc.R - d.rc.L, h, 0x0010 | 0x0040); // topmost, no activate, show
+    placed = d.rc;
+    SetWindowPos(Handle, IntPtr.Zero, d.rc.L, d.rc.T, d.rc.R - d.rc.L, h, 0x0004 | 0x0010 | 0x0040); // no z-order change, no activate, show
+  }
+
+  // Gabay's notch, while it is a topmost window; the band goes right under it.
+  IntPtr NotchWindow() { return above != IntPtr.Zero && IsWindow(above) && (GetWindowLong(above, -20) & 0x8) != 0 ? above : IntPtr.Zero; }
+
+  void Raise() {
+    if ((GetWindowLong(Handle, -20) & 0x8) == 0) SetWindowPos(Handle, TOPMOST, 0, 0, 0, 0, NOMOVE_NOSIZE_NOACTIVATE); // back from behind a full-screen app
+    var a = NotchWindow();
+    if (a != IntPtr.Zero) SetWindowPos(Handle, a, 0, 0, 0, 0, NOMOVE_NOSIZE_NOACTIVATE);
+  }
+
+  bool UnderNotch() {
+    var a = NotchWindow();
+    if (a == IntPtr.Zero) return true;
+    var w = Handle;
+    for (int i = 0; i < 512 && (w = GetWindow(w, 3)) != IntPtr.Zero; i++) if (w == a) return true; // GW_HWNDPREV: the windows above
+    return false;
+  }
+
+  static IntPtr Monitor(RECT rc) { return MonitorFromRect(ref rc, 2); } // MONITOR_DEFAULTTONEAREST
+  static MONITORINFO Mon(RECT rc) {
+    var mi = new MONITORINFO(); mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+    GetMonitorInfo(Monitor(rc), ref mi);
+    return mi;
+  }
+  MONITORINFO Mon() { return Mon(placed); }
+
+  // The band has left where it was: if Explorer still keeps exactly its space there, give back exactly that.
+  static void GiveBack(RECT was) {
+    var mi = Mon(was);
+    if (mi.rcWork.T == was.B && was.T >= mi.rcMonitor.T) { var w = mi.rcWork; w.T = was.T; SystemParametersInfo(SPI_SETWORKAREA, 0, ref w, 2); }
+  }
+
+  void Check() {
+    if (!registered || !physical) return;
+    if (!behind && !UnderNotch()) Raise();
+    var mi = Mon();
+    var m = mi.rcMonitor;
+    // only a band that lies on its monitor (a screen that just changed is placed again by Gabay first)
+    if (placed.L < m.L || placed.R > m.R || placed.T < m.T || placed.B >= mi.rcWork.B) return;
+    if (mi.rcWork.T >= placed.B) return; // honored
+    // Something else keeps setting the usable area: leave it be rather than fight (until Gabay moves the band).
+    if (strikes >= 3) return;
+    if (DateTime.UtcNow - lastFix < TimeSpan.FromSeconds(15)) strikes++; else strikes = 0;
+    if (strikes >= 3) return;
+    lastFix = DateTime.UtcNow;
+    // Explorer left the band out of the usable area, or lost it: register it anew, which has Explorer work the area
+    // out again with the band in it (a band it no longer knows makes the removal a no-op)
+    var gone = Data();
+    SHAppBarMessage(ABM_REMOVE, ref gone);
+    var d = Data(); d.uCallbackMessage = callback;
+    SHAppBarMessage(ABM_NEW, ref d);
+    Place();
+    mi = Mon();
+    if (mi.rcWork.T >= placed.B) return;
+    // still left out: start the usable area under the band, the rest of it as Windows has it
+    var w = mi.rcWork; w.T = placed.B;
+    SystemParametersInfo(SPI_SETWORKAREA, 0, ref w, 2); // SPIF_SENDCHANGE: maximized windows refit
   }
 
   public void Release() {
-    if (registered) { var d = Data(); SHAppBarMessage(ABM_REMOVE, ref d); registered = false; }
+    check.Stop();
+    soon.Stop();
+    if (registered) {
+      // shrink to nothing first, so Explorer works the usable area out again as it does for a move, then leave
+      var d = Data(); d.uEdge = ABE_TOP; d.rc = placed; d.rc.B = d.rc.T;
+      SHAppBarMessage(ABM_SETPOS, ref d);
+      var gone = Data();
+      SHAppBarMessage(ABM_REMOVE, ref gone);
+      registered = false;
+      if (physical) GiveBack(placed);
+    }
     Hide();
   }
 
@@ -216,9 +326,18 @@ class Band : Form {
     if (registered && m.Msg == (int)callback) {
       if ((int)m.WParam == ABN_POSCHANGED) Place();
       else if ((int)m.WParam == ABN_FULLSCREENAPP) {
-        // Full screen app opened: drop behind it; closed: back on top.
-        SetWindowPos(Handle, m.LParam != IntPtr.Zero ? new IntPtr(1) : new IntPtr(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
+        // Full screen app opened: drop behind it; closed: back on top, under the notch.
+        behind = m.LParam != IntPtr.Zero;
+        if (behind) SetWindowPos(Handle, BOTTOM, 0, 0, 0, 0, NOMOVE_NOSIZE_NOACTIVATE);
+        else Raise();
       }
+    } else if (registered && m.Msg == (int)taskbarCreated) {
+      // Explorer started again and forgot its app bars: register anew (harmless when it still has this one)
+      var d = Data(); d.uCallbackMessage = callback; SHAppBarMessage(ABM_NEW, ref d);
+      Place();
+      if (physical) { soon.Stop(); soon.Start(); }
+    } else if (registered && physical && m.Msg == WM_SETTINGCHANGE && (int)m.WParam == SPI_SETWORKAREA) {
+      soon.Stop(); soon.Start(); // the usable area changed: look again once things settle
     }
     base.WndProc(ref m);
   }
@@ -361,9 +480,17 @@ static class Native {
   }
 
   static Band band;
+  static IntPtr bandHwnd; // the band's window: its app bar requests always reach Explorer (see TrayWndProc)
+  [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr ctx);
   static void StartBand() {
     var ready = new ManualResetEvent(false);
-    var th = new Thread(() => { band = new Band(); var unused = band.Handle; ready.Set(); Application.Run(); });
+    var th = new Thread(() => {
+      // Per-monitor aware on this thread only: Gabay sends physical pixels, and the band must read the screen the same
+      // way on every monitor and scale. Without it (Windows 10 before 1607) the band works as before, minus the checks.
+      bool physical = false;
+      try { physical = SetThreadDpiAwarenessContext(new IntPtr(-4)) != IntPtr.Zero; } catch { }
+      band = new Band(self, physical); bandHwnd = band.Handle; ready.Set(); Application.Run();
+    });
     th.SetApartmentState(ApartmentState.STA);
     th.IsBackground = true;
     th.Start();
@@ -373,9 +500,10 @@ static class Native {
     if (band == null) StartBand();
     if (arg == "off") { band.Invoke((Action)(() => band.Release())); return "true"; }
     var n = arg.Split(' ');
-    if (n.Length != 5) return "false";
+    if (n.Length != 5 && n.Length != 6) return "false";
     int l = int.Parse(n[0]), t = int.Parse(n[1]), r = int.Parse(n[2]), b = int.Parse(n[3]), h = Math.Max(1, Math.Min(80, int.Parse(n[4])));
-    band.Invoke((Action)(() => band.Reserve(l, t, r, b, h)));
+    var notch = n.Length == 6 ? new IntPtr(long.Parse(n[5])) : IntPtr.Zero; // checked in the band: Gabay's own window only
+    band.Invoke((Action)(() => band.Reserve(l, t, r, b, h, notch)));
     return "true";
   }
 
@@ -1203,9 +1331,12 @@ static class Native {
       if (cds.dwData == new IntPtr(1)) ReadTray(cds);
     } catch { } // a malformed message from some app must not take the helper down
     // Explorer still gets everything, tray icons and app bar requests alike, and its answer is the answer.
+    // While one message is being passed on, others that arrive meanwhile are not sent on (that is how a message that
+    // comes back from Explorer can't loop), except the band's own app bar requests: those come from Gabay's helper,
+    // never from Explorer, and dropping one would leave Explorer without the band. wParam is the app bar's window.
     var ex = ExplorerTray();
     IntPtr res = IntPtr.Zero;
-    if (ex == IntPtr.Zero || forwarding > 0) return new IntPtr(1);
+    if (ex == IntPtr.Zero || (forwarding > 0 && (w == IntPtr.Zero || w != bandHwnd))) return new IntPtr(1);
     forwarding++;
     try { if (SendMessageTimeout(ex, m, w, l, 0x0002, 3000, out res) != IntPtr.Zero) return res; } finally { forwarding--; } // SMTO_ABORTIFHUNG
     return new IntPtr(1);
