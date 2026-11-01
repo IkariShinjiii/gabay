@@ -235,6 +235,52 @@ body,
   text-overflow: ellipsis;
 }
 
+/* Launch, nothing typed yet: the way into the full A to Z list, after the pinned apps and recent files */
+.row-more {
+  color: var(--text-2);
+}
+
+.row-more > svg:last-child {
+  flex: none;
+  color: var(--faint);
+}
+
+.results-hint {
+  margin: 0;
+  padding: 10px 10px 6px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* All apps: the way back stays put while the A to Z list scrolls under it */
+.results-back {
+  position: sticky;
+  top: -6px; /* the list's own top padding */
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -6px -6px 0;
+  padding: 10px 14px 8px 12px;
+  background: var(--notch);
+  font-size: 14px;
+  color: var(--text);
+}
+
+.results-back-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* the letter each group of apps files under */
+.results-letter {
+  color: var(--text-2);
+  letter-spacing: 0;
+}
+
 .star {
   border: 0;
   background: none;

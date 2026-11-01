@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('overlay', {
   getStats: () => ipcRenderer.invoke('stats:get'),
   searchApps: (query: string) => ipcRenderer.invoke('launcher:search', query),
   searchFiles: (query: string) => ipcRenderer.invoke('launcher:files', query),
+  allApps: () => ipcRenderer.invoke('launcher:all'),
+  recentFiles: () => ipcRenderer.invoke('launcher:recent'),
   revealFile: (id: string) => ipcRenderer.invoke('launcher:reveal', id),
   appIcon: (id: string) => ipcRenderer.invoke('launcher:icon', id),
   launchApp: (id: string) => ipcRenderer.invoke('launcher:launch', id),

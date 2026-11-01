@@ -40,6 +40,10 @@ export interface OverlayApi {
   searchApps(query: string): Promise<LauncherItem[]>
   /** Files and folders in the user's folders whose names match, from Windows' search index (2+ letters). */
   searchFiles(query: string): Promise<LauncherItem[]>
+  /** Every app the Start menu lists, A to Z. */
+  allApps(): Promise<LauncherItem[]>
+  /** A few files opened recently, from Windows' own list (none while Windows or Settings turns that off). */
+  recentFiles(): Promise<LauncherItem[]>
   /** Opens the folder of a file result in Explorer, with the file selected. */
   revealFile(id: string): Promise<boolean>
   /** Small PNG data URL for an app's icon, or null. Resolved in main; the renderer never sees a path. */
@@ -199,6 +203,7 @@ export interface Settings {
   accent: string
   place: { name: string; lat: number; lon: number } | null
   lyrics: boolean
+  recentFiles: boolean
   dndUntil: number
   welcomed: boolean
   reviewAt: number
@@ -245,8 +250,9 @@ export interface LauncherItem {
   id: string
   name: string
   starred: boolean
-  /** A file or folder from Windows' search index, not an app (no star; opens with its default app). */
-  kind?: 'file'
+  /** 'file': a file from Windows' search index or its recent list, not an app (no star; opens with its default app).
+   *  'all': the row that opens the All apps list (made by the page, never sent by main). */
+  kind?: 'file' | 'all'
   /** For files: the name of the folder it is in. */
   folder?: string
 }

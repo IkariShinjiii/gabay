@@ -157,6 +157,15 @@ export async function search(query: string): Promise<LauncherItem[]> {
   return scored.slice(0, MAX_RESULTS).map(({ e }) => toItem(e, s))
 }
 
+/** Every app, A to Z (the way the Start menu's All list reads), each with its star. */
+export async function allApps(): Promise<LauncherItem[]> {
+  await ensureIndex()
+  const s = await loadStore()
+  return [...entries.values()]
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }))
+    .map((e) => toItem(e, s))
+}
+
 // --- icons ---
 // Resolved here and sent to the renderer as small data: URLs keyed by the opaque id, so paths never leave main.
 const ICON_PX = 32
