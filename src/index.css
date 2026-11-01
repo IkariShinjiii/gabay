@@ -614,9 +614,24 @@ body,
   outline-offset: 2px;
 }
 
+/* Labels stacked in one cell: the chip takes the widest one's width, and only the last one shows. */
+.chip-fit {
+  display: inline-grid;
+}
+
+.chip-fit > * {
+  grid-area: 1 / 1;
+  text-align: center;
+}
+
+.chip-fit > :not(:last-child) {
+  visibility: hidden;
+}
+
 .set-note {
   margin-top: 8px;
   font-size: 12px;
+  line-height: 1.4; /* notes can wrap (Filipino, long app names): room between lines */
   color: #e3b341;
 }
 

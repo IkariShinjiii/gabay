@@ -2,6 +2,16 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.5.0',
+    [
+      'Pick your own hotkey: Settings › Hotkey › Custom…, then press the keys',
+      'Focus quiets the notch: just the time, no pop-ups or sounds. Notifications wait in the Inbox, and timers still ring',
+      'Reserve space at the top works on more PCs: apps stay below the notch, and the clock stays on top',
+      'The camera and microphone dots no longer stay on after an app closes',
+      'Notches on your other screens respond again after a game, and stay small when no apps are open there'
+    ]
+  ],
+  [
     '1.4.4',
     [
       'With the taskbar hidden, your other screens get a small notch too: hover it for the dock',
