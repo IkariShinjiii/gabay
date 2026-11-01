@@ -108,7 +108,16 @@ function HotkeyRow({ settings, activeHotkey, hotkeys, onHold, onPick }: {
             setRecording((r) => !r)
           }}
         >
-          {recording ? (held.length ? held.join('+').replace('Control', 'Ctrl') + '+…' : tr('Press a shortcut…')) : tr('Custom…')}
+          {recording ? (
+            // as wide as its longest label throughout, so the row doesn't rewrap (and the panel jump) with each key
+            <span className="chip-fit">
+              <span aria-hidden="true">{tr('Press a shortcut…')}</span>
+              <span aria-hidden="true">Ctrl+Alt+Shift+…</span>
+              <span>{held.length ? held.join('+').replace('Control', 'Ctrl') + '+…' : tr('Press a shortcut…')}</span>
+            </span>
+          ) : (
+            tr('Custom…')
+          )}
         </button>
       </div>
       {recording && (
