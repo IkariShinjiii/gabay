@@ -111,6 +111,9 @@ export default function App(): React.JSX.Element {
   const [barFocused, setBarFocused] = useState(false)
   const [items, setItems] = useState<LauncherItem[]>([])
   const [selected, setSelected] = useState(0)
+  // Launch with nothing typed: 'home' (pinned and recent apps, recent files) or 'all' (every app, A to Z).
+  // Dev preview: &view=all opens on the A to Z list.
+  const [launchView, setLaunchView] = useState<'home' | 'all'>(() => (new URLSearchParams(location.hash.slice(1)).get('view') === 'all' ? 'all' : 'home'))
 
   // The panel stays open while the pointer is over the notch OR something holds it open: a focused input
   // ('search', 'command', 'todo') or an on-screen confirmation ('power-confirm').
@@ -177,6 +180,7 @@ export default function App(): React.JSX.Element {
       isOpen.current = false
       setExpanded(false)
       setInput('')
+      setLaunchView('home')
       setInteractive(false)
     }, collapseMs.current)
   }, [setInteractive])
@@ -823,17 +827,36 @@ export default function App(): React.JSX.Element {
     evaluate()
   }, [hasBar, hold, evaluate])
   const showResults = expanded && tab === 'Launch' && !parsed
+  // Typed text always searches; with nothing typed, Launch shows its home list or the A to Z list.
+  const launchMode: 'search' | 'home' | 'all' = query.trim() ? 'search' : launchView
   // Stale responses are dropped so a slow reply can't overwrite a newer query. Apps come at once; files (from Windows'
   // search index) follow after a short pause in typing, below the apps. Either can answer first (the first app search
-  // builds the index), so each answer shows both lists as they stand.
+  // builds the index), so each answer shows both lists as they stand. The home list waits briefly for the recent files
+  // too, so it appears whole instead of growing a moment later.
   useEffect(() => {
     if (!showResults) return
     let stale = false
+    if (launchMode === 'all') {
+      window.overlay.allApps().then(
+        (r) => {
+          if (stale) return
+          setItems(r)
+          setSelected(0)
+        },
+        () => undefined
+      )
+      return () => {
+        stale = true
+      }
+    }
+    const home = launchMode === 'home'
     let apps: LauncherItem[] | null = null
     let files: LauncherItem[] = []
+    let filesIn = !home
     const show = (): void => {
-      if (stale || apps === null) return
-      setItems([...apps, ...files.slice(0, Math.max(3, 10 - apps.length))]) // ten rows fit
+      if (stale || apps === null || !filesIn) return
+      if (home) setItems([...apps, ...files, { id: '__all', name: tr('All apps'), starred: false, kind: 'all' }])
+      else setItems([...apps, ...files.slice(0, Math.max(3, 10 - apps.length))]) // ten rows fit
     }
     window.overlay.searchApps(query).then((r) => {
       apps = r
@@ -841,19 +864,30 @@ export default function App(): React.JSX.Element {
       show()
     })
     const q = query.trim()
-    const t = q.length >= 2
-      ? window.setTimeout(() => {
-          void window.overlay.searchFiles(q).catch(() => []).then((f) => {
-            files = f
-            show()
-          })
-        }, 250)
-      : 0
+    let t = 0
+    if (home) {
+      const settle = (): void => {
+        filesIn = true
+        show()
+      }
+      t = window.setTimeout(settle, 350) // recent files slow today: show the apps without them, then add them
+      void window.overlay.recentFiles().catch(() => []).then((f) => {
+        files = f
+        settle()
+      })
+    } else if (q.length >= 2) {
+      t = window.setTimeout(() => {
+        void window.overlay.searchFiles(q).catch(() => []).then((f) => {
+          files = f
+          show()
+        })
+      }, 250)
+    }
     return () => {
       stale = true
       window.clearTimeout(t)
     }
-  }, [query, showResults])
+  }, [query, showResults, launchMode])
 
   const release = (): void => {
     setInput('')
@@ -867,6 +901,10 @@ export default function App(): React.JSX.Element {
   }, [])
 
   const launch = async (item: LauncherItem): Promise<void> => {
+    if (item.kind === 'all') {
+      setLaunchView('all') // the search field keeps the focus, so the arrow keys carry on in the A to Z list
+      return
+    }
     await window.overlay.launchApp(item.id)
     release()
   }
@@ -895,8 +933,9 @@ export default function App(): React.JSX.Element {
         else void launch(it)
       }
     } else if (e.key === 'Escape') {
-      // First Esc clears the text, second releases focus so the panel can close.
+      // First Esc clears the text, the next leaves the A to Z list, then focus is released so the panel can close.
       if (input) setInput('')
+      else if (tab === 'Launch' && launchView === 'all') setLaunchView('home')
       else inputRef.current?.blur()
     }
   }
@@ -910,6 +949,7 @@ export default function App(): React.JSX.Element {
     setTab(t)
     if (t === 'Inbox') setUnseen(0)
     setInput('')
+    setLaunchView('home')
   }, [])
 
   // Ctrl+1..9 switch tabs while the panel is open.
@@ -970,11 +1010,13 @@ export default function App(): React.JSX.Element {
       <Launcher
         items={items}
         selected={selected}
-        emptyHint={input.trim() ? tr('No matching apps') : tr('Type to search apps. Star one to pin it here.')}
+        mode={launchMode}
+        emptyHint={launchMode === 'search' ? tr('No matching apps') : tr('Type to search apps. Star one to pin it here.')}
         onHover={setSelected}
         onLaunch={(it) => void launch(it)}
         onToggleStar={(it) => void toggleStar(it)}
         onReveal={(it) => void window.overlay.revealFile(it.id).then(() => release())}
+        onBack={() => setLaunchView('home')}
       />
     )
   } else if (expanded && tab === 'Clipboard') {

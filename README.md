@@ -88,6 +88,11 @@ is killed).
   Explorer's search box uses; Gabay indexes nothing itself). Enter opens one; Ctrl+Enter or right-click opens its
   folder. App data and hidden folders are left out.
 - Star an app with the star button to pin it to the Launch tab; recent launches are remembered.
+- With nothing typed, Launch shows your pinned and recent apps, up to four **recent files** (Windows' own Recent list,
+  the one Start and File Explorer use: local files that still exist, newest first), and an **All apps** row that opens
+  every app A to Z with letter headings. Esc goes back. Recent files are hidden while Windows' "Show recently opened
+  items" is off or a policy stops Windows keeping the list, and Settings › Recent files in Launch turns them off in
+  Gabay. Gabay records nothing of its own here.
 - Recents and stars live in `launcher.json` in Electron's userData folder (`%APPDATA%\gabay`). The renderer only handles opaque ids; paths never leave the main process.
 - While the search field has focus the panel stays open even if the pointer is elsewhere.
 

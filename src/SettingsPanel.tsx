@@ -685,6 +685,19 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onSho
         <div className="set-note muted">{tr('Looks up the song\'s title and artist on lrclib.net (free, open lyrics).')}</div>
       </div>
 
+      <div className="set-row">
+        <div className="set-label">{tr('Recent files in Launch')}</div>
+        <div className="set-opts">
+          <button className={settings.recentFiles ? 'chip on' : 'chip'} onClick={() => void save({ recentFiles: true })}>
+            {tr('On')}
+          </button>
+          <button className={!settings.recentFiles ? 'chip on' : 'chip'} onClick={() => void save({ recentFiles: false })}>
+            {tr('Off')}
+          </button>
+        </div>
+        <div className="set-note muted">{tr('Files you opened lately, from Windows\' own list. None while Windows\' "Show recently opened items" is off.')}</div>
+      </div>
+
       <CalendarRow onHold={onHold} />
       <UpdateRow />
       <div className="set-row">

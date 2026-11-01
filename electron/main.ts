@@ -18,7 +18,8 @@ import { currentProjectMode, isProjectMode, setProjectMode } from './project'
 import { isSettingsKey, networkKind, quickGet, quickPeek, quickSet, quickSlide, SETTINGS_PAGES, stopQuick } from './quick'
 import { COLLAPSE_MAX, COLLAPSE_MIN, DEFAULTS, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
 import { getNotes, setNotes } from './notes'
-import { ensureIndex, findByExe, getIcon, isStarred, shellIcon, launch, movePin, pinnedApps, pinPlace, search, setPinOrder, toggleStar } from './launcher'
+import { allApps, ensureIndex, findByExe, getIcon, isStarred, shellIcon, launch, movePin, pinnedApps, pinPlace, search, setPinOrder, toggleStar } from './launcher'
+import { recentFiles, warmRecentFiles } from './recentFiles'
 import { isPowerAction, runPower } from './power'
 import { addTodo, listTodos, removeTodo, toggleTodo } from './todos'
 import { clearHistory, copyBack, listClipboard, setClipboardGuard, startClipboardHistory, stopClipboardHistory, togglePin } from './clipboardHistory'
@@ -243,9 +244,35 @@ app.whenReady().then(async () => {
       return [{ id, name: f.n.slice(0, 200), starred: false, kind: 'file', folder: (parts[parts.length - 2] ?? '').slice(0, 80) }]
     })
   })
+  ipcMain.handle('launcher:all', (e) => {
+    fromUi(e)
+    return allApps()
+  })
+  // Recently opened files, from Windows' own list (only while it keeps one, and while Settings allows it). Opaque ids,
+  // as for search hits: only the latest list's files can be opened. Previews show made-up files, never real ones.
+  const recentHits = new Map<string, string>()
+  ipcMain.handle('launcher:recent', async (e) => {
+    fromUi(e)
+    if (PREVIEW) {
+      return [
+        { id: 'r:sample1', name: 'Budget 2026.xlsx', starred: false, kind: 'file', folder: 'Documents' },
+        { id: 'r:sample2', name: 'Trip notes.docx', starred: false, kind: 'file', folder: 'Desktop' },
+        { id: 'r:sample3', name: 'Logo draft.png', starred: false, kind: 'file', folder: 'Pictures' }
+      ]
+    }
+    if (!settings.recentFiles) return []
+    const list = await recentFiles(4).catch(() => [])
+    recentHits.clear()
+    return list.map((f) => {
+      const id = 'r:' + ++fileSeq // never reused, like search hits
+      recentHits.set(id, f.path)
+      return { id, name: f.name, starred: false, kind: 'file', folder: f.folder }
+    })
+  })
+  const fileOf = (id: unknown): string | undefined => (typeof id === 'string' ? fileHits.get(id) ?? recentHits.get(id) : undefined)
   ipcMain.handle('launcher:reveal', (e, id: unknown) => {
     fromUi(e)
-    const file = typeof id === 'string' ? fileHits.get(id) : undefined
+    const file = fileOf(id)
     if (!file) return false
     shell.showItemInFolder(file)
     return true
@@ -253,14 +280,14 @@ app.whenReady().then(async () => {
   ipcMain.handle('launcher:icon', (e, id: unknown) => {
     fromUi(e)
     if (typeof id !== 'string') return null
-    const file = fileHits.get(id)
+    const file = fileOf(id)
     if (file) return app.getFileIcon(file, { size: 'normal' }).then((img) => (img.isEmpty() ? null : img.toDataURL()), () => null)
     return getIcon(id)
   })
   ipcMain.handle('launcher:launch', async (e, id: unknown) => {
     fromUi(e)
     if (typeof id !== 'string') return false
-    const file = fileHits.get(id)
+    const file = fileOf(id)
     if (file) return (await shell.openPath(file)) === ''
     return launch(id)
   })
@@ -929,6 +956,7 @@ app.whenReady().then(async () => {
     return installUpdate()
   })
   void ensureIndex() // warm the Start Menu index so the first search is instant
+  if (!PREVIEW) warmRecentFiles() // and Windows' recent-items switch, so the first Launch shows recent files at once
   // One snapshot shortly after start, so the first Controls tab opens with real values instead of a spinner.
   if (!PREVIEW) setTimeout(() => void quickGet().catch(() => null), 3000)
 
