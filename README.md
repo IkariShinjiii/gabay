@@ -220,7 +220,7 @@ The taskbar's system-tray features, built into the notch.
   chat. It adds the Gabay and Windows versions, screen setup, a few settings and recent error messages, with user names
   and home folders removed. Nothing from the clipboard, notifications, calendar or files.
 - **The search bar** shows only on Launch (apps and commands) and Clipboard (filter). The hotkey opens Launch.
-- **Inbox tab:** recent Windows notifications, newest first, including ones Do not disturb kept quiet. Open or dismiss one, or clear all. They are held in memory only: never saved to disk, and gone when Gabay quits.
+- **Inbox tab:** recent Windows notifications grouped by app (the app with the newest one first), including ones Do not disturb kept quiet. Open or dismiss one, clear one app's, or clear all; an app with many shows its newest three and Show more. They are held in memory only: never saved to disk, and gone when Gabay quits.
 - **Notes tab:** one scratchpad that saves as you type (to `notes.json` in `%APPDATA%\gabay`), with copy and clear.
 - **What's new:** the first start after an update shows a short note in the notch; Settings › What's new lists it
   (`src/whatsNew.ts`, one entry per release).
