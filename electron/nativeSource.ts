@@ -336,12 +336,18 @@ class Band : Form {
     TopFit.Down(Monitor(placed), R(Mon().rcMonitor), placed.B, owner, me, 0);
   }
 
-  // The band has gone from where it was: windows that started right below it go back up to the top.
+  // The band has gone from where it was: windows that started right below it go back up to the top. Only if that screen
+  // is still attached (MONITOR_DEFAULTTONULL), so a screen unplugged meanwhile never moves windows on another one.
   void Unfit(RECT was) {
     if (!physical) return;
-    var mi = Mon(was);
-    TopFit.Up(Monitor(was), R(mi.rcMonitor), was.B, mi.rcWork.T, owner, me, 0);
+    var hmon = MonitorFromRect(ref was, 0);
+    if (hmon == IntPtr.Zero) return;
+    var mi = new MONITORINFO(); mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+    if (!GetMonitorInfo(hmon, ref mi)) return;
+    TopFit.Up(hmon, R(mi.rcMonitor), was.B, mi.rcWork.T, owner, me, 0);
   }
+  // Screens the band has left (Follow mouse) whose windows still start below it: they go back up when it is turned off.
+  readonly List<RECT> left = new List<RECT>();
 
   void Watch(bool on) {
     if (on && hookShow == IntPtr.Zero) {
@@ -389,8 +395,17 @@ class Band : Form {
     var before = placed;
     if (!registered) { var d = Data(); d.uCallbackMessage = callback; SHAppBarMessage(ABM_NEW, ref d); registered = true; }
     Place();
-    // moved to another screen (Follow mouse): that screen gets its space back if Explorer kept it, and its windows the top
-    if (had && physical && Monitor(before) != Monitor(placed)) { GiveBack(before); Unfit(before); }
+    // moved to another screen (Follow mouse): that screen gets its space back if Explorer kept it. Its windows stay where
+    // they are: the band follows the pointer from screen to screen, and moving them each time would resize them over and
+    // over. They go back up when the band is turned off.
+    if (had && physical && Monitor(before) != Monitor(placed)) {
+      GiveBack(before);
+      var gone = Monitor(before);
+      left.RemoveAll(x => Monitor(x) == gone);
+      left.Add(before);
+    }
+    var here = Monitor(placed);
+    left.RemoveAll(x => Monitor(x) == here); // back on a screen it had left: that one is the current band again
     if (!Visible) Show();
     if (!behind) Raise();
     if (physical) { check.Start(); Check(); Watch(true); Fit(); }
@@ -476,7 +491,12 @@ class Band : Form {
       var gone = Data();
       SHAppBarMessage(ABM_REMOVE, ref gone);
       registered = false;
-      if (physical) { GiveBack(placed); Unfit(placed); }
+      if (physical) {
+        GiveBack(placed);
+        Unfit(placed);
+        foreach (var x in left) Unfit(x);
+      }
+      left.Clear();
     }
     Hide();
   }
