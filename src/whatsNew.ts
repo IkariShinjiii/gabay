@@ -2,6 +2,14 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.6.2',
+    [
+      'An update now shows its download progress right on the notch, and in Settings even after you close it',
+      'Reserve space at the top: windows that were already open move below the band, and go back when you turn it off',
+      'Slow connections can finish updating, and the band no longer gives up after Windows resets the screen space'
+    ]
+  ],
+  [
     '1.6.1',
     [
       'Settings is tidier: grouped into sections, with switches instead of rows of buttons',
