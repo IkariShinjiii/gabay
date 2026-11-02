@@ -213,7 +213,11 @@ The taskbar's system-tray features, built into the notch.
   Follow mouse holds still while the PC is locked.
 - **Reserve space at the top** (Settings > Taskbar, off by default): a 24 px black band across the top of the notch's
   screen, registered with Windows as an app bar (the taskbar's mechanism), so maximized and snapped windows start below
-  the notch. Windows you drag up by hand can still go under it. Full-screen apps still get the whole screen.
+  the notch. Windows already open when it turns on (snapped or placed at the top, where Windows leaves them) move down
+  to start below it, keeping their bottom edge, and so do windows that open or come back from minimized at the very top;
+  turning it off moves windows that start right below the band back up. Only app windows on that screen: nothing
+  always on top, full screen, a dialog or Gabay's own. Windows you drag up by hand can still go under it. Full-screen
+  apps still get the whole screen.
 - Full screen, now playing, notifications, the window list, focus and volume come from one small native helper (about
   25 MB, no measurable CPU) compiled once from `electron/nativeSource.ts` with the C# compiler built into Windows, against
   the Windows Runtime metadata in `System32\WinMetadata`, and cached in `%APPDATA%\gabay\bin`. Without that compiler
