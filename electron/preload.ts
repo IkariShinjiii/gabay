@@ -150,6 +150,12 @@ contextBridge.exposeInMainWorld('overlay', {
     ipcRenderer.on('overlay:start', handler)
     return () => ipcRenderer.removeListener('overlay:start', handler)
   },
+  // Subscribe to the PC locking (true) or unlocking (false).
+  onLock: (cb: (locked: boolean) => void): (() => void) => {
+    const handler = (_e: unknown, locked: unknown): void => cb(locked === true)
+    ipcRenderer.on('overlay:lock', handler)
+    return () => ipcRenderer.removeListener('overlay:lock', handler)
+  },
   // Subscribe to the global-hotkey summon. Returns an unsubscribe function.
   onSummon: (cb: () => void): (() => void) => {
     const handler = (): void => cb()

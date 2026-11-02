@@ -363,6 +363,23 @@ export default function App(): React.JSX.Element {
       window.setTimeout(() => inputRef.current?.focus(), 0)
       evaluate()
     })
+    // The PC is locking: the panel closes and lets go of the mouse, whatever kept it open (a half-typed note, a menu,
+    // a confirmation). Only a tour stays where it was, to finish after unlocking.
+    const offLock = window.overlay.onLock((locked) => {
+      // Back from the lock screen with a tour still open: it takes clicks again (locking made the window click-through).
+      if (!locked) {
+        if (isOpen.current) setInteractive(true)
+        return
+      }
+      ;(document.activeElement as HTMLElement | null)?.blur?.()
+      for (const h of [...holds.current]) if (h !== 'welcome') holds.current.delete(h)
+      pointerInside.current = false
+      if (toastHoverRef.current) {
+        toastHoverRef.current = false
+        setInteractive(false)
+      }
+      evaluate()
+    })
 
     document.addEventListener('mousemove', onMove)
     document.documentElement.addEventListener('mouseleave', onLeave)
@@ -371,12 +388,13 @@ export default function App(): React.JSX.Element {
       window.clearTimeout(edgeTimer.current)
       window.clearTimeout(hideTimer.current)
       offSummon()
+      offLock()
       offStart()
       offFullscreen()
       document.removeEventListener('mousemove', onMove)
       document.documentElement.removeEventListener('mouseleave', onLeave)
     }
-  }, [evaluate, scheduleHide, hold])
+  }, [evaluate, scheduleHide, hold, setInteractive])
 
   const onConfirming = useCallback(
     (confirming: boolean): void => {

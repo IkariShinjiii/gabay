@@ -1133,20 +1133,65 @@ app.whenReady().then(async () => {
   // Follow mouse: a cheap pointer check, only with more than one display. The panel stays put while it is open
   // (the pointer is on it anyway) and the notch moves once the pointer settles on another screen.
   let followTimer: NodeJS.Timeout | undefined
+  let locked = false // the PC is locked (or its session is away): no one is at this screen
   const syncFollow = (): void => {
     clearInterval(followTimer)
     followTimer = undefined
     if (PREVIEW || !settings.followMouse) return
     followTimer = setInterval(() => {
-      if (win.isDestroyed() || screen.getAllDisplays().length < 2) return
+      // while locked the pointer position means nothing (the lock screen has it), so the notch stays where it is
+      if (locked || win.isDestroyed() || screen.getAllDisplays().length < 2) return
       if (screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id !== placedOn) placeNotch()
     }, 500)
   }
   syncFollow()
   syncDocks()
-  screen.on('display-added', placeNotch)
-  screen.on('display-removed', placeNotch)
-  screen.on('display-metrics-changed', placeNotch)
+  // Screens and scaling change in bursts (a monitor plugged in, a Remote Desktop session taking over the screen): the
+  // notch is placed at once, and again once the burst is over, from whatever Windows reports by then.
+  let settleTimer: NodeJS.Timeout | undefined
+  const onDisplays = (): void => {
+    if (win.isDestroyed()) return
+    placeNotch()
+    clearTimeout(settleTimer)
+    settleTimer = setTimeout(() => !win.isDestroyed() && placeNotch(), 1500)
+  }
+  screen.on('display-added', onDisplays)
+  screen.on('display-removed', onDisplays)
+  screen.on('display-metrics-changed', onDisplays)
+
+  // Lock, unlock and sleep. Locking closes the panel and lets go of the mouse, so nothing is left open on screen for
+  // whoever comes next. Unlocking or waking (also how a Remote Desktop session takes over, with its own screens and
+  // scaling) puts the notch back on top and in place, now and again as the screens settle, and the taskbar setting
+  // back in force: Windows can show its taskbar again while the session was away.
+  let recoverTimers: NodeJS.Timeout[] = []
+  const recover = (): void => {
+    for (const t of recoverTimers) clearTimeout(t)
+    recoverTimers = [300, 2000, 6000].map((ms) =>
+      setTimeout(() => {
+        if (win.isDestroyed()) return
+        win.setAlwaysOnTop(true, 'screen-saver')
+        for (const d of docks.values()) if (!d.isDestroyed()) d.setAlwaysOnTop(true, 'screen-saver')
+        placeNotch()
+      }, ms)
+    )
+    if (settings.hideTaskbar) setTimeout(() => void applyTaskbar(), 2000)
+  }
+  const onLock = (): void => {
+    locked = true
+    if (!mouseLocked) {
+      for (const w of [win, ...docks.values()]) if (!w.isDestroyed()) w.setIgnoreMouseEvents(true, { forward: true })
+    }
+    sendDocks('dock:close', null)
+    send('overlay:lock', true)
+  }
+  const onUnlock = (): void => {
+    locked = false
+    send('overlay:lock', false)
+    recover()
+  }
+  powerMonitor.on('lock-screen', onLock)
+  powerMonitor.on('unlock-screen', onUnlock)
+  powerMonitor.on('resume', recover)
 
   // Settings. The renderer sends a partial patch; main validates every field (settings.ts) before using it.
   const snapshot = (): unknown => {

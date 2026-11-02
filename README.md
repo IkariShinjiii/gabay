@@ -204,6 +204,10 @@ The taskbar's system-tray features, built into the notch.
   screen on its display (a maximized window doesn't count). Rest the pointer on the very top edge, within the notch's width,
   to bring it back while hidden; it slides away again shortly after the pointer leaves.
 - **Auto-hide** (Settings): the notch is always tucked away until revealed that way, so it never covers a browser tab.
+- **Lock, sleep and Remote Desktop:** locking the PC closes the panel and lets go of the mouse (a tour in progress stays
+  to finish). Unlocking or waking, which is also when a Remote Desktop session takes over with its own screens and
+  scaling, puts the notch back on top and in place, again once the screens settle, and the taskbar setting back in force.
+  Follow mouse holds still while the PC is locked.
 - **Reserve space at the top** (Settings > Taskbar, off by default): a 24 px black band across the top of the notch's
   screen, registered with Windows as an app bar (the taskbar's mechanism), so maximized and snapped windows start below
   the notch. Windows you drag up by hand can still go under it. Full-screen apps still get the whole screen.

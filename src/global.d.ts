@@ -154,6 +154,8 @@ export interface OverlayApi {
   onFullscreen(cb: (fullscreen: boolean) => void): () => void
   /** Fires when the Start menu opens or closes, while Gabay stands in for the taskbar. Returns an unsubscribe function. */
   onStart(cb: (open: boolean) => void): () => void
+  /** Fires when the PC locks (true) or unlocks (false). Returns an unsubscribe function. */
+  onLock(cb: (locked: boolean) => void): () => void
 }
 
 /** An open window, as the taskbar would show it. id is opaque; the program's path stays in main. */
