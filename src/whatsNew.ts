@@ -2,6 +2,13 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.6.0',
+    [
+      'Open Launch to see the files you opened recently, and an All apps list from A to Z',
+      "Recent files follow Windows: none while its \"Show recently opened items\" is off, and Settings can turn them off too"
+    ]
+  ],
+  [
     '1.5.0',
     [
       'Pick your own hotkey: Settings › Hotkey › Custom…, then press the keys',
