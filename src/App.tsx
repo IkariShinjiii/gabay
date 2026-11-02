@@ -534,8 +534,11 @@ export default function App(): React.JSX.Element {
     if (previewParam === 'Inbox')
       setInbox([
         { key: 1, id: 1, app: 'Messenger', title: 'Trisha', body: 'are you coming tonight? we are at the usual place', at: Date.now() - 120_000 },
-        { key: 2, id: 2, app: 'Outlook', title: 'Weekly report due', body: null, at: Date.now() - 3_600_000 },
-        { key: 3, id: 3, app: 'Discord', title: 'Server', body: 'Someone mentioned you in #general: the patch notes are up, take a look when you can', at: Date.now() - 7_200_000 }
+        { key: 2, id: 2, app: 'Outlook', title: 'Weekly report due', body: null, at: Date.now() - 600_000 },
+        { key: 3, id: 3, app: 'Messenger', title: 'Paolo', body: 'sent a photo', at: Date.now() - 900_000 },
+        { key: 4, id: 4, app: 'Messenger', title: 'Trisha', body: 'hey! free later?', at: Date.now() - 1_800_000 },
+        { key: 5, id: 5, app: 'Messenger', title: 'Family', body: 'Mama: dinner at 7', at: Date.now() - 3_000_000 },
+        { key: 6, id: 6, app: 'Discord', title: 'Server', body: 'Someone mentioned you in #general: the patch notes are up, take a look when you can', at: Date.now() - 7_200_000 }
       ])
     if (previewParam === 'Live')
       setMedia({ title: tr('Weightless'), artist: 'Marconi Union', app: 'Spotify.exe', playing: true, duration: 480, art: '' })
@@ -1034,6 +1037,10 @@ export default function App(): React.JSX.Element {
         onDismiss={(it) => {
           if (it.id !== undefined) void window.overlay.noteDismiss(it.id)
           setInbox((l) => l.filter((x) => x.key !== it.key))
+        }}
+        onClearApp={(app) => {
+          for (const it of inbox) if (it.app === app && it.id !== undefined) void window.overlay.noteDismiss(it.id)
+          setInbox((l) => l.filter((x) => x.app !== app))
         }}
         onClear={() => {
           for (const it of inbox) if (it.id !== undefined) void window.overlay.noteDismiss(it.id)

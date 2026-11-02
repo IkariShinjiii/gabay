@@ -420,4 +420,8 @@ export const FIL: Record<string, string> = {
   "Turn on Do not disturb in Windows: its pop-ups stop, and Gabay still shows each one in the notch.": "I-on ang Do not disturb sa Windows: titigil ang mga pop-up nito, at ipapakita pa rin ng Gabay ang bawat isa sa notch.",
   "Laptop screen": "Screen ng laptop",
   "External screen": "External na screen",
+  // Inbox by app
+  "Clear {0}": "Burahin ang {0}",
+  "Show {0} more": "Ipakita ang {0} pa",
+  "Show less": "Ipakita ang mas kaunti",
 }
