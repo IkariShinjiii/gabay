@@ -2,6 +2,14 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.6.1',
+    [
+      'Settings is tidier: grouped into sections, with switches instead of rows of buttons',
+      "The Inbox groups notifications by app; clear one app's at once",
+      'Locking your PC closes the panel, and the notch comes back in place after unlocking, sleep or Remote Desktop'
+    ]
+  ],
+  [
     '1.6.0',
     [
       'Open Launch to see the files you opened recently, and an All apps list from A to Z',
