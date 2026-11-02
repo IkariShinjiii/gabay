@@ -163,6 +163,108 @@ class CameraWatch : IMFSensorActivitiesReportCallback {
   }
 }
 
+// Windows that were already open when the band arrived. Windows fits new and maximized windows below an app bar, but a
+// window that is already snapped or placed at the top of the screen stays where it is, with its top under the band. So
+// those move down to start below the band, keeping their bottom edge; and when the band goes, windows that start
+// exactly where it ended move back up. Only proper app windows on the band's screen whose top is at the very top of
+// it: nothing dragged above the screen, nothing full screen or always on top, no tool windows, dialogs or Gabay's own.
+static class TopFit {
+  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
+  delegate bool EnumFn(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] static extern bool EnumWindows(EnumFn f, IntPtr l);
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
+  [DllImport("user32.dll")] static extern bool IsZoomed(IntPtr h);
+  [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr h, uint cmd);
+  [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr h, int i);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll")] static extern IntPtr MonitorFromWindow(IntPtr h, uint flags);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int w, int hh, uint flags);
+  [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT r, int size);
+  [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out int v, int size);
+  // no z-order change, no activation, and asynchronous so a hung app can't hold the band up
+  const uint FLAGS = 0x0004 | 0x0010 | 0x0200 | 0x4000;
+  const int ROOM = 120; // a window must reach at least this far below the band's edge to be moved (physical pixels)
+
+  /** An app window on the monitor: visible, not minimized, top-level and unowned, not tool or topmost, not cloaked. */
+  static bool Eligible(IntPtr h, IntPtr hmon, uint skip1, uint skip2, uint only) {
+    try {
+      if (!IsWindowVisible(h) || IsIconic(h) || GetWindow(h, 4) != IntPtr.Zero) return false; // GW_OWNER: dialogs go with their owner
+      int ex = GetWindowLong(h, -20), st = GetWindowLong(h, -16);
+      if ((st & 0x40000000) != 0) return false; // WS_CHILD: part of another window
+      if ((ex & (0x8 | 0x80 | 0x08000000)) != 0) return false; // topmost, tool window, no-activate (overlays)
+      if ((st & 0x00C00000) != 0x00C00000 && (st & 0x00040000) == 0) return false; // neither a title bar nor a sizing border
+      int cloaked; if (DwmGetWindowAttribute(h, 14, out cloaked, 4) == 0 && cloaked != 0) return false; // on another desktop
+      uint pid; GetWindowThreadProcessId(h, out pid);
+      if (pid == skip1 || pid == skip2 || (only != 0 && pid != only)) return false;
+      if (MonitorFromWindow(h, 0) != hmon) return false; // MONITOR_DEFAULTTONULL: mostly on another screen
+      var cls = new StringBuilder(64); GetClassName(h, cls, 64);
+      var c = cls.ToString();
+      return c != "Progman" && c != "WorkerW" && c != "Shell_TrayWnd" && c != "Shell_SecondaryTrayWnd";
+    } catch { return false; }
+  }
+
+  static List<IntPtr> Windows(IntPtr hmon, uint skip1, uint skip2, uint only) {
+    var list = new List<IntPtr>();
+    EnumFn fn = (h, l) => { if (Eligible(h, hmon, skip1, skip2, only)) list.Add(h); return true; };
+    EnumWindows(fn, IntPtr.Zero);
+    GC.KeepAlive(fn);
+    return list;
+  }
+
+  /** The window's visible frame (without the invisible resize borders), and its full rect. */
+  static void Rects(IntPtr h, out RECT win, out RECT frame) {
+    GetWindowRect(h, out win);
+    if (DwmGetWindowAttribute(h, 9, out frame, Marshal.SizeOf(typeof(RECT))) != 0) frame = win; // DWMWA_EXTENDED_FRAME_BOUNDS
+  }
+
+  static bool FullScreen(RECT f, RECT mon) { return f.L <= mon.L && f.T <= mon.T && f.R >= mon.R && f.B >= mon.B; }
+
+  /** Moves the top edge of a window to y, keeping its bottom edge. */
+  static void TopTo(IntPtr h, RECT win, RECT frame, int y) {
+    int dy = y - frame.T;
+    SetWindowPos(h, IntPtr.Zero, win.L, win.T + dy, win.R - win.L, (win.B - win.T) - dy, FLAGS);
+  }
+
+  /** One window: if its top is under the band (and it isn't full screen or mostly inside the band), it starts below it. */
+  static bool DownOne(IntPtr h, RECT mon, int bandBottom) {
+    RECT win, frame; Rects(h, out win, out frame);
+    // A maximized window covers the whole screen when the taskbar auto-hides; that is not a full-screen app (those drop
+    // their title bar and frame, so they never get this far).
+    if (!IsZoomed(h) && FullScreen(frame, mon)) return false;
+    if (frame.T < mon.T - 2 || frame.T >= bandBottom || frame.B < bandBottom + ROOM) return false;
+    TopTo(h, win, frame, bandBottom);
+    return true;
+  }
+
+  /** The band now takes the monitor's top down to bandBottom: windows whose top is under it start below it. */
+  public static int Down(IntPtr hmon, RECT mon, int bandBottom, uint skip1, uint skip2, uint only) {
+    int n = 0;
+    foreach (var h in Windows(hmon, skip1, skip2, only)) if (DownOne(h, mon, bandBottom)) n++;
+    return n;
+  }
+
+  /** A window that just appeared or came back from minimized: the same, for that window alone. */
+  public static bool Arrived(IntPtr h, IntPtr hmon, RECT mon, int bandBottom, uint skip1, uint skip2, uint only) {
+    return Eligible(h, hmon, skip1, skip2, only) && DownOne(h, mon, bandBottom);
+  }
+
+  /** The band that ended at bandBottom has gone: windows that start exactly there go back up to the usable top. */
+  public static int Up(IntPtr hmon, RECT mon, int bandBottom, int workTop, uint skip1, uint skip2, uint only) {
+    if (workTop >= bandBottom) return 0; // the space hasn't come back (yet)
+    int n = 0;
+    foreach (var h in Windows(hmon, skip1, skip2, only)) {
+      RECT win, frame; Rects(h, out win, out frame);
+      if (Math.Abs(frame.T - bandBottom) > 1 || frame.B < bandBottom + ROOM) continue;
+      TopTo(h, win, frame, workTop);
+      n++;
+    }
+    return n;
+  }
+}
+
 // The reserved band: a black, never-activated strip registered as an app bar, so Windows fits maximized and snapped
 // windows below it (the same mechanism the taskbar uses). It sits just under Gabay's notch (never over it, or it
 // hides the clock) and steps aside while an app is full screen.
@@ -200,6 +302,15 @@ class Band : Form {
   RECT placed;       // where Explorer put the band
   int strikes;       // usable-area fixes undone again within seconds
   DateTime lastFix;
+  static readonly uint me = (uint)Process.GetCurrentProcess().Id;
+  // Windows that appear (or come back from minimized) while the band is there: fitted below it once they settle.
+  delegate void WinEventFn(IntPtr hook, uint ev, IntPtr h, int obj, int child, uint thread, uint time);
+  [DllImport("user32.dll")] static extern IntPtr SetWinEventHook(uint min, uint max, IntPtr mod, WinEventFn fn, uint pid, uint tid, uint flags);
+  [DllImport("user32.dll")] static extern bool UnhookWinEvent(IntPtr hook);
+  WinEventFn onEvent; // kept alive: Windows calls it
+  IntPtr hookShow, hookRestore;
+  readonly System.Windows.Forms.Timer arrive = new System.Windows.Forms.Timer();
+  readonly List<IntPtr> arrived = new List<IntPtr>();
 
   public Band(uint owner, bool physical) {
     this.owner = owner;
@@ -212,7 +323,54 @@ class Band : Form {
     check.Interval = 2000;
     check.Tick += (s, e) => Check();
     soon.Interval = 300;
-    soon.Tick += (s, e) => { soon.Stop(); Check(); };
+    soon.Tick += (s, e) => { soon.Stop(); Check(); Fit(); };
+    arrive.Interval = 350;
+    arrive.Tick += (s, e) => { arrive.Stop(); FitArrived(); };
+  }
+
+  static TopFit.RECT R(RECT r) { var x = new TopFit.RECT(); x.L = r.L; x.T = r.T; x.R = r.R; x.B = r.B; return x; }
+
+  // Windows already open whose top is under the band start below it instead (see TopFit).
+  void Fit() {
+    if (!registered || !physical) return;
+    TopFit.Down(Monitor(placed), R(Mon().rcMonitor), placed.B, owner, me, 0);
+  }
+
+  // The band has gone from where it was: windows that started right below it go back up to the top.
+  void Unfit(RECT was) {
+    if (!physical) return;
+    var mi = Mon(was);
+    TopFit.Up(Monitor(was), R(mi.rcMonitor), was.B, mi.rcWork.T, owner, me, 0);
+  }
+
+  void Watch(bool on) {
+    if (on && hookShow == IntPtr.Zero) {
+      if (onEvent == null) onEvent = OnWinEvent;
+      hookShow = SetWinEventHook(0x8002, 0x8002, IntPtr.Zero, onEvent, 0, 0, 2); // EVENT_OBJECT_SHOW; out of context, not this process
+      hookRestore = SetWinEventHook(0x0017, 0x0017, IntPtr.Zero, onEvent, 0, 0, 2); // EVENT_SYSTEM_MINIMIZEEND
+    } else if (!on && hookShow != IntPtr.Zero) {
+      UnhookWinEvent(hookShow);
+      if (hookRestore != IntPtr.Zero) UnhookWinEvent(hookRestore);
+      hookShow = hookRestore = IntPtr.Zero;
+      arrive.Stop();
+      arrived.Clear();
+    }
+  }
+
+  void OnWinEvent(IntPtr hook, uint ev, IntPtr h, int obj, int child, uint thread, uint time) {
+    if (obj != 0 || child != 0 || h == IntPtr.Zero) return; // the window itself, not a part of it
+    if ((GetWindowLong(h, -16) & 0x40000000) != 0 || (GetWindowLong(h, -20) & (0x8 | 0x80 | 0x08000000)) != 0) return; // child, topmost, tool or overlay
+    if (arrived.Count < 64 && !arrived.Contains(h)) arrived.Add(h);
+    if (!arrive.Enabled) arrive.Start(); // a moment for its app to put it where it goes
+  }
+
+  void FitArrived() {
+    var list = arrived.ToArray();
+    arrived.Clear();
+    if (!registered || !physical) return;
+    var hmon = Monitor(placed);
+    var mon = R(Mon().rcMonitor);
+    foreach (var h in list) TopFit.Arrived(h, hmon, mon, placed.B, owner, me, 0);
   }
   protected override bool ShowWithoutActivation { get { return true; } }
   protected override CreateParams CreateParams {
@@ -231,11 +389,11 @@ class Band : Form {
     var before = placed;
     if (!registered) { var d = Data(); d.uCallbackMessage = callback; SHAppBarMessage(ABM_NEW, ref d); registered = true; }
     Place();
-    // moved to another screen (Follow mouse): that screen gets its space back if Explorer kept it
-    if (had && physical && Monitor(before) != Monitor(placed)) GiveBack(before);
+    // moved to another screen (Follow mouse): that screen gets its space back if Explorer kept it, and its windows the top
+    if (had && physical && Monitor(before) != Monitor(placed)) { GiveBack(before); Unfit(before); }
     if (!Visible) Show();
     if (!behind) Raise();
-    if (physical) { check.Start(); Check(); }
+    if (physical) { check.Start(); Check(); Watch(true); Fit(); }
   }
 
   void Place() {
@@ -310,6 +468,7 @@ class Band : Form {
   public void Release() {
     check.Stop();
     soon.Stop();
+    Watch(false);
     if (registered) {
       // shrink to nothing first, so Explorer works the usable area out again as it does for a move, then leave
       var d = Data(); d.uEdge = ABE_TOP; d.rc = placed; d.rc.B = d.rc.T;
@@ -317,7 +476,7 @@ class Band : Form {
       var gone = Data();
       SHAppBarMessage(ABM_REMOVE, ref gone);
       registered = false;
-      if (physical) GiveBack(placed);
+      if (physical) { GiveBack(placed); Unfit(placed); }
     }
     Hide();
   }
