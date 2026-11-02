@@ -215,7 +215,10 @@ The taskbar's system-tray features, built into the notch.
   screen, registered with Windows as an app bar (the taskbar's mechanism), so maximized and snapped windows start below
   the notch. Windows already open when it turns on (snapped or placed at the top, where Windows leaves them) move down
   to start below it, keeping their bottom edge, and so do windows that open or come back from minimized at the very top;
-  turning it off moves windows that start right below the band back up. Only app windows on that screen: nothing
+  turning it off moves windows that start right below the band back up. Each time it turns on the band gets a new window
+  and its requests go straight to Explorer (not through Gabay's own tray window), because on some PCs Explorer otherwise
+  leaves the band out of the usable area; if something keeps resetting that area the band steps back for a while and
+  tries again later, rather than giving up. Only app windows on that screen: nothing
   always on top, full screen, a dialog or Gabay's own. Windows you drag up by hand can still go under it. Full-screen
   apps still get the whole screen.
 - Full screen, now playing, notifications, the window list, focus and volume come from one small native helper (about

@@ -1159,6 +1159,8 @@ app.whenReady().then(async () => {
   }
   screen.on('display-added', onDisplays)
   screen.on('display-removed', onDisplays)
+  // Also when only the usable area changed: Windows nudges windows out of a newly reserved strip, notch included, and
+  // this puts it back at the very top. (The band itself isn't sent to Explorer again unless it changed: see the helper.)
   screen.on('display-metrics-changed', onDisplays)
 
   // Lock, unlock and sleep. Locking closes the panel and lets go of the mouse, so nothing is left open on screen for

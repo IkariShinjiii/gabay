@@ -302,6 +302,8 @@ class Band : Form {
   RECT placed;       // where Explorer put the band
   int strikes;       // usable-area fixes undone again within seconds
   DateTime lastFix;
+  int pauses;                     // times the band has stepped back from a fight over the usable area
+  DateTime pauseUntil = DateTime.MinValue;
   static readonly uint me = (uint)Process.GetCurrentProcess().Id;
   // Windows that appear (or come back from minimized) while the band is there: fitted below it once they settle.
   delegate void WinEventFn(IntPtr hook, uint ev, IntPtr h, int obj, int child, uint thread, uint time);
@@ -385,16 +387,34 @@ class Band : Form {
 
   APPBARDATA Data() { var d = new APPBARDATA(); d.cbSize = Marshal.SizeOf(typeof(APPBARDATA)); d.hWnd = Handle; return d; }
 
+  // The band's app bar requests go straight to Explorer. While Gabay collects tray icons, its own Shell_TrayWnd stands in
+  // front (apps find the tray by its class), and on some PCs Explorer doesn't take in a band whose requests came through
+  // it; so for the moment of each request Gabay's steps behind Explorer's.
+  UIntPtr Bar(uint msg, ref APPBARDATA d) {
+    bool aside = Native.TrayAside();
+    UIntPtr r;
+    try { r = SHAppBarMessage(msg, ref d); } finally { if (aside) Native.TrayBack(); }
+    return r;
+  }
+
+  // Each new registration gets a window Explorer has never seen: on some PCs it won't take back a band window it was
+  // told to remove (the band then stays out of the usable area however often it is registered again).
+  bool used;
+  void Fresh() { if (used) RecreateHandle(); used = true; }
+  protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Native.bandHwnd = Handle; }
+
   public void Reserve(int l, int t, int r, int b, int h, IntPtr notch) {
     bool changed = !registered || l != this.l || t != this.t || r != this.r || b != this.b || h != this.h;
     this.l = l; this.t = t; this.r = r; this.b = b; this.h = h;
     uint pid = 0;
     above = notch != IntPtr.Zero && owner != 0 && IsWindow(notch) && GetWindowThreadProcessId(notch, out pid) != 0 && pid == owner ? notch : IntPtr.Zero;
-    if (changed) strikes = 0;
+    if (changed) { strikes = 0; pauses = 0; pauseUntil = DateTime.MinValue; }
     bool had = registered;
     var before = placed;
-    if (!registered) { var d = Data(); d.uCallbackMessage = callback; SHAppBarMessage(ABM_NEW, ref d); registered = true; }
-    Place();
+    if (!registered) { Fresh(); var d = Data(); d.uCallbackMessage = callback; Bar(ABM_NEW, ref d); registered = true; }
+    // Nothing new to tell Explorer otherwise: asking again only has it work the usable area out again, which on some PCs
+    // leaves the band out.
+    if (changed) Place();
     // moved to another screen (Follow mouse): that screen gets its space back if Explorer kept it. Its windows stay where
     // they are: the band follows the pointer from screen to screen, and moving them each time would resize them over and
     // over. They go back up when the band is turned off.
@@ -415,9 +435,9 @@ class Band : Form {
     var d = Data();
     d.uEdge = ABE_TOP;
     d.rc.L = l; d.rc.R = r; d.rc.T = t; d.rc.B = t + h;
-    SHAppBarMessage(ABM_QUERYPOS, ref d); // Windows may move it below another top bar
+    Bar(ABM_QUERYPOS, ref d); // Windows may move it below another top bar
     d.rc.B = d.rc.T + h;
-    SHAppBarMessage(ABM_SETPOS, ref d);
+    Bar(ABM_SETPOS, ref d);
     placed = d.rc;
     SetWindowPos(Handle, IntPtr.Zero, d.rc.L, d.rc.T, d.rc.R - d.rc.L, h, 0x0004 | 0x0010 | 0x0040); // no z-order change, no activate, show
   }
@@ -461,17 +481,24 @@ class Band : Form {
     // only a band that lies on its monitor (a screen that just changed is placed again by Gabay first)
     if (placed.L < m.L || placed.R > m.R || placed.T < m.T || placed.B >= mi.rcWork.B) return;
     if (mi.rcWork.T >= placed.B) return; // honored
-    // Something else keeps setting the usable area: leave it be rather than fight (until Gabay moves the band).
-    if (strikes >= 3) return;
+    // Something else keeps setting the usable area: leave it be for a while rather than fight, then try again, waiting
+    // longer each time (30 s, 1, 2, 4, 8, then 10 minutes), until Gabay moves the band.
+    if (DateTime.UtcNow < pauseUntil) return;
     if (DateTime.UtcNow - lastFix < TimeSpan.FromSeconds(15)) strikes++; else strikes = 0;
-    if (strikes >= 3) return;
+    if (strikes >= 3) {
+      strikes = 0;
+      pauseUntil = DateTime.UtcNow + TimeSpan.FromSeconds(Math.Min(600, 30 << Math.Min(pauses, 5)));
+      pauses++;
+      return;
+    }
     lastFix = DateTime.UtcNow;
-    // Explorer left the band out of the usable area, or lost it: register it anew, which has Explorer work the area
-    // out again with the band in it (a band it no longer knows makes the removal a no-op)
+    // Explorer left the band out of the usable area, or lost it: register it anew, in a fresh window, which has Explorer
+    // work the area out again with the band in it (a band it no longer knows makes the removal a no-op)
     var gone = Data();
-    SHAppBarMessage(ABM_REMOVE, ref gone);
+    Bar(ABM_REMOVE, ref gone);
+    Fresh();
     var d = Data(); d.uCallbackMessage = callback;
-    SHAppBarMessage(ABM_NEW, ref d);
+    Bar(ABM_NEW, ref d);
     Place();
     mi = Mon();
     if (mi.rcWork.T >= placed.B) return;
@@ -487,9 +514,9 @@ class Band : Form {
     if (registered) {
       // shrink to nothing first, so Explorer works the usable area out again as it does for a move, then leave
       var d = Data(); d.uEdge = ABE_TOP; d.rc = placed; d.rc.B = d.rc.T;
-      SHAppBarMessage(ABM_SETPOS, ref d);
+      Bar(ABM_SETPOS, ref d);
       var gone = Data();
-      SHAppBarMessage(ABM_REMOVE, ref gone);
+      Bar(ABM_REMOVE, ref gone);
       registered = false;
       if (physical) {
         GiveBack(placed);
@@ -512,7 +539,7 @@ class Band : Form {
       }
     } else if (registered && m.Msg == (int)taskbarCreated) {
       // Explorer started again and forgot its app bars: register anew (harmless when it still has this one)
-      var d = Data(); d.uCallbackMessage = callback; SHAppBarMessage(ABM_NEW, ref d);
+      var d = Data(); d.uCallbackMessage = callback; Bar(ABM_NEW, ref d);
       Place();
       if (physical) { soon.Stop(); soon.Start(); }
     } else if (registered && physical && m.Msg == WM_SETTINGCHANGE && (int)m.WParam == SPI_SETWORKAREA) {
@@ -659,7 +686,7 @@ static class Native {
   }
 
   static Band band;
-  static IntPtr bandHwnd; // the band's window: its app bar requests always reach Explorer (see TrayWndProc)
+  internal static IntPtr bandHwnd; // the band's window, kept current by the band: its app bar requests always reach Explorer (see TrayWndProc)
   [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr ctx);
   static void StartBand() {
     var ready = new ManualResetEvent(false);
@@ -1481,6 +1508,15 @@ static class Native {
     lastTray = null;
     Send("tray []");
   }
+
+  // For one app bar request of the band's, Explorer's taskbar window is the one found (see Band.Bar): Gabay's steps to
+  // the back, and TrayBack puts it in front again. False when Gabay's isn't the one in front.
+  internal static bool TrayAside() {
+    var t = trayWnd;
+    if (t == IntPtr.Zero || FindWindow("Shell_TrayWnd", null) != t) return false;
+    return SetWindowPos(t, new IntPtr(1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); // HWND_BOTTOM (no longer topmost), no move/size/activate
+  }
+  internal static void TrayBack() { RaiseTray(); }
 
   // Apps find the tray with FindWindow, which takes the first in z-order: stay ahead of Explorer's.
   static void RaiseTray() {
