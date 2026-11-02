@@ -204,7 +204,7 @@ The taskbar's system-tray features, built into the notch.
   screen on its display (a maximized window doesn't count). Rest the pointer on the very top edge, within the notch's width,
   to bring it back while hidden; it slides away again shortly after the pointer leaves.
 - **Auto-hide** (Settings): the notch is always tucked away until revealed that way, so it never covers a browser tab.
-- **Reserve space at the top** (Settings > Experiments, off by default): a 24 px black band across the top of the notch's
+- **Reserve space at the top** (Settings > Taskbar, off by default): a 24 px black band across the top of the notch's
   screen, registered with Windows as an app bar (the taskbar's mechanism), so maximized and snapped windows start below
   the notch. Windows you drag up by hand can still go under it. Full-screen apps still get the whole screen.
 - Full screen, now playing, notifications, the window list, focus and volume come from one small native helper (about
@@ -212,9 +212,10 @@ The taskbar's system-tray features, built into the notch.
   the Windows Runtime metadata in `System32\WinMetadata`, and cached in `%APPDATA%\gabay\bin`. Without that compiler
   those features quietly go away and the notch simply stays visible.
 - **Language** (Settings): English or Filipino. The text lives in `src/fil.ts` (the English sentence is the key; anything missing shows in English), looked up with `tr()` from `src/i18n.ts`. Release notes and the Windows-provided names stay in English.
-- **Settings tab:** global hotkey, how long the pointer must stay away before the panel collapses (200-1500 ms), which
-  display the notch sits on (or Follow mouse), notifications, accent colour (mint, your Windows accent, or six others),
-  weather city, lyrics, calendar, updates, **Report a bug**, and Experiments.
+- **Settings tab:** grouped into General (hotkey, language), Notch (visibility, which display or Follow mouse, how long the
+  pointer must stay away before the panel collapses, accent colour), Notifications, Features (recent files, lyrics,
+  weather city, calendar), Taskbar (experimental), Help and feedback (shortcuts, tour, review, **Report a bug**) and
+  About Gabay (version, updates, What's new, reset, quit).
 - **Report a bug** (Settings): describe the problem, then send it as a prefilled GitHub issue or copy it to paste in a
   chat. It adds the Gabay and Windows versions, screen setup, a few settings and recent error messages, with user names
   and home folders removed. Nothing from the clipboard, notifications, calendar or files.
