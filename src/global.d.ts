@@ -145,8 +145,10 @@ export interface OverlayApi {
   calendarGet(force: boolean): Promise<{ connected: boolean; events: CalEvent[]; error: boolean }>
   /** Saves the private iCal address (empty string forgets it). */
   calendarSet(url: string): Promise<boolean>
-  updateGet(check: boolean): Promise<{ current: string; available: UpdateInfo | null; packaged: boolean }>
+  updateGet(check: boolean): Promise<{ current: string; available: UpdateInfo | null; packaged: boolean; progress: UpdateProgress | null }>
   updateInstall(): Promise<boolean>
+  /** Each step of an update's install: download progress, checking, installing, or failed. Returns an unsubscribe function. */
+  onUpdateProgress(cb: (p: UpdateProgress) => void): () => void
   onMedia(cb: (m: LiveMedia | null) => void): () => void
   onNote(cb: (n: NoteInfo) => void): () => void
   onUpdate(cb: (u: UpdateInfo) => void): () => void
@@ -366,6 +368,14 @@ export interface CalEvent {
 export interface UpdateInfo {
   version: string
   notes: string
+}
+
+/** Where an update's install is: downloading (bytes so far of the total, 0 if unknown), checking the file, starting it, or failed. */
+export interface UpdateProgress {
+  version: string
+  phase: 'downloading' | 'verifying' | 'installing' | 'failed'
+  received: number
+  total: number
 }
 
 export interface OutputDevice {

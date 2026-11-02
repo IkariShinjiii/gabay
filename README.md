@@ -192,7 +192,10 @@ The taskbar's system-tray features, built into the notch.
   Integrate calendar > Secret address in iCal format). It is stored encrypted with Windows' DPAPI and only read by the main
   process. The Today tab shows what's on now and the next few events; it refreshes every 10 minutes.
 - **Updates:** Gabay checks this repo's GitHub releases 20 seconds after start and every 6 hours. Installing waits for
-  you (Settings > Install). The installer must come from this repo's releases and match the SHA-512 in the release's
+  you (Settings > Install), or for you to be away a few minutes with automatic updates on. While it downloads, the pill
+  shows a ring and the percentage, and Settings shows the same progress even after closing and reopening; pressing
+  Install again joins the download already running. A download that receives nothing for a minute gives up.
+  The installer must come from this repo's releases and match the SHA-512 in the release's
   `latest.yml`, or it is thrown away. To publish one: `npm run dist`, then attach `dist/Gabay Setup <v>.exe` and
   `dist/latest.yml` to a GitHub release tagged `v<version>`.
 

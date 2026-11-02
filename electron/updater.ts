@@ -4,8 +4,10 @@ import { createHash } from 'node:crypto'
 import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { downloadWithProgress } from './download'
 
-// Updates from this repository's GitHub releases. Nothing downloads or runs until the person presses Install. The
+// Updates from this repository's GitHub releases. Nothing downloads or runs until the person presses Install (or, with
+// automatic updates on, until they have been away for a few minutes). The
 // installer must come from this repo's release downloads and match the SHA-512 that electron-builder wrote into the
 // release's latest.yml; otherwise it is thrown away.
 
@@ -72,28 +74,75 @@ export async function checkUpdate(channel: 'stable' | 'preview' = 'stable'): Pro
   }
 }
 
+/** Where an install is: downloading (bytes so far of the total, 0 if unknown), checking the file, starting it, or failed. */
+export interface UpdateProgress {
+  version: string
+  phase: 'downloading' | 'verifying' | 'installing' | 'failed'
+  received: number
+  total: number
+}
+
+let progress: UpdateProgress | null = null
+let tell: (p: UpdateProgress) => void = () => undefined
+/** Called with each step of an install, so the notch and Settings can show it. */
+export function onUpdateProgress(fn: (p: UpdateProgress) => void): void {
+  tell = fn
+}
+/** The install in progress (or the last one, if it failed); null when none has run. */
+export const updateProgress = (): UpdateProgress | null => progress
+const report = (p: UpdateProgress): void => {
+  progress = p
+  tell(p)
+}
+
+// One install at a time: pressing Install again (or the automatic install starting) joins the one already running.
+let running: Promise<boolean> | null = null
+
 /** Downloads, verifies and starts the installer, then quits so it can replace the app. False if anything is off. */
-export async function installUpdate(): Promise<boolean> {
+export function installUpdate(): Promise<boolean> {
+  running ??= install().finally(() => {
+    running = null
+  })
+  return running
+}
+
+async function install(): Promise<boolean> {
   const f = found
   if (!f || !app.isPackaged) return false
+  const step = (phase: UpdateProgress['phase'], received: number, total: number): void => report({ version: f.version, phase, received, total })
+  const fail = (): false => {
+    step('failed', progress?.received ?? 0, progress?.total ?? 0)
+    return false
+  }
   try {
+    step('downloading', 0, 0)
     const ymlRes = await net.fetch(f.yml, { signal: AbortSignal.timeout(30_000) })
-    if (!ymlRes.ok) return false
+    if (!ymlRes.ok) return fail()
     const yml = await ymlRes.text()
     const sha = /^sha512:\s*(\S+)/m.exec(yml)?.[1]
-    if (!sha) return false
-    const res = await net.fetch(f.exe.browser_download_url, { signal: AbortSignal.timeout(10 * 60_000) })
-    if (!res.ok) return false
-    const data = Buffer.from(await res.arrayBuffer())
-    if (createHash('sha512').update(data).digest('base64') !== sha) return false
+    if (!sha) return fail()
+    // The size latest.yml gives, for the progress if the download doesn't say; a slow line may take its time, but one
+    // that sends nothing for a minute has dropped.
+    const size = Number(/^\s*size:\s*(\d+)/m.exec(yml)?.[1]) || 0
+    const data = await downloadWithProgress((url, init) => net.fetch(url, init), f.exe.browser_download_url, {
+      size,
+      maxBytes: 400_000_000,
+      stallMs: 60_000,
+      totalMs: 60 * 60_000,
+      onProgress: (received, total) => step('downloading', received, total)
+    })
+    if (!data) return fail()
+    step('verifying', data.length, data.length)
+    if (createHash('sha512').update(data).digest('base64') !== sha) return fail()
     const dir = await mkdtemp(join(tmpdir(), 'gabay-update-'))
     const exe = join(dir, `Gabay-Setup-${f.version}.exe`)
     await writeFile(exe, data)
+    step('installing', data.length, data.length)
     // Silent install over the current one, then start the new version.
     spawn(exe, ['/S', '--updated', '--force-run'], { detached: true, stdio: 'ignore', windowsHide: true }).unref()
     setTimeout(() => app.quit(), 500)
     return true
   } catch {
-    return false
+    return fail()
   }
 }

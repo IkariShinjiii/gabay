@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { COLLAPSE_DELAY_MS, HIDE_DELAY_MS, NOTCH, REVEAL_DWELL_MS } from './constants'
-import type { DownloadState, LauncherItem, DockApp, TrayIcon, LiveMedia, PowerAction, Settings, Weather } from './global'
+import type { DownloadState, LauncherItem, DockApp, TrayIcon, LiveMedia, PowerAction, Settings, UpdateProgress, Weather } from './global'
 import Dock from './Dock'
 import ClipboardPanel from './ClipboardPanel'
 import { parseCommand, type CommandActions } from './commands'
@@ -677,6 +677,21 @@ export default function App(): React.JSX.Element {
     }
   }, [pushToast])
 
+  // --- a Gabay update downloading: its progress in the pill, from Install in Settings or the automatic install ---
+  const [updating, setUpdating] = useState<UpdateProgress | null>(null)
+  useEffect(() => {
+    // Dev preview of the pill mid-download: sample numbers, never a real download.
+    if (previewParam === 'Updating') setUpdating({ version: '1.6.2', phase: 'downloading', received: 47_000_000, total: 112_000_000 })
+    if (previewParam) return
+    // Already running (the page was reloaded mid-download): pick it up.
+    void window.overlay.updateGet(false).then((r) => setUpdating(r.progress && r.progress.phase !== 'failed' ? r.progress : null), () => undefined)
+    return window.overlay.onUpdateProgress((p) => {
+      if (p.phase !== 'failed') return setUpdating(p)
+      setUpdating(null)
+      pushToast({ icon: 'download', title: tr("The update couldn't be downloaded"), sub: tr('Try again from Settings'), tone: 'plain', ms: 6000 })
+    })
+  }, [pushToast])
+
   // --- timers, stopwatch, focus timer: a chime and a toast when one ends ---
   const timers = useTimers((c) => {
     chime()
@@ -994,10 +1009,10 @@ export default function App(): React.JSX.Element {
   const onScreen = revealed || (visibility === 'always' && !fullscreen)
   const recording = recorder.startedAt !== null
   // Do not disturb keeps the pill to the time: no live activity, weather, battery or other icons.
-  const live = !dndOn && !expanded && !showToast && onScreen && (!!media?.playing || !!download || recording)
+  const live = !dndOn && !expanded && !showToast && onScreen && (!!media?.playing || !!download || !!updating || recording)
   // The pill is as wide as its two sides need (they are equal, so the clock stays centred): about 12 px per icon.
   const leftPx = dndOn ? 0 : 12 + (live && media?.playing ? 21 : 0) + (weather ? 41 : 0) + (attention ? 12 : 0)
-  const rightPx = (battery && !dndOn ? 34 : 0) + (live && download ? 52 : live && media?.playing ? 20 : 0) + (privacy.cam.length || privacy.mic.length ? 12 : 0)
+  const rightPx = (battery && !dndOn ? 34 : 0) + (live && (download || updating) ? 52 : live && media?.playing ? 20 : 0) + (privacy.cam.length || privacy.mic.length ? 12 : 0)
   const pillWidth = Math.max(live ? NOTCH.live.width : NOTCH.collapsed.width, 2 * Math.max(leftPx, rightPx) + 104)
   // The dock adds its own height on top of the usual cap, so tall tabs aren't squeezed by it.
   const dockShown = dockOn && !welcome && !tour && (wins.length > 0 || tray.length > 0) && tab === 'Launch' // running apps live on Launch only
@@ -1233,6 +1248,7 @@ export default function App(): React.JSX.Element {
             stopwatchMs={timers.stopwatch.running ? timers.elapsedMs : null}
             countdown={soonest ? { leftMs: leftOf(soonest, timers.now), totalMs: soonest.totalMs } : null}
             download={live ? download : null}
+            update={live ? updating : null}
           />
         </motion.div>
         <AnimatePresence>{showToast && toast && (

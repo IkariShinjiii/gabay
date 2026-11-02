@@ -1,6 +1,6 @@
 import Icon from './Icon'
 import type { IconName } from './icons'
-import type { DownloadState, LiveMedia, Weather } from './global'
+import type { DownloadState, LiveMedia, UpdateProgress, Weather } from './global'
 import type { BatteryInfo } from './useBattery'
 import { formatMs, type FocusTimer } from './useFocusTimer'
 import { formatClock } from './useTimers'
@@ -47,11 +47,13 @@ interface Props {
   /** The countdown that ends first, while one runs. */
   countdown: { leftMs: number; totalMs: number } | null
   download: DownloadState | null
+  /** A Gabay update downloading or installing: a ring and how far it has got, in place of a file download. */
+  update: UpdateProgress | null
 }
 
-function Ring({ fraction }: { fraction: number }): React.JSX.Element {
+function Ring({ fraction, size = 16 }: { fraction: number; size?: number }): React.JSX.Element {
   return (
-    <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 20 20" aria-hidden="true">
       <circle cx="10" cy="10" r={R} className="ring-bg" />
       <circle
         cx="10"
@@ -152,7 +154,20 @@ export default function NotchStatus(p: Props): React.JSX.Element {
             <span className="st-pct">{Math.round(battery.level * 100)}</span>
           </>
         )}
-        {p.download ? (
+        {p.update ? (
+          p.update.phase === 'downloading' ? (
+            <span className="st-dl" title={tr('Downloading Gabay {0}', p.update.version)}>
+              <Ring fraction={p.update.total ? p.update.received / p.update.total : 0} size={11} />
+              {p.update.total ? `${Math.floor((p.update.received / p.update.total) * 100)}%` : mb(p.update.received)}
+            </span>
+          ) : (
+            // the file is in: checked, then started (Gabay restarts on the new version a moment later)
+            <span className="st-dl" title={tr('Installing Gabay {0}', p.update.version)}>
+              <Ring fraction={1} size={11} />
+              <Icon name="check" size={11} />
+            </span>
+          )
+        ) : p.download ? (
           <span className="st-dl" title={`Downloading ${p.download.name}`}>
             <Icon name="download" size={11} />
             {mb(p.download.bytes)}

@@ -424,4 +424,14 @@ export const FIL: Record<string, string> = {
   "Clear {0}": "Burahin ang {0}",
   "Show {0} more": "Ipakita ang {0} pa",
   "Show less": "Ipakita ang mas kaunti",
+  // Update download progress
+  "Downloading… {0}%": "Dina-download… {0}%",
+  "{0} of {1} MB": "{0} sa {1} MB",
+  "{0} MB": "{0} MB",
+  "Installing…": "Ini-install…",
+  "Gabay restarts in a moment.": "Magre-restart ang Gabay sa ilang saglit.",
+  "Downloading Gabay {0}": "Dina-download ang Gabay {0}",
+  "Installing Gabay {0}": "Ini-install ang Gabay {0}",
+  "The update couldn't be downloaded": "Hindi ma-download ang update",
+  "Try again from Settings": "Subukan ulit mula sa Settings",
 }

@@ -9,7 +9,7 @@ import { nativeCall, nativeRunning, startNative, stopNative } from './native'
 import { logError, sendReport } from './diagnostics'
 import { connectWifi, disconnectWifi, listWifi } from './wifi'
 import { getAgenda, setCalendarUrl } from './calendar'
-import { checkUpdate, installUpdate, type UpdateInfo } from './updater'
+import { checkUpdate, installUpdate, onUpdateProgress, updateProgress, type UpdateInfo } from './updater'
 import { isRecording, recordingChunk, recordingStart, recordingStop, screenSource, screenshot } from './capture'
 import { findPlace, getWeather } from './weather'
 import { startDownloads, stopDownloads } from './downloads'
@@ -946,10 +946,12 @@ app.whenReady().then(async () => {
       })
     }, 30_000)
   }
+  // Each step of an install goes to the notch, which shows the download in the pill and in Settings.
+  onUpdateProgress((p) => send('overlay:update-progress', p))
   ipcMain.handle('update:get', async (e, check: unknown) => {
     fromUi(e)
     if (check === true) await lookForUpdate()
-    return { current: app.getVersion(), available: update, packaged: app.isPackaged }
+    return { current: app.getVersion(), available: update, packaged: app.isPackaged, progress: updateProgress() }
   })
   ipcMain.handle('update:install', (e) => {
     fromUi(e)

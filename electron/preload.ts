@@ -123,6 +123,12 @@ contextBridge.exposeInMainWorld('overlay', {
   calendarSet: (url: string) => ipcRenderer.invoke('calendar:set', url),
   updateGet: (check: boolean) => ipcRenderer.invoke('update:get', check),
   updateInstall: () => ipcRenderer.invoke('update:install'),
+  // Subscribe to an update's install steps (download progress, checking, installing, failed).
+  onUpdateProgress: (cb: (p: unknown) => void): (() => void) => {
+    const handler = (_e: unknown, p: unknown): void => cb(p)
+    ipcRenderer.on('overlay:update-progress', handler)
+    return () => ipcRenderer.removeListener('overlay:update-progress', handler)
+  },
   onMedia: (cb: (m: unknown) => void): (() => void) => {
     const handler = (_e: unknown, m: unknown): void => cb(m)
     ipcRenderer.on('overlay:media', handler)
