@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { latestTour } from './UpdateTour'
-import type { SettingsSnapshot, UpdateInfo } from './global'
+import type { SettingsSnapshot, UpdateInfo, UpdateProgress } from './global'
 import { ACCENT_PRESETS } from './accent'
 import Icon from './Icon'
 import { notesFor } from './whatsNew'
@@ -18,7 +18,8 @@ interface Props {
   liveHotkey: string | null
 }
 
-// Dev preview only: &open expands the folded rows, &bottom scrolls to the end, &scroll=<px> to a point (for screenshots).
+// Dev preview only: &open expands the folded rows, &bottom scrolls to the end, &scroll=<px> to a point, &updating shows
+// an update halfway through downloading (for screenshots).
 const previewFlags = new URLSearchParams(location.hash.slice(1))
 const PREVIEW_OPEN = previewFlags.has('open')
 
@@ -497,35 +498,81 @@ function ReportRow({ onHold }: { onHold: (h: boolean) => void }): React.JSX.Elem
   )
 }
 
+type UpdateState = { current: string; available: UpdateInfo | null; packaged: boolean }
+const mbOf = (bytes: number): string => String(Math.max(0, Math.round(bytes / 1e6)))
+
+/**
+ * The version, and checking for or installing an update. The install runs in main, so its progress comes from there:
+ * read when the row opens and followed live, so closing and reopening Settings mid-download shows where it is.
+ */
 function UpdateRow(): React.JSX.Element {
-  const [info, setInfo] = useState<{ current: string; available: UpdateInfo | null; packaged: boolean } | null>(null)
-  const [state, setState] = useState<'idle' | 'checking' | 'installing' | 'failed'>('idle')
+  // Dev preview (&updating): a download halfway through, with made-up numbers.
+  const sample = previewFlags.has('updating')
+  const [info, setInfo] = useState<UpdateState | null>(sample ? { current: '1.6.1', available: { version: '1.6.2', notes: '' }, packaged: true } : null)
+  const [progress, setProgress] = useState<UpdateProgress | null>(sample ? { version: '1.6.2', phase: 'downloading', received: 47_000_000, total: 112_000_000 } : null)
+  const [checking, setChecking] = useState(false)
   useEffect(() => {
-    void window.overlay.updateGet(false).then(setInfo, () => undefined)
-  }, [])
+    if (sample) return
+    void window.overlay.updateGet(false).then((r) => {
+      setInfo(r)
+      setProgress(r.progress)
+    }, () => undefined)
+    return window.overlay.onUpdateProgress(setProgress)
+  }, [sample])
   const check = async (): Promise<void> => {
-    setState('checking')
-    setInfo(await window.overlay.updateGet(true).catch(() => info))
-    setState('idle')
+    setChecking(true)
+    const r = await window.overlay.updateGet(true).catch(() => null)
+    if (r) setInfo(r)
+    setChecking(false)
   }
   const install = async (): Promise<void> => {
-    setState('installing')
-    if (!(await window.overlay.updateInstall().catch(() => false))) setState('failed')
+    if (!info?.available) return
+    setProgress({ version: info.available.version, phase: 'downloading', received: 0, total: 0 })
+    const ok = await window.overlay.updateInstall().catch(() => false)
+    // main says "failed" itself when a download goes wrong; this covers it refusing to start at all
+    if (!ok) setProgress((p) => (p && p.phase !== 'failed' ? { ...p, phase: 'failed' } : p))
   }
+  const busy = progress !== null && progress.phase !== 'failed'
+  const pct = progress && progress.total ? Math.min(100, Math.floor((progress.received / progress.total) * 100)) : null
+  const label = !progress
+    ? ''
+    : progress.phase === 'downloading'
+      ? pct !== null
+        ? tr('Downloading… {0}%', pct)
+        : tr('Downloading…')
+      : progress.phase === 'verifying'
+        ? tr('Checking…')
+        : tr('Installing…')
   return (
     <Row
       label={tr('Version')}
       value={info?.current ?? null}
-      desc={info && !info.packaged ? tr('Updates work in the installed app.') : undefined}
-      after={state === 'failed' && <div className="set-note">{tr("The update couldn't be downloaded or didn't check out. Try again later.")}</div>}
+      desc={info && !info.packaged ? tr('Updates work in the installed app.') : progress?.phase === 'installing' ? tr('Gabay restarts in a moment.') : undefined}
+      after={
+        <>
+          {busy && progress.phase === 'downloading' && (
+            <>
+              <div className="set-progress" role="progressbar" aria-label={tr('Downloading Gabay {0}', progress.version)} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}>
+                <span style={{ width: `${pct ?? 0}%` }} />
+              </div>
+              <div className="set-desc">{progress.total ? tr('{0} of {1} MB', mbOf(progress.received), mbOf(progress.total)) : tr('{0} MB', mbOf(progress.received))}</div>
+            </>
+          )}
+          {progress?.phase === 'failed' && <div className="set-note">{tr("The update couldn't be downloaded or didn't check out. Try again later.")}</div>}
+        </>
+      }
     >
-      {info?.available ? (
-        <button type="button" className="set-btn primary" disabled={state === 'installing'} onClick={() => void install()}>
-          {state === 'installing' ? tr('Downloading…') : tr('Install {0}', info.available.version)}
+      {busy ? (
+        <button type="button" className="set-btn primary" disabled>
+          {label}
+        </button>
+      ) : info?.available ? (
+        <button type="button" className="set-btn primary" onClick={() => void install()}>
+          {tr('Install {0}', info.available.version)}
         </button>
       ) : (
-        <button type="button" className="set-btn" disabled={!info?.packaged || state === 'checking'} onClick={() => void check()}>
-          {state === 'checking' ? tr('Checking…') : tr('Check for updates')}
+        <button type="button" className="set-btn" disabled={!info?.packaged || checking} onClick={() => void check()}>
+          {checking ? tr('Checking…') : tr('Check for updates')}
         </button>
       )}
     </Row>

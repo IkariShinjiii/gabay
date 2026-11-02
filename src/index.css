@@ -1883,6 +1883,23 @@ button.big-icon {
   margin-top: 10px;
 }
 
+/* An update downloading: how far it has got, under the Version row */
+.set-progress {
+  flex-basis: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.set-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 240ms var(--ease-out);
+}
+
 /* Choices that can wrap (hotkeys, screens): outlined until picked, then tinted with the accent */
 .opt {
   display: inline-flex;
