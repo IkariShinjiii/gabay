@@ -212,6 +212,11 @@ code { font-family: var(--mono); font-size: 0.85em; color: var(--text-2); }
 .thanks .ctas { margin-top: 22px; }
 .thanks .later { margin-top: 14px; padding: 8px 14px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 0.88rem; cursor: pointer; }
 .thanks .later:hover { color: var(--text); }
+.coffee .qr { display: block; width: min(300px, 100%); height: auto; margin: 18px auto 0; border-radius: 16px; }
+.coffee .note { font-size: 0.8rem; color: var(--muted); margin-top: 12px; }
+.linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.drop-in button.item { display: flex; justify-content: space-between; align-items: center; gap: 14px; width: 100%; padding: 10px 12px; border: 0; border-radius: 12px; background: none; color: var(--text); font: inherit; font-size: 0.88rem; text-align: left; cursor: pointer; }
+.drop-in button.item:hover, .drop-in button.item:focus-visible { background: var(--surface-2); }
 .facts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 22px; }
 .chip { font-family: var(--mono); font-size: 0.72rem; padding: 6px 12px; border-radius: var(--radius-pill); border: 1px solid var(--border-2); color: var(--text); background: rgba(11, 12, 11, 0.5); white-space: nowrap; }
 .chip.lit { background: rgba(255, 255, 255, 0.9); color: #0b0c0b; border-color: transparent; }
@@ -505,6 +510,7 @@ html.pre-lock, html.pre-lock body { overflow: hidden; }
             <a href="#faq">FAQ</a>
             <a href="#soon">Coming next</a>
             <hr>
+            <button type="button" class="item" data-coffee>Buy me a coffee <small>☕</small></button>
             <a href="https://github.com/IkariShinjiii/gabay" target="_blank" rel="noopener">Source code <small>GitHub ↗</small></a>
             <a href="https://github.com/IkariShinjiii/gabay/issues" target="_blank" rel="noopener">Report a bug <small>GitHub ↗</small></a>
           </div>
@@ -522,6 +528,7 @@ html.pre-lock, html.pre-lock body { overflow: hidden; }
         <a href="#changes">What's new</a>
         <a href="#faq">FAQ</a>
         <a href="#soon">Coming next</a>
+        <a href="#" data-coffee>Buy me a coffee</a>
       </nav>
     </details>
   </header>
@@ -857,13 +864,21 @@ html.pre-lock, html.pre-lock body { overflow: hidden; }
     </a>
     <a class="btn" href="https://github.com/IkariShinjiii" target="_blank" rel="noopener">Follow IkariShinjiii</a>
   </div>
+  <p class="small" style="margin-top:14px">Or <button type="button" class="linkish" data-coffee>buy me a coffee</button>.</p>
   <form method="dialog"><button class="later">Maybe later</button></form>
+</dialog>
+<dialog class="thanks coffee" id="coffee" aria-labelledby="coffee-h">
+  <h2 id="coffee-h">Buy me a coffee</h2>
+  <p>Gabay is free and made by one person. If it helps you, you can send a small thank-you. It is never required.</p>
+  <img class="qr" src="img/gotyme-qr.png" width="1290" height="1558" alt="GoTyme Bank InstaPay QR code. Scan it with GCash, Maya or any bank app that supports QR Ph." loading="lazy" decoding="async">
+  <p class="note">Scan with any bank or e-wallet app that supports QR Ph (InstaPay). Transfer fees may apply.</p>
+  <form method="dialog"><button class="later">Close</button></form>
 </dialog>
 
 <footer>
   <div class="wrap">
     <span>© 2026 IkariShinjiii. Free and open source under the <a href="https://github.com/IkariShinjiii/gabay/blob/main/LICENSE">GPL-3.0</a>.</span>
-    <span><a href="https://github.com/IkariShinjiii/gabay">GitHub</a> · <a href="https://github.com/IkariShinjiii/gabay/issues">Issues</a> · Code signing by the <a href="https://signpath.org">SignPath Foundation</a> (applied for; <a href="https://github.com/IkariShinjiii/gabay/blob/main/docs/CODE_SIGNING.md">policy</a>) · Fonts: Bricolage Grotesque, Onest, JetBrains Mono (SIL Open Font License)</span>
+    <span><a href="https://github.com/IkariShinjiii/gabay">GitHub</a> · <a href="https://github.com/IkariShinjiii/gabay/issues">Issues</a> · <button type="button" class="linkish" data-coffee>Buy me a coffee</button> · Code signing by the <a href="https://signpath.org">SignPath Foundation</a> (applied for; <a href="https://github.com/IkariShinjiii/gabay/blob/main/docs/CODE_SIGNING.md">policy</a>) · Fonts: Bricolage Grotesque, Onest, JetBrains Mono (SIL Open Font License)</span>
   </div>
 </footer>
 
@@ -938,6 +953,22 @@ html.pre-lock, html.pre-lock body { overflow: hidden; }
   if (thanks) thanks.addEventListener('click', function (e) {
     var r = thanks.getBoundingClientRect(); // a click on the backdrop lands on the dialog too, outside its box
     if (e.target === thanks && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) thanks.close();
+  });
+
+  // The coffee panel: opened from the More menu, the footer and the thank-you panel.
+  var coffee = document.getElementById('coffee');
+  document.querySelectorAll('[data-coffee]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.preventDefault();
+      if (!coffee || typeof coffee.showModal !== 'function') return;
+      if (thanks && thanks.open) thanks.close();
+      var d = document.querySelector('.menu'); if (d) d.open = false;
+      if (!coffee.open) coffee.showModal();
+    });
+  });
+  if (coffee) coffee.addEventListener('click', function (e) {
+    var r = coffee.getBoundingClientRect();
+    if (e.target === coffee && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) coffee.close();
   });
 
   // The download button always points at the newest release; without the API it falls back to the releases page.
