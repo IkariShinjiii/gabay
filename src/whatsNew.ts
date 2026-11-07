@@ -2,6 +2,12 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.6.3',
+    [
+      'The Controls tiles (Wi-Fi, Bluetooth, Audio, Airplane, Dark mode) no longer all turn to Unavailable when one system read fails: they keep their last values and recover on the next refresh'
+    ]
+  ],
+  [
     '1.6.2',
     [
       'An update now shows its download progress right on the notch, and in Settings even after you close it',

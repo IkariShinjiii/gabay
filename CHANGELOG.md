@@ -1,5 +1,131 @@
 # Changelog
 
+## 1.6.3
+
+- The Controls tiles (Wi-Fi, Bluetooth, Audio, Airplane, Dark mode) no longer all turn to Unavailable when one system read fails: they keep their last values and recover on the next refresh
+
+## 1.6.2
+
+- An update now shows its download progress right on the notch, and in Settings even after you close it
+- Reserve space at the top: windows that were already open move below the band, and go back when you turn it off
+- Slow connections can finish updating, and the band no longer gives up after Windows resets the screen space
+
+## 1.6.1
+
+- Settings is tidier: grouped into sections, with switches instead of rows of buttons
+- The Inbox groups notifications by app; clear one app's at once
+- Locking your PC closes the panel, and the notch comes back in place after unlocking, sleep or Remote Desktop
+
+## 1.6.0
+
+- Open Launch to see the files you opened recently, and an All apps list from A to Z
+- Recent files follow Windows: none while its "Show recently opened items" is off, and Settings can turn them off too
+
+## 1.5.0
+
+- Pick your own hotkey: Settings › Hotkey › Custom…, then press the keys
+- Focus quiets the notch: just the time, no pop-ups or sounds. Notifications wait in the Inbox, and timers still ring
+- Reserve space at the top works on more PCs: apps stay below the notch, and the clock stays on top
+- The camera and microphone dots no longer stay on after an app closes
+- Notches on your other screens respond again after a game, and stay small when no apps are open there
+
+## 1.4.4
+
+- With the taskbar hidden, your other screens get a small notch too: hover it for the dock
+- Dragging a pinned app to the front of the dock works, and a drag follows the pointer anywhere
+- Show desktop no longer hides the notch
+- Files found in Launch always open, even while you keep typing
+
+## 1.4.3
+
+- Hover an app in the dock to see its windows; click one to bring it up, or its X to close it
+- Drag pinned apps in the dock to put them in your order
+- Launch finds your files and folders too (right-click one, or Ctrl+Enter, to open its folder)
+- The dock's Task view button works on Windows 11, and Show desktop is instant
+- Quit Gabay from Settings, even with the taskbar hidden
+- Gabay no longer stays open after you open an app from its tray menu
+- More of Gabay in Filipino, including the date
+
+## 1.4.1
+
+- With the taskbar hidden, Gabay opens with the Start menu, even over a full-screen game
+- Tray icon menus open every time, and Gabay stays open until you pick something
+- Every app shows its real icon in Launch and the dock, including Steam games and Windows tools
+- Dock: Start and Task view buttons; middle-click an app for a new window; right-click to pick one of its windows
+- The dock's bell shows how many notifications are new
+- If Gabay is closed from Task Manager, the Windows taskbar comes back on its own
+- Gabay is now free and open source (GPL-3.0)
+
+## 1.4.0
+
+- New Inbox tab: your recent notifications in one list, including ones Do not disturb kept quiet (never saved)
+- Click the date on Today for a month calendar
+- Mute your microphone from Controls
+- Dock: move pinned apps left or right, plus Inbox and Show desktop buttons
+- Hide the taskbar completely, and see tray icons in the dock (experimental)
+- A tidier tab bar: Clipboard and Power now open from Controls
+- A short tour of what's new after updating
+- Rate Gabay from Settings; your review shows on the Gabay website
+
+## 1.3.8
+
+- Fold the sound Output list away with one click; Gabay remembers it
+- Settings is easier to scan, and every option can be reached with the keyboard
+
+## 1.3.7
+
+- Pick your sound output right in Gabay: Controls › Audio › the arrow shows your speakers, headphones and monitors
+- The notch stays shut while you aim in a game, in full screen or in a window
+- Gabay waits for the match to end before installing an update
+
+## 1.3.6
+
+- No notification sound over a full-screen game or video, and the summon hotkey no longer pulls you out of a match
+- Gabay runs at a lower priority so it never competes with a game for the CPU
+
+## 1.3.5
+
+- Fixed Gabay popping open while you play: it now ignores the mouse while a game has it locked
+
+## 1.3.4
+
+- Gabay in Filipino: pick it in Settings › Language
+- Point at a notification in the notch to open its app or dismiss it
+
+## 1.3.3
+
+- Controls fits again with the dock and lyrics showing: nothing is cut off or squeezed
+
+## 1.3.2
+
+- Only Gabay pops up: turn on Windows' Do not disturb, and notifications still show in the notch
+- A soft sound with each notification while Windows is on Do not disturb (Settings to turn it off)
+- On PCs without Wi-Fi: no Mobile hotspot tile, and a cable icon when the network is down
+
+## 1.3.1
+
+- Works on desktop PCs: battery, Wi-Fi and Bluetooth only show when the PC has them
+- Shows a wired (LAN) connection, even when Wi-Fi is also connected
+- Volume per app no longer scrolls sideways
+- A tip in Settings for when notifications pop up twice
+
+## 1.3.0
+
+- The dock groups windows by app, keeps your starred apps, and has a right-click menu
+- The camera dot works again, and hovering the dot shows which app is using it
+- After an update, this note waits until you're back at the PC
+- A Preview update channel, to get new versions first
+
+## 1.2.0
+
+- Updates install by themselves while you are away from the PC (Settings > Install updates automatically)
+
+## 1.1.0
+
+- Hide the Windows taskbar (Settings > Experiments): your open apps move into the notch
+- A dot on the notch when an app wants your attention
+- The mic dot now shows whenever an app is recording
+
 ## 1.0.0
 
 The first release for sharing.
