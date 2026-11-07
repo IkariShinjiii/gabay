@@ -352,7 +352,9 @@ function send(command: string): Promise<Reply | null> {
     idleTimer = setTimeout(stopHelper, IDLE_MS)
     return new Promise<Reply | null>((resolve) => {
       const timer = setTimeout(() => {
-        waiting = waiting.filter((w) => w.timer !== timer)
+        // A helper that missed its deadline is wedged, and its late answer would be handed to the *next* request.
+        // Throw it away (this resolves every waiter with null); the next request starts a fresh one.
+        stopHelper()
         resolve(null)
       }, REQUEST_TIMEOUT_MS)
       waiting.push({ resolve, timer })
@@ -432,8 +434,19 @@ const remember = (s: QuickState): QuickState => (last = s)
 
 export const quickPeek = (): QuickState | null => last
 
+/**
+ * Turns the helper's reply into a state. A failed read (timeout, helper died, `{"error":true}`, or a stray slider
+ * acknowledgement) must not wipe the tiles to "Unavailable": keep the last good values and try again on the next poll.
+ */
+async function settle(reply: Reply | null): Promise<QuickState> {
+  const good = reply !== null && reply.error !== true && !('ok' in reply)
+  if (good) return remember(await snapshotWith(reply))
+  if (last) return remember({ ...last, wifi: await wifiInfo() })
+  return snapshotWith(null)
+}
+
 export async function quickGet(): Promise<QuickState> {
-  return remember(await snapshotWith(await send('get')))
+  return settle(await send('get'))
 }
 
 /** Slider drags: sets volume or brightness without the slow full snapshot. */
@@ -461,7 +474,7 @@ export async function quickSet(action: unknown): Promise<QuickState> {
     else if (a.kind === 'radio' && (a.radio === 'wifi' || a.radio === 'bluetooth') && typeof a.on === 'boolean')
       cmd = `radio ${a.radio} ${a.on ? 'on' : 'off'}`
   }
-  return remember(await snapshotWith(await send(cmd ?? 'get')))
+  return settle(await send(cmd ?? 'get'))
 }
 
 /** wifi, ethernet or offline, from the network interfaces: no process, no polling. */
