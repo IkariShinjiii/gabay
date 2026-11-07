@@ -10,7 +10,8 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "dist": "electron-vite build && electron-builder --win --publish never",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "check:wifi": "node scripts/check-wifi-parse.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

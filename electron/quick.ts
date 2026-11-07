@@ -1,5 +1,6 @@
 import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { networkInterfaces } from 'node:os'
+import { parseConnectedWifi } from './wifi'
 
 /** Everything the Quick tab shows. Fields are null/empty when Windows doesn't expose them (desktop PCs have no brightness). */
 export interface QuickState {
@@ -366,14 +367,12 @@ function send(command: string): Promise<Reply | null> {
   return next
 }
 
-/** Signal and SSID from netsh (English labels; null on other languages or without Wi-Fi). Never logged. */
+/** Signal and SSID from netsh (any display language; null on other languages or without Wi-Fi). Never logged. */
 function wifiInfo(): Promise<QuickState['wifi']> {
   return new Promise((resolve) => {
     execFile('netsh', ['wlan', 'show', 'interfaces'], { windowsHide: true, timeout: 4000 }, (err, stdout) => {
       if (err) return resolve({ ssid: null, signal: null })
-      const ssid = /^\s*SSID\s*:\s*(.+)$/m.exec(stdout)?.[1]?.trim() ?? null
-      const sig = /^\s*Signal\s*:\s*(\d+)\s*%/m.exec(stdout)?.[1]
-      resolve({ ssid, signal: sig ? Number(sig) : null })
+      resolve(parseConnectedWifi(stdout))
     })
   })
 }
