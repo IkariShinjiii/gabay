@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question or share an idea
+    url: https://github.com/IkariShinjiii/gabay/discussions
+    about: For questions, ideas and show-and-tell, use Discussions.
+  - name: Report a security problem
+    url: https://github.com/IkariShinjiii/gabay/security/advisories/new
+    about: Report vulnerabilities privately, not as a public issue.

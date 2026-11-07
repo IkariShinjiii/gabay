@@ -1,7 +1,27 @@
 # Gabay
 
-Your Windows taskbar, folded into an iPhone-style notch: a strip at the top of the screen that expands into quick settings,
-your day and your tools. Built and tested on Windows 11; Windows 10 version 1809 or later should work.
+**Your Windows taskbar, folded into an iPhone-style notch.** Quick settings, your day and your tools, one hover away. Free and open source.
+
+<p align="center">
+  <img src="site/img/controls.png" alt="Gabay's Controls tab in the notch panel: Wi-Fi, Bluetooth, audio, dark mode, volume, brightness and now playing" width="440">
+</p>
+
+<p align="center">
+  <a href="https://github.com/IkariShinjiii/gabay/releases/latest"><b>Download</b></a> ·
+  <a href="https://gabay-site-plum.vercel.app"><b>Live demo (website)</b></a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="CONTRIBUTING.md">Contribute</a> ·
+  <a href="https://github.com/IkariShinjiii/gabay/discussions">Discussions</a>
+</p>
+
+**Install:** download **Gabay Setup** from the [latest release](https://github.com/IkariShinjiii/gabay/releases/latest) and run it.
+**Run from source** (Node 24, Windows), one line:
+
+```powershell
+git clone https://github.com/IkariShinjiii/gabay; cd gabay; npm install; npm run dev
+```
+
+Built and tested on Windows 11; Windows 10 version 1809 or later should work.
 Electron + React + TypeScript + electron-vite, with a small C# helper for the Windows parts (see CHANGELOG.md for history).
 
 ## Download

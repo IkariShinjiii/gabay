@@ -1,0 +1,49 @@
+name: Bug report
+description: Something in Gabay doesn't work.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for the report. Please don't paste notification text, clipboard contents, file paths or other private information.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you see instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Open the Controls tab\n2. ..."
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Gabay version
+      description: Shown in Settings, in the "What's new in ..." row.
+      placeholder: "1.6.2"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: "Windows 11 23H2"
+    validations:
+      required: true
+  - type: dropdown
+    id: pc
+    attributes:
+      label: Type of PC
+      options:
+        - Laptop
+        - Desktop
+        - Other
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots are welcome (check them for private information first).
