@@ -22,6 +22,46 @@ const kv = (line: string): [string, string] | null => {
   return i < 0 ? null : [line.slice(0, i).trim(), line.slice(i + 1).trim()]
 }
 
+export interface ConnectedWifi {
+  ssid: string | null
+  signal: number | null
+}
+
+const MAC_VALUE = /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i
+const GUID_VALUE = /^\{?[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}\}?$/i
+const PERCENT_VALUE = /^(\d{1,3})\s*%$/
+
+/**
+ * Reads the connected interface's SSID and signal from `netsh wlan show interfaces` without trusting the field labels:
+ * Windows translates them, so the same parser must work on any display language. Two value shapes stay the same
+ * everywhere: the signal is the only value that ends in "%", and the SSID line always sits directly above the BSSID
+ * line, whose value keeps the MAC shape. (The adapter's physical address is MAC-shaped too, but the line above it is
+ * the GUID, which is skipped.)
+ */
+export function parseConnectedWifi(output: string): ConnectedWifi {
+  const pairs: [string, string][] = []
+  for (const line of output.split(/\r?\n/)) {
+    const p = kv(line)
+    if (p) pairs.push(p)
+  }
+  let signal: number | null = null
+  for (const [, value] of pairs) {
+    const m = PERCENT_VALUE.exec(value)
+    if (m) {
+      signal = Math.min(100, Number(m[1]))
+      break
+    }
+  }
+  let ssid: string | null = null
+  for (let i = 1; i < pairs.length; i++) {
+    if (!MAC_VALUE.test(pairs[i][1])) continue
+    const above = pairs[i - 1][1]
+    if (!above || MAC_VALUE.test(above) || GUID_VALUE.test(above) || PERCENT_VALUE.test(above)) continue
+    ssid = above
+  }
+  return { ssid, signal }
+}
+
 let lastScan = new Set<string>()
 let profiles = new Set<string>()
 
@@ -38,14 +78,7 @@ export async function listWifi(): Promise<{ networks: WifiNetwork[]; error: 'off
       .filter((p): p is [string, string] => !!p && /profile/i.test(p[0]) && p[1] !== '')
       .map((p) => p[1])
   )
-  let current = ''
-  let state = ''
-  for (const p of iface.split(/\r?\n/).map(kv)) {
-    if (!p) continue
-    if (p[0] === 'SSID') current = p[1]
-    if (p[0] === 'State') state = p[1]
-  }
-  const connected = /connected/i.test(state) && !/disconnected/i.test(state) ? current : ''
+  const connected = parseConnectedWifi(iface).ssid ?? ''
 
   const byName = new Map<string, WifiNetwork>()
   let ssid: string | null = null

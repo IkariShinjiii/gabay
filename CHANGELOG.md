@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The Wi-Fi tile shows the network name and signal on Windows set to any language, not just English
+
 ## 1.6.3
 
 - The Controls tiles (Wi-Fi, Bluetooth, Audio, Airplane, Dark mode) no longer all turn to Unavailable when one system read fails: they keep their last values and recover on the next refresh
