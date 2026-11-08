@@ -656,13 +656,20 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onSho
       <Group title={tr('Notch')}>
         <Row
           label={tr('Notch visibility')}
-          desc={settings.visibility === 'auto' ? tr('Hidden until you rest the pointer on the top edge, so it never covers a tab or button') : tr('Steps aside while a video, game or other window is full screen')}
+          desc={
+            settings.visibility === 'auto'
+              ? tr('Hidden until you rest the pointer on the top edge, so it never covers a tab or button')
+              : settings.visibility === 'smart'
+                ? tr('Steps aside only while a window is under it, so it never covers a tab. Rest the pointer on the top edge to bring it back')
+                : tr('Steps aside while a video, game or other window is full screen')
+          }
         >
           <Seg
             label={tr('Notch visibility')}
             value={settings.visibility}
             options={[
               { value: 'always', label: tr('Always shown') },
+              { value: 'smart', label: tr('Smart') },
               { value: 'auto', label: tr('Auto-hide') }
             ]}
             onChange={(visibility) => void save({ visibility })}

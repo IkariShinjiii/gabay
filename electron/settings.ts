@@ -35,7 +35,7 @@ export interface Settings {
   /** The version whose "what's new" was last shown. */
   seenVersion: string
   /** 'always': shown, except while something is full screen. 'auto': off-screen until the pointer rests on the top edge. */
-  visibility: 'always' | 'auto'
+  visibility: 'always' | 'auto' | 'smart'
   /** Turn on the Windows taskbar's auto-hide and show open apps in the notch instead. */
   hideTaskbar: boolean
   /** With hideTaskbar: hide it outright, so it never slides up at the bottom edge. */
@@ -89,7 +89,7 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
       : base.collapseMs
   const displayId =
     r.displayId === null ? null : typeof r.displayId === 'number' && Number.isInteger(r.displayId) ? r.displayId : base.displayId
-  const visibility = r.visibility === 'always' || r.visibility === 'auto' ? r.visibility : base.visibility
+  const visibility = r.visibility === 'always' || r.visibility === 'auto' || r.visibility === 'smart' ? r.visibility : base.visibility
   const followMouse = typeof r.followMouse === 'boolean' ? r.followMouse : base.followMouse
   const notifications = typeof r.notifications === 'boolean' ? r.notifications : base.notifications
   const notePreview = typeof r.notePreview === 'boolean' ? r.notePreview : base.notePreview

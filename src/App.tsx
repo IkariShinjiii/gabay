@@ -146,12 +146,17 @@ export default function App(): React.JSX.Element {
   }, [])
 
   // Auto-hide: off-screen until the pointer rests on the top edge. `visibility` mirrors the saved setting.
-  const [visibility, setVisibility] = useState<'always' | 'auto'>('always')
+  const [visibility, setVisibility] = useState<'always' | 'auto' | 'smart'>('always')
+  // Smart hide: a window of another app is under the pill. Then the notch acts like auto-hide (it comes back on a rest at
+  // the top edge); with nothing under it, it stays up. Leaving is delayed a moment so dragging a window past never blinks it.
+  const [covered, setCovered] = useState(false)
+  const coveredRef = useRef(false)
+  const uncoverTimer = useRef<number | undefined>(undefined)
   // A full-screen window on the notch's display hides the notch the same way auto-hide does.
   const [fullscreen, setFullscreen] = useState(false)
   const fullscreenRef = useRef(false)
   const [revealed, setRevealed] = useState(false)
-  const visibilityRef = useRef<'always' | 'auto'>('always')
+  const visibilityRef = useRef<'always' | 'auto' | 'smart'>('always')
   const revealedRef = useRef(false)
   const edgeTimer = useRef<number | undefined>(undefined)
   const hideTimer = useRef<number | undefined>(undefined)
@@ -311,7 +316,8 @@ export default function App(): React.JSX.Element {
       }
 
       // Over a full-screen game or video the top edge belongs to the app (games scroll and aim there); only the hotkey opens Gabay.
-      if (visibilityRef.current !== 'auto' && !fullscreenRef.current) return
+      const parked = visibilityRef.current === 'auto' || (visibilityRef.current === 'smart' && coveredRef.current)
+      if (!parked && !fullscreenRef.current) return
       if (!revealedRef.current) {
         if (fullscreenRef.current) return
         // Reveal only on a rest at the very top edge within the notch's width, never on a pass through to a tab.
@@ -351,6 +357,18 @@ export default function App(): React.JSX.Element {
         // The pointer may be what held the panel open; a full-screen app in front means it no longer is.
         pointerInside.current = false
         evaluate()
+      }
+    })
+    const offCovered = window.overlay.onCovered((c) => {
+      window.clearTimeout(uncoverTimer.current)
+      if (c) {
+        coveredRef.current = true
+        setCovered(true)
+      } else {
+        uncoverTimer.current = window.setTimeout(() => {
+          coveredRef.current = false
+          setCovered(false)
+        }, 450)
       }
     })
     // The Start menu opened (the taskbar is hidden): come up with it on Launch, where the dock and tray icons are, and
@@ -395,6 +413,8 @@ export default function App(): React.JSX.Element {
       offLock()
       offStart()
       offFullscreen()
+      offCovered()
+      window.clearTimeout(uncoverTimer.current)
       document.removeEventListener('mousemove', onMove)
       document.documentElement.removeEventListener('mouseleave', onLeave)
     }
@@ -1010,7 +1030,8 @@ export default function App(): React.JSX.Element {
   // Collapsed, the notch is the pill, a little wider while media plays, and grows for a toast.
   const showToast = !expanded && toast !== null
   // Only while the pill is on screen: no meter animating behind a full-screen video or an auto-hidden notch.
-  const onScreen = revealed || (visibility === 'always' && !fullscreen)
+  const shown = !fullscreen && (visibility === 'always' || (visibility === 'smart' && !covered))
+  const onScreen = revealed || shown
   const recording = recorder.startedAt !== null
   // Do not disturb keeps the pill to the time: no live activity, weather, battery or other icons.
   const live = !dndOn && !expanded && !showToast && onScreen && (!!media?.playing || !!download || !!updating || recording)
@@ -1128,7 +1149,7 @@ export default function App(): React.JSX.Element {
         width: size.width,
         height: size.height,
         // Auto-hide parks the collapsed notch just above the screen; it slides in when revealed or expanded.
-        y: expanded || revealed || showToast || (visibility === 'always' && !fullscreen) ? 0 : -(NOTCH.collapsed.height + 4),
+        y: expanded || revealed || showToast || shown ? 0 : -(NOTCH.collapsed.height + 4),
         // Always flush with the top edge (the concave shoulders are drawn in CSS); only the bottom corners animate.
         borderBottomLeftRadius: bottomRadius,
         borderBottomRightRadius: bottomRadius

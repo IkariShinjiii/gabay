@@ -150,6 +150,12 @@ contextBridge.exposeInMainWorld('overlay', {
     ipcRenderer.on('overlay:fullscreen', handler)
     return () => ipcRenderer.removeListener('overlay:fullscreen', handler)
   },
+  // Subscribe to a window coming under (or leaving) the notch, for Smart hide.
+  onCovered: (cb: (covered: boolean) => void): (() => void) => {
+    const handler = (_e: unknown, c: unknown): void => cb(c === true)
+    ipcRenderer.on('overlay:covered', handler)
+    return () => ipcRenderer.removeListener('overlay:covered', handler)
+  },
   // Subscribe to the Start menu opening or closing (only while Gabay stands in for the taskbar).
   onStart: (cb: (open: boolean) => void): (() => void) => {
     const handler = (_e: unknown, open: unknown): void => cb(open === true)

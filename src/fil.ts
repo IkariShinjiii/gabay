@@ -270,6 +270,8 @@ export const FIL: Record<string, string> = {
   "Notch visibility": "Pagkakita ng notch",
   "Always shown": "Laging nakikita",
   "Auto-hide": "Auto-hide",
+  "Smart": "Matalino",
+  "Steps aside only while a window is under it, so it never covers a tab. Rest the pointer on the top edge to bring it back": "Umaalis lang kapag may window sa ilalim nito, kaya hindi nito tinatakpan ang tab. Ilagay ang pointer sa itaas na gilid para ibalik ito",
   "Steps aside while a video, game or other window is full screen": "Umaalis habang naka-full screen ang video, laro o ibang window",
   "Hidden until you rest the pointer on the top edge, so it never covers a tab or button": "Nakatago hanggang ilagay mo ang pointer sa itaas na gilid, kaya hindi nito tinatakpan ang tab o button",
   "Show on": "Ipakita sa",
