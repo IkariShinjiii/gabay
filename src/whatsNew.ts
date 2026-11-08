@@ -2,6 +2,12 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.6.4',
+    [
+      "Panels show a placeholder while they load instead of appearing from nowhere, and Controls, Settings, System, Notes, Power and Clipboard now load the first time you open them. The app's own page code is about 60% smaller, so it starts a little faster"
+    ]
+  ],
+  [
     '1.6.3',
     [
       'The Controls tiles (Wi-Fi, Bluetooth, Audio, Airplane, Dark mode) no longer all turn to Unavailable when one system read fails: they keep their last values and recover on the next refresh'
