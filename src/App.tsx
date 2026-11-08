@@ -1,19 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { COLLAPSE_DELAY_MS, HIDE_DELAY_MS, NOTCH, REVEAL_DWELL_MS } from './constants'
 import type { DownloadState, LauncherItem, DockApp, TrayIcon, LiveMedia, PowerAction, Settings, UpdateProgress, Weather } from './global'
 import Dock from './Dock'
-import ClipboardPanel from './ClipboardPanel'
 import { parseCommand, type CommandActions } from './commands'
 import Launcher from './Launcher'
 import Icon from './Icon'
-import PowerPanel from './PowerPanel'
-import SettingsPanel from './SettingsPanel'
 import NotchStatus, { type NetKind } from './NotchStatus'
-import QuickPanel from './QuickPanel'
 import { useBattery } from './useBattery'
-import StatsPanel from './StatsPanel'
-import TodayPanel from './TodayPanel'
 import InboxPanel, { type InboxItem } from './InboxPanel'
 import NotchToast, { type Toast } from './NotchToast'
 import { chime, leftOf, useTimers } from './useTimers'
@@ -22,10 +16,20 @@ import { applyAccent, resolveAccent } from './accent'
 import { ICONS, type IconName } from './icons'
 import Welcome from './Welcome'
 import UpdateTour, { tourBetween } from './UpdateTour'
-import NotesPanel from './NotesPanel'
 import { notesFor } from './whatsNew'
 import { useFocusTimer } from './useFocusTimer'
 import { tr, setLanguage, type Language } from './i18n'
+import Skeleton, { TAB_SKELETON } from './Skeleton'
+import TodayPanel from './TodayPanel'
+
+// The big tab panels load the first time they open (the first tab and the launcher are in the main bundle), with a
+// skeleton in their place meanwhile.
+const ClipboardPanel = lazy(() => import('./ClipboardPanel'))
+const NotesPanel = lazy(() => import('./NotesPanel'))
+const PowerPanel = lazy(() => import('./PowerPanel'))
+const SettingsPanel = lazy(() => import('./SettingsPanel'))
+const StatsPanel = lazy(() => import('./StatsPanel'))
+const QuickPanel = lazy(() => import('./QuickPanel'))
 
 // The tab bar, most used first; Launch and Settings show as icons (their name is the tooltip and screen reader label).
 const BAR_TABS = ['Today', 'Controls', 'Inbox', 'Notes', 'System', 'Launch', 'Settings'] as const
@@ -1189,7 +1193,7 @@ export default function App(): React.JSX.Element {
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
             >
-              {body}
+              <Suspense fallback={<Skeleton kind={TAB_SKELETON[tab] ?? 'list'} />}>{body}</Suspense>
             </motion.div>
           </AnimatePresence>
           {dockShown && <Dock apps={wins} tray={tray} unseen={unseen} onInbox={() => selectTab('Inbox')} onHold={(h) => { hold('menu', h); if (!h) evaluate() }} />}

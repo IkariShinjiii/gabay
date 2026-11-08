@@ -6,6 +6,7 @@ import type { MediaInfo, MixerApp, OutputDevice, ProjectMode, QuickAction, Quick
 import type { BatteryInfo } from './useBattery'
 import { batteryIcon } from './NotchStatus'
 import { tr } from './i18n'
+import Skeleton, { SkeletonRows } from './Skeleton'
 
 const POLL_MS = 3000
 const PRESS = { whileTap: { scale: 0.96 }, transition: { type: 'spring', stiffness: 600, damping: 32 } } as const
@@ -519,7 +520,7 @@ export default function QuickPanel(props: {
     void done
   }
 
-  if (!state) return <div className="body body-center">{tr('Loading…')}</div>
+  if (!state) return <Skeleton kind="tiles" />
   if (view === 'project') return <ProjectView onBack={() => setView('main')} />
   if (view === 'wifi') return <WifiView onBack={() => setView('main')} />
   if (view === 'bt') return <BluetoothView onBack={() => setView('main')} />
@@ -890,7 +891,7 @@ function WifiView({ onBack }: { onBack: () => void }): React.JSX.Element {
     <motion.div className="body quick-sub" initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 38 }}>
       <SubHead title={tr('Wi-Fi')} onBack={onBack} onRefresh={() => void scan()} busy={busy} />
       {data === null ? (
-        <div className="sub-empty">{tr('Scanning…')}</div>
+        <SkeletonRows />
       ) : data.networks.length === 0 ? (
         <div className="sub-empty">
           {data.error === 'location' ? 'Windows needs Location turned on to list networks.' : 'No networks found. Is Wi-Fi on?'}
@@ -947,7 +948,7 @@ function BluetoothView({ onBack }: { onBack: () => void }): React.JSX.Element {
     <motion.div className="body quick-sub" initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 38 }}>
       <SubHead title={tr('Bluetooth')} onBack={onBack} onRefresh={() => void load()} busy={busy} />
       {list === null ? (
-        <div className="sub-empty">{tr('Looking for devices…')}</div>
+        <SkeletonRows />
       ) : sorted.length === 0 ? (
         <div className="sub-empty">{tr('No paired devices, or Bluetooth is off.')}</div>
       ) : (
@@ -1074,7 +1075,7 @@ function MixerView({ onBack }: { onBack: () => void }): React.JSX.Element {
         </>
       )}
       {apps === null ? (
-        <div className="sub-empty">{tr('Looking for apps…')}</div>
+        <SkeletonRows count={2} />
       ) : apps.length === 0 ? (
         <div className="sub-empty">{tr('No apps are playing sound.')}</div>
       ) : (

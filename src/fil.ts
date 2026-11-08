@@ -37,6 +37,7 @@ export const FIL: Record<string, string> = {
   "Unmute": "I-unmute",
   "Muted": "Naka-mute",
   "Loading…": "Naglo-load…",
+  "Loading": "Naglo-load",
   "Looking for apps…": "Naghahanap ng mga app…",
   "Looking for devices…": "Naghahanap ng mga device…",
   "Measuring…": "Sinusukat…",

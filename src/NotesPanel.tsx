@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Icon from './Icon'
 import { tr } from './i18n'
+import Skeleton from './Skeleton'
 
 const SAVE_MS = 400
 const MAX_CHARS = 100_000
@@ -66,7 +67,7 @@ export default function NotesPanel({ onHold }: { onHold: (held: boolean) => void
     }
   }
 
-  if (text === null) return <div className="body body-center muted">{tr('Opening notes…')}</div>
+  if (text === null) return <Skeleton kind="lines" />
 
   const words = text.trim() ? text.trim().split(/\s+/).length : 0
   return (

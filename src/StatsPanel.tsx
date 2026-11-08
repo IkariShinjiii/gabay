@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 import type { SystemStats } from './global'
 import { STATS_POLL_MS } from './constants'
 import { tr } from './i18n'
+import Skeleton from './Skeleton'
 
 const GB = 1024 ** 3
 
@@ -60,7 +61,7 @@ export default function StatsPanel(): React.JSX.Element {
     }
   }, [])
 
-  if (!stats) return <div className="body body-center muted">{tr('Measuring…')}</div>
+  if (!stats) return <Skeleton kind="stats" />
 
   const ramPercent = (stats.ramUsedBytes / stats.ramTotalBytes) * 100
   return (

@@ -6,6 +6,7 @@ import Icon from './Icon'
 import { notesFor } from './whatsNew'
 import { COLLAPSE_STEP_MS } from './constants'
 import { tr } from './i18n'
+import Skeleton from './Skeleton'
 
 interface Props {
   /** Tells the notch the new settings immediately, without a reload. */
@@ -623,7 +624,7 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onSho
   useEffect(() => () => window.clearTimeout(saveTimer.current), [])
   const pickHotkey = (hotkey: string): Promise<void> => save({ hotkey })
 
-  if (!snap || delay === null) return <div className="body body-center">{tr('Loading…')}</div>
+  if (!snap || delay === null) return <Skeleton kind="settings" />
 
   const { settings, activeHotkey, hotkeys, displays, collapseRange } = snap
   const shownDisplay = displays.some((d) => d.id === settings.displayId) ? settings.displayId : null

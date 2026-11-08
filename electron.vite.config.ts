@@ -13,7 +13,7 @@ export default defineConfig({
   },
   renderer: {
     root: __dirname,
-    build: { rollupOptions: { input: { index: resolve(__dirname, 'index.html') } } },
+    build: { minify: true, rollupOptions: { input: { index: resolve(__dirname, 'index.html') } } },
     plugins: [react()]
   }
 })
