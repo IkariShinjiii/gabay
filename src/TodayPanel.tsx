@@ -6,6 +6,7 @@ import { weatherLook } from './weatherIcon'
 import { formatMs, type FocusTimer } from './useFocusTimer'
 import { dateLocale, tr } from './i18n'
 import MonthView from './MonthView'
+import { SkeletonRows } from './Skeleton'
 
 interface Props {
   timer: FocusTimer
@@ -37,7 +38,7 @@ function Agenda({ now }: { now: number }): React.JSX.Element | null {
   useEffect(() => {
     void window.overlay.calendarGet(false).then(setAgenda, () => undefined)
   }, [])
-  if (!agenda) return null
+  if (!agenda) return <SkeletonRows count={1} />
   if (!agenda.connected) return <div className="agenda-hint">{tr('Add your calendar in Settings to see what\'s next.')}</div>
   const next = agenda.events.filter((e) => e.end > now).slice(0, 3)
   return (
