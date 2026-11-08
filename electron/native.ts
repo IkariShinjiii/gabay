@@ -81,6 +81,8 @@ export interface NativeEvents {
   tray: (raw: unknown) => void
   /** The Start menu (or its search) came to the front, or left it. */
   start: (open: boolean) => void
+  /** Smart hide: a window of another app is under the notch's strip of the screen. */
+  cover: (covered: boolean) => void
 }
 
 let child: ChildProcess | null = null
@@ -125,6 +127,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
         else if (kind === 'wins') on.windows(JSON.parse(rest))
         else if (kind === 'tray') on.tray(JSON.parse(rest))
         else if (kind === 'start') on.start(rest === '1')
+        else if (kind === 'cover') on.cover(rest === '1')
         else if (kind === 'noteaccess') on.noteAccess(rest.slice(0, 40))
         else if (kind === 'r') {
           const s2 = rest.indexOf(' ')
@@ -166,7 +169,7 @@ export async function startNative(on: NativeEvents, onReady: () => void): Promis
 }
 
 /** One request. `arg` must already be validated by the caller: it is passed on as part of a single line. */
-export function nativeCall(cmd: 'vol' | 'volget' | 'micget' | 'micset' | 'outlist' | 'outset' | 'media' | 'bt' | 'notes' | 'appbar' | 'clipok' | 'clipseq' | 'mixer' | 'appvol' | 'seek' | 'wins' | 'windows' | 'focus' | 'minimize' | 'close' | 'tbget' | 'tbset' | 'tbhide' | 'tray' | 'trayclick' | 'traywait' | 'appicon' | 'startmenu' | 'taskview' | 'desktop' | 'files' | 'net' | 'hw' | 'dnd' | 'notedismiss' | 'noteopen', arg = ''): Promise<unknown> {
+export function nativeCall(cmd: 'cover' | 'vol' | 'volget' | 'micget' | 'micset' | 'outlist' | 'outset' | 'media' | 'bt' | 'notes' | 'appbar' | 'clipok' | 'clipseq' | 'mixer' | 'appvol' | 'seek' | 'wins' | 'windows' | 'focus' | 'minimize' | 'close' | 'tbget' | 'tbset' | 'tbhide' | 'tray' | 'trayclick' | 'traywait' | 'appicon' | 'startmenu' | 'taskview' | 'desktop' | 'files' | 'net' | 'hw' | 'dnd' | 'notedismiss' | 'noteopen', arg = ''): Promise<unknown> {
   const p = child
   if (!p?.stdin || /[\r\n]/.test(arg)) return Promise.resolve(null)
   const id = nextId++

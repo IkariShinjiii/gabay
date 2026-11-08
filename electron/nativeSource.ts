@@ -17,6 +17,8 @@
 //            mixer | appvol <pid> <0-100>    (per-app volume)
 //            seek <seconds>                  (now playing)
 //            wins on|off | windows           (open windows: pushed on change while on, or asked for)
+//            cover L T R B | cover off       (watch a strip of the screen, physical pixels: pushes cover 1 while a window
+//                                             of another app is under it, cover 0 when none is)
 //            focus <h> | minimize <h>        (switch to / minimize an open window)
 //            tbget | tbset <0|1> [restore]   (the Windows taskbar's auto-hide; restore is applied when Gabay exits)
 //            tray on <gabay pid> | tray off | trayclick <id> l|r   (Gabay as the notification area)
@@ -32,6 +34,7 @@
 //                                             base64 PNG string, or null)
 //   pushes   priv <json>                     camera / microphone in use, and by which apps
 //            wins <json>                     open windows, in z-order, while wins is on
+//            cover 0 | cover 1               smart hide: a window is under the notch strip (only while cover is on)
 //            tray <json>                     tray icons, while tray is on
 //            start 0|1                       the Start menu (or its search) is in front
 export const NATIVE_SOURCE = String.raw`
@@ -320,6 +323,8 @@ class Band : Form {
     FormBorderStyle = FormBorderStyle.None;
     ShowInTaskbar = false;
     BackColor = System.Drawing.Color.Black;
+    DoubleBuffered = true;
+    ResizeRedraw = true;
     StartPosition = FormStartPosition.Manual;
     TopMost = true;
     check.Interval = 2000;
@@ -328,6 +333,13 @@ class Band : Form {
     soon.Tick += (s, e) => { soon.Stop(); Check(); Fit(); };
     arrive.Interval = 350;
     arrive.Tick += (s, e) => { arrive.Stop(); FitArrived(); };
+  }
+
+  // A soft hairline along the band's lower edge: a dark window under a pure black strip no longer melts into it.
+  protected override void OnPaint(PaintEventArgs e) {
+    base.OnPaint(e);
+    using (var line = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(38, 38, 38)))
+      e.Graphics.FillRectangle(line, 0, ClientSize.Height - 1, ClientSize.Width, 1);
   }
 
   static TopFit.RECT R(RECT r) { var x = new TopFit.RECT(); x.L = r.L; x.T = r.T; x.R = r.R; x.B = r.B; return x; }
@@ -605,6 +617,7 @@ static class Native {
   [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
   [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
   [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out int value, int size);
+  [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT rect, int size);
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string cls, string name);
   [StructLayout(LayoutKind.Sequential)] struct APPBARDATA { public int cbSize; public IntPtr hWnd; public uint uCallbackMessage; public uint uEdge; public RECT rc; public IntPtr lParam; }
   [DllImport("shell32.dll")] static extern UIntPtr SHAppBarMessage(uint msg, ref APPBARDATA d);
@@ -729,6 +742,7 @@ static class Native {
         string now = FullScreen();
         if (now != null) fsActive = now.StartsWith("fs 1");
         if (now != null && now != last) { Send(now); last = now; }
+        if (coverOn) { string cv = CoverNow(); if (cv != lastCover) { lastCover = cv; Send(cv); } }
       } catch { }
       Thread.Sleep(400);
     }
@@ -852,6 +866,15 @@ static class Native {
         return "true";
       }
       case "windows": return Windows();
+      case "cover": {
+        if (arg == "off") { coverOn = false; return "true"; }
+        var cv = arg.Split(' ');
+        if (cv.Length != 4) return "false";
+        coverRect = new RECT { L = int.Parse(cv[0]), T = int.Parse(cv[1]), R = int.Parse(cv[2]), B = int.Parse(cv[3]) };
+        lastCover = null;
+        coverOn = true;
+        return "true";
+      }
       case "focus": return Focus(new IntPtr(long.Parse(arg))) ? "true" : "false";
       case "close": {
         var h = new IntPtr(long.Parse(arg));
@@ -1212,6 +1235,25 @@ static class Native {
   }
 
   // Taskbar rules: visible, unowned, not a tool window, not cloaked (another desktop, a suspended Store app), titled.
+  // ---------- smart hide: is a window of another app under the notch's strip of the screen? ----------
+  static volatile bool coverOn;
+  static RECT coverRect;
+  static string lastCover;
+  static string CoverNow() {
+    var n = coverRect; bool hit = false;
+    EnumWindows((h, l) => {
+      if (IsIconic(h) || !Listable(h)) return true;
+      uint pid; GetWindowThreadProcessId(h, out pid);
+      if (pid == self) return true;
+      RECT f;
+      if (DwmGetWindowAttribute(h, 9, out f, Marshal.SizeOf(typeof(RECT))) != 0 && !GetWindowRect(h, out f)) return true; // the visible frame, not the invisible resize border
+      if (f.R <= n.L || f.L >= n.R || f.B <= n.T || f.T >= n.B) return true;
+      hit = true;
+      return false;
+    }, IntPtr.Zero);
+    return hit ? "cover 1" : "cover 0";
+  }
+
   static bool Listable(IntPtr h) {
     if (!IsWindowVisible(h) || GetWindow(h, 4) != IntPtr.Zero) return false; // owned popups belong to their owner
     if ((GetWindowLong(h, -20) & 0x80) != 0) return false; // WS_EX_TOOLWINDOW

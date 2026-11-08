@@ -511,6 +511,9 @@ app.whenReady().then(async () => {
       noteAccess: (status) => {
         noteAccess = /^[A-Za-z]+$/.test(status) ? status : null
       },
+      cover: (covered) => {
+        if (settings.visibility === 'smart') send('overlay:covered', covered)
+      },
       privacy: (raw) => {
         const r = raw as { mic?: unknown; cam?: unknown } | null
         const names = (v: unknown): string[] => (Array.isArray(v) ? v.flatMap((x) => (typeof x === 'string' ? [x.slice(0, 60)] : [])).slice(0, 8) : [])
@@ -529,6 +532,7 @@ app.whenReady().then(async () => {
     }, () => {
       void nativeCall('notes', settings.notifications && !PREVIEW ? 'on' : 'off')
       applyReserve()
+      applyCover()
       void applyTaskbar()
     })
   }
@@ -1033,6 +1037,22 @@ app.whenReady().then(async () => {
     const notch = win.getNativeWindowHandle().readUInt32LE(0)
     void nativeCall('appbar', [px.x, px.y, px.x + px.width, px.y + px.height, h, notch].map((n) => Math.round(n)).join(' '))
   }
+  // Smart hide: the helper watches the strip of screen the collapsed notch sits in (its width plus some room for a toast's
+  // growth, the collapsed height) and says when a window of another app is under it. The notch steps aside only then.
+  const applyCover = (): void => {
+    if (PREVIEW) return
+    if (settings.visibility !== 'smart') {
+      void nativeCall('cover', 'off')
+      send('overlay:covered', false)
+      return
+    }
+    const d = targetDisplay(settings)
+    const px = screen.dipToScreenRect(null, d.bounds)
+    const half = Math.round(130 * d.scaleFactor)
+    const cx = px.x + px.width / 2
+    const h = Math.round(BAND_DIP * d.scaleFactor)
+    void nativeCall('cover', [cx - half, px.y, cx + half, px.y + h].map((n) => Math.round(n)).join(' '))
+  }
   // Windows and Chromium nudge a window out of space an app bar has just reserved, which would push the notch below
   // its own band. It belongs at the very top edge, so it goes straight back. A couple of pixels of rounding at odd
   // scales is left alone, and a few returns in a row is the limit, so this can never bounce back and forth.
@@ -1086,6 +1106,7 @@ app.whenReady().then(async () => {
     win.setBounds(b)
     win.setBounds(b)
     applyReserve()
+    applyCover()
     syncDocks()
   }
   // While the taskbar is hidden, every other screen gets a dock notch (the taskbar is gone there too). Following the
@@ -1233,6 +1254,7 @@ app.whenReady().then(async () => {
     const prevDisplay = settings.displayId
     const prevFollow = settings.followMouse
     const prevReserve = settings.reserveTop
+    const prevVisibility = settings.visibility
     const prevHide = settings.hideTaskbar
     const prevFull = settings.taskbarFull
     const prevTray = settings.trayIcons
@@ -1247,6 +1269,7 @@ app.whenReady().then(async () => {
     if (next.followMouse !== prevFollow) syncFollow()
     void nativeCall('notes', settings.notifications ? 'on' : 'off')
     if (next.reserveTop !== prevReserve) applyReserve()
+    if (next.visibility !== prevVisibility) applyCover()
     await saveSettings(settings)
     if (next.hideTaskbar !== prevHide || next.taskbarFull !== prevFull || next.trayIcons !== prevTray) await applyTaskbar()
     if (next.hideTaskbar !== prevHide || next.followMouse !== prevFollow) syncDocks()

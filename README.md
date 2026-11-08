@@ -226,6 +226,9 @@ The taskbar's system-tray features, built into the notch.
 - **Always shown (default):** the notch stays visible, and steps aside by itself while a video, game or any window is full
   screen on its display (a maximized window doesn't count). Rest the pointer on the very top edge, within the notch's width,
   to bring it back while hidden; it slides away again shortly after the pointer leaves.
+- **Smart** (Settings, Notch visibility): the notch steps aside only while a window is under it, so it never covers a browser
+  tab, and stays up on the desktop. Rest the pointer on the top edge to bring it back. A short delay on the way back keeps
+  it from blinking when you drag a window past.
 - **Auto-hide** (Settings): the notch is always tucked away until revealed that way, so it never covers a browser tab.
 - **Lock, sleep and Remote Desktop:** locking the PC closes the panel and lets go of the mouse (a tour in progress stays
   to finish). Unlocking or waking, which is also when a Remote Desktop session takes over with its own screens and
