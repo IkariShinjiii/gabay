@@ -322,9 +322,10 @@ class Band : Form {
     this.physical = physical;
     FormBorderStyle = FormBorderStyle.None;
     ShowInTaskbar = false;
+    // Clear: the strip only reserves room (the app bar), it paints nothing, so the desktop shows through and the notch
+    // looks like it floats. Black is the transparency key, which also lets clicks fall through to the desktop.
     BackColor = System.Drawing.Color.Black;
-    DoubleBuffered = true;
-    ResizeRedraw = true;
+    TransparencyKey = System.Drawing.Color.Black;
     StartPosition = FormStartPosition.Manual;
     TopMost = true;
     check.Interval = 2000;
@@ -333,13 +334,6 @@ class Band : Form {
     soon.Tick += (s, e) => { soon.Stop(); Check(); Fit(); };
     arrive.Interval = 350;
     arrive.Tick += (s, e) => { arrive.Stop(); FitArrived(); };
-  }
-
-  // A soft hairline along the band's lower edge: a dark window under a pure black strip no longer melts into it.
-  protected override void OnPaint(PaintEventArgs e) {
-    base.OnPaint(e);
-    using (var line = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(38, 38, 38)))
-      e.Graphics.FillRectangle(line, 0, ClientSize.Height - 1, ClientSize.Width, 1);
   }
 
   static TopFit.RECT R(RECT r) { var x = new TopFit.RECT(); x.L = r.L; x.T = r.T; x.R = r.R; x.B = r.B; return x; }
