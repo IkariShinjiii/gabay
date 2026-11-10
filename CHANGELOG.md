@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.5
+
+- New Smart option for Notch visibility: the notch steps aside only while a window (like a maximized Chrome) is under it, and comes back when you rest the pointer at the top edge. The reserved band at the top is now clear, so the notch still looks like it floats
+
 ## 1.6.4
 
 - Panels show a placeholder while they load instead of appearing from nowhere, and Controls, Settings, System, Notes, Power and Clipboard now load the first time you open them. The app's own page code is about 60% smaller, so it starts a little faster
