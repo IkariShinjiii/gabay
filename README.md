@@ -234,7 +234,7 @@ The taskbar's system-tray features, built into the notch.
   to finish). Unlocking or waking, which is also when a Remote Desktop session takes over with its own screens and
   scaling, puts the notch back on top and in place, again once the screens settle, and the taskbar setting back in force.
   Follow mouse holds still while the PC is locked.
-- **Reserve space at the top** (Settings > Taskbar, off by default): a 24 px black band across the top of the notch's
+- **Reserve space at the top** (Settings > Taskbar, off by default): a 24 px clear band (nothing is painted, so the desktop shows through and the notch still looks like it floats) across the top of the notch's
   screen, registered with Windows as an app bar (the taskbar's mechanism), so maximized and snapped windows start below
   the notch. Windows already open when it turns on (snapped or placed at the top, where Windows leaves them) move down
   to start below it, keeping their bottom edge, and so do windows that open or come back from minimized at the very top;
