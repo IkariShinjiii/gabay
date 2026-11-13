@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import Icon from './Icon'
 import type { CalEvent, Todo, Weather } from './global'
 import { formatClock, leftOf, MAX_TIMERS, type Timers } from './useTimers'
@@ -68,6 +68,31 @@ function Agenda({ now }: { now: number }): React.JSX.Element | null {
   )
 }
 
+/** The day as 48 half-hour ticks: height follows daylight (sunrise to sunset), past ticks teal, the current one glows. */
+function DayComb({ now, weather }: { now: Date; weather: Weather | null }): React.JSX.Element {
+  const cur = Math.floor((now.getHours() * 60 + now.getMinutes()) / 30)
+  const rise = (weather?.rise ?? 360) / 30 // shortcut: 6:00 to 18:00 when there is no forecast
+  const set = (weather?.set ?? 1080) / 30
+  const hour = (h: number): string => new Date(2000, 0, 1, h).toLocaleTimeString([], { hour: 'numeric' })
+  return (
+    <div className="comb-wrap">
+      <div className="comb" role="img" aria-label={tr('Your day in half hours')}>
+        {Array.from({ length: 48 }, (_, i) => {
+          const day = i >= rise && i <= set
+          const h = (day ? 8 + 30 * Math.sin((Math.PI * (i - rise)) / (set - rise)) : 4) + (i === cur ? 6 : 0)
+          const cls = i === cur ? 'tk cur' : !day ? 'tk night' : i < cur ? 'tk past' : 'tk day'
+          return <span key={i} className={cls} style={{ height: Math.round(h), '--i': i } as CSSProperties} />
+        })}
+      </div>
+      <div className="comb-hours">
+        {[0, 6, 12, 18, 24].map((h) => (
+          <span key={h}>{hour(h)}</span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /** Mounted only while the Today tab is visible, so its 1 s clock stops when the panel closes. */
 export default function TodayPanel({ timer, timers, weather, todoVersion, onHold }: Props): React.JSX.Element {
   const [now, setNow] = useState(() => new Date())
@@ -96,6 +121,7 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
   const running = timer.status === 'running'
   return (
     <div className="body today-wrap">
+    <DayComb now={now} weather={weather} />
     <div className="today">
       <div className="today-left">
         <div className="clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>

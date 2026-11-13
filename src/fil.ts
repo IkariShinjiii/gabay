@@ -163,6 +163,7 @@ export const FIL: Record<string, string> = {
   "Shut down (asks to confirm)": "I-shut down (hihingi ng kumpirmasyon)",
   "Add a to-do…": "Magdagdag ng gagawin…",
   "Nothing to do. Nice.": "Wala nang gagawin. Ayos!",
+  "Your day in half hours": "Ang araw mo kada kalahating oras",
   "Add your calendar in Settings to see what's next.": "Idagdag ang kalendaryo mo sa Settings para makita ang susunod.",
   "Tap +5m to start one. It keeps running when the notch closes.": "I-tap ang +5m para magsimula. Tuloy ang takbo kahit sarado ang notch.",
   "Cancel timer": "Kanselahin ang timer",
