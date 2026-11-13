@@ -7,6 +7,7 @@ import type { BatteryInfo } from './useBattery'
 import { batteryIcon } from './NotchStatus'
 import { tr } from './i18n'
 import Skeleton, { SkeletonRows } from './Skeleton'
+import type { Toast } from './NotchToast'
 
 const POLL_MS = 3000
 const PRESS = { whileTap: { scale: 0.96 }, transition: { type: 'spring', stiffness: 600, damping: 32 } } as const
@@ -427,6 +428,8 @@ export default function QuickPanel(props: {
   onShot: () => void
   /** Opens Clipboard or Power, which live behind buttons here instead of in the tab bar. */
   onOpen: (tab: 'Clipboard' | 'Power') => void
+  /** Shows a toast (the notch's own toast queue) for what a tile just did. */
+  onNotice: (t: Omit<Toast, 'id'>) => void
 }): React.JSX.Element {
   const { battery } = props
   const [state, setStateRaw] = useState<QuickState | null>(cache)
@@ -728,8 +731,22 @@ export default function QuickPanel(props: {
                     onClick={() => {
                       if (t.kind === 'airplane') void act({ kind: 'airplane' })
                       else if (t.kind === 'view') setView('project')
-                      else if (t.kind === 'tool') void window.overlay.quickTool(t.tool)
-                      else if (t.kind === 'link') void window.overlay.quickOpen(t.settings)
+                      else if (t.kind === 'tool')
+                        void window.overlay.quickTool(t.tool).then((ok) =>
+                          props.onNotice(
+                            ok
+                              ? { icon: t.icon, title: tr('{0} started', tr(t.label)), ms: 2600 }
+                              : { icon: t.icon, title: tr("Couldn't start {0}", tr(t.label)), tone: 'warn', ms: 4200 }
+                          )
+                        )
+                      else if (t.kind === 'link')
+                        void window.overlay.quickOpen(t.settings).then((ok) =>
+                          props.onNotice(
+                            ok
+                              ? { icon: t.icon, title: tr('Opened {0} settings', tr(t.label)), ms: 2600 }
+                              : { icon: t.icon, title: tr("Couldn't open {0} settings", tr(t.label)), tone: 'warn', ms: 4200 }
+                          )
+                        )
                     }}
                   >
                     <span className="ct-well">

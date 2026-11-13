@@ -453,6 +453,10 @@ export const FIL: Record<string, string> = {
   "Nothing on your calendar this day.": "Walang event sa iyong calendar sa araw na ito.",
   "Couldn't reach your calendar.": "Hindi maabot ang iyong calendar.",
   "Nothing else on your calendar today.": "Wala nang iba sa iyong calendar ngayon.",
+  "{0} started": "Nasimulan ang {0}",
+  "Couldn't start {0}": "Hindi masimulan ang {0}",
+  "Opened {0} settings": "Binuksan ang settings ng {0}",
+  "Couldn't open {0} settings": "Hindi mabuksan ang settings ng {0}",
   "Paste on click": "I-paste kapag na-click",
   "Clicking a clip pastes it (Ctrl+V) into the window you were using. Off by default.": "Kapag na-click ang clip, ipe-paste ito (Ctrl+V) sa window na ginagamit mo. Naka-off bilang default.",
 }

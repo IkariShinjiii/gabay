@@ -1156,6 +1156,7 @@ export default function App(): React.JSX.Element {
         onRecord={() => (recording ? recorder.stop() : void recorder.start())}
         onShot={() => void takeShot()}
         onOpen={selectTab}
+        onNotice={pushToast}
       />
     )
   } else {
