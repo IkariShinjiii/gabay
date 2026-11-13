@@ -31,9 +31,11 @@ const SETTINGS_FIND: { key: SettingsKey; name: string; words: string[] }[] = [
 
 /** Settings pages whose name or keywords contain the typed text (2+ letters), as launcher rows. */
 export function findSettings(query: string): LauncherItem[] {
-  const q = query.trim().toLowerCase()
+  // spaces and hyphens do not count: "wi fi", "wi-fi" and "wifi" all find Wi-Fi
+  const squash = (s: string): string => s.toLowerCase().replace(/[\s-]/g, '')
+  const q = squash(query)
   if (q.length < 2) return []
-  return SETTINGS_FIND.filter((s) => s.words.some((w) => w.includes(q)))
+  return SETTINGS_FIND.filter((s) => s.words.some((w) => squash(w).includes(q)))
     .map((s) => ({ id: s.key, name: tr(s.name), starred: false, kind: 'setting' as const }))
 }
 
