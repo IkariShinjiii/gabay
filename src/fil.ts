@@ -442,4 +442,5 @@ export const FIL: Record<string, string> = {
   "Night light": "Night light",
   "Apps": "Mga app",
   "Windows Update": "Windows Update",
+  "Emoji": "Emoji",
 }

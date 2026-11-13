@@ -73,6 +73,7 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
         const prev = items[i - 1]
         let head: string | null = null
         if (it.kind === 'file' && prev?.kind !== 'file') head = mode === 'home' ? tr('Recent files') : tr('Files')
+        else if (it.kind === 'emoji' && prev?.kind !== 'emoji') head = tr('Emoji')
         else if (it.kind === 'setting' && prev?.kind !== 'setting') head = tr('Settings')
         else if (mode === 'all' && (!prev || letterOf(prev.name) !== letterOf(it.name))) head = letterOf(it.name)
         if (it.kind === 'all') {
@@ -108,7 +109,11 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
               }}
               title={it.kind === 'file' ? tr('Right-click or Ctrl+Enter: open file location') : undefined}
             >
-              {it.kind === 'setting' ? (
+              {it.kind === 'emoji' ? (
+                <span className="app-icon app-icon-none" aria-hidden="true">
+                  {it.id}
+                </span>
+              ) : it.kind === 'setting' ? (
                 <span className="app-icon app-icon-none">
                   <Icon name="settings" size={16} />
                 </span>
@@ -118,7 +123,7 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
               <span className="row-name">{it.name}</span>
               {it.kind === 'file' ? (
                 it.folder && <span className="row-sub">{it.folder}</span>
-              ) : it.kind === 'setting' ? null : (
+              ) : it.kind === 'setting' || it.kind === 'emoji' ? null : (
                 <button
                   className={it.starred ? 'star on' : 'star'}
                   title={it.starred ? tr('Unstar') : tr('Star')}
