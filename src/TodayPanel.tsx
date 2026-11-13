@@ -107,15 +107,18 @@ function skyColor(i: number, rise: number, set: number): string {
 /** The day as 48 half-hour ticks coloured like the sky: height follows daylight, past ticks are lit, the rest are dimmed, and now glows. */
 function DayComb({ now, weather }: { now: Date; weather: Weather | null }): React.JSX.Element {
   const cur = Math.floor((now.getHours() * 60 + now.getMinutes()) / 30)
-  const rise = (weather?.rise ?? 360) / 30 // shortcut: 6:00 to 18:00 when there is no forecast
-  const set = (weather?.set ?? 1080) / 30
+  // Arctic: the forecast gives equal sun times (sun up or down all day), so the strip is all day or all night.
+  const polar = weather?.rise !== undefined && weather.rise === weather.set
+  const rise = polar ? 0 : (weather?.rise ?? 360) / 30 // shortcut: 6:00 to 18:00 when there is no forecast
+  const set = polar ? (weather?.day ? 48 : 0) : (weather?.set ?? 1080) / 30
+  const sunTimes = weather?.rise !== undefined && weather.set !== undefined && !polar // the tooltip only states real forecast times
   const hour = (h: number): string => new Date(2000, 0, 1, h).toLocaleTimeString([], { hour: 'numeric' })
   const at = (m: number): string => new Date(2000, 0, 1, 0, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
   return (
     <div className="comb-wrap">
-      <div className="comb" role="img" aria-label={tr('Your day in half hours')} title={`${at(weather?.rise ?? 360)} \u2192 ${at(weather?.set ?? 1080)}`}>
+      <div className="comb" role="img" aria-label={tr('Your day in half hours')} title={sunTimes ? `${at(weather?.rise ?? 360)} \u2192 ${at(weather?.set ?? 1080)}` : undefined}>
         {Array.from({ length: 48 }, (_, i) => {
-          const day = i >= rise && i <= set
+          const day = set > rise && i >= rise && i <= set
           const h = (day ? 10 + 30 * Math.sin((Math.PI * (i - rise)) / (set - rise)) : 5) + (i === cur ? 6 : 0)
           const color = skyColor(i + 0.5, rise, set)
           return (
