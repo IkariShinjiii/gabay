@@ -975,6 +975,8 @@ export default function App(): React.JSX.Element {
   }
 
   const onInputKey = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    // An IME is composing: Enter and arrows belong to the candidate list, not to the launcher.
+    if (e.nativeEvent.isComposing) return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setSelected((s) => Math.min(s + 1, Math.max(items.length - 1, 0)))
@@ -1010,6 +1012,8 @@ export default function App(): React.JSX.Element {
     if (t === 'Inbox') setUnseen(0)
     setInput('')
     setLaunchView('home')
+    // Launch by tab or Ctrl+6 takes the caret, like the Windows Start menu, so typing starts a search at once.
+    if (t === 'Launch') window.setTimeout(() => inputRef.current?.focus(), 0)
   }, [])
 
   // Ctrl+1..9 switch tabs while the panel is open.

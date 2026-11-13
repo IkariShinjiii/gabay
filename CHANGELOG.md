@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Launch opens with the search focused: type right away after clicking the Launch tab or pressing Ctrl+6
+
 ## 1.6.5
 
 - New Smart option for Notch visibility: the notch steps aside only while a window (like a maximized Chrome) is under it, and comes back when you rest the pointer at the top edge. The reserved band at the top is now clear, so the notch still looks like it floats
