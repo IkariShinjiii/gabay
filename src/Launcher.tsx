@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef } from 'react'
 import Empty from './Empty'
 import AppIcon from './AppIcon'
 import Icon from './Icon'
-import type { LauncherItem } from './global'
+import type { LauncherItem, SettingsKey } from './global'
 import { tr } from './i18n'
 
 interface Props {
@@ -16,6 +16,25 @@ interface Props {
   onToggleStar: (item: LauncherItem) => void
   onReveal: (item: LauncherItem) => void
   onBack: () => void
+}
+
+// Windows Settings pages the search finds by name. The key is opened in electron/quick.ts (SETTINGS_PAGES), not here.
+const SETTINGS_FIND: { key: SettingsKey; name: string; words: string[] }[] = [
+  { key: 'wifi', name: 'Wi-Fi', words: ['wifi', 'wi-fi', 'wireless', 'network', 'internet'] },
+  { key: 'bluetooth', name: 'Bluetooth', words: ['bluetooth'] },
+  { key: 'display', name: 'Display', words: ['display', 'screen', 'monitor', 'resolution'] },
+  { key: 'nightlight', name: 'Night light', words: ['night light', 'nightlight', 'night', 'blue light'] },
+  { key: 'sound', name: 'Sound', words: ['sound', 'volume', 'audio', 'speakers'] },
+  { key: 'appsfeatures', name: 'Apps', words: ['apps', 'uninstall'] },
+  { key: 'windowsupdate', name: 'Windows Update', words: ['update', 'updates', 'windows update'] }
+]
+
+/** Settings pages whose name or keywords contain the typed text (2+ letters), as launcher rows. */
+export function findSettings(query: string): LauncherItem[] {
+  const q = query.trim().toLowerCase()
+  if (q.length < 2) return []
+  return SETTINGS_FIND.filter((s) => s.words.some((w) => w.includes(q)))
+    .map((s) => ({ id: s.key, name: tr(s.name), starred: false, kind: 'setting' as const }))
 }
 
 /** The letter an app files under in All apps: its first letter, or # for digits and symbols. */
@@ -54,6 +73,7 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
         const prev = items[i - 1]
         let head: string | null = null
         if (it.kind === 'file' && prev?.kind !== 'file') head = mode === 'home' ? tr('Recent files') : tr('Files')
+        else if (it.kind === 'setting' && prev?.kind !== 'setting') head = tr('Settings')
         else if (mode === 'all' && (!prev || letterOf(prev.name) !== letterOf(it.name))) head = letterOf(it.name)
         if (it.kind === 'all') {
           return (
@@ -88,11 +108,17 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
               }}
               title={it.kind === 'file' ? tr('Right-click or Ctrl+Enter: open file location') : undefined}
             >
-              <AppIcon id={it.id} lazy={mode === 'all'} fallback={it.kind === 'file' ? 'file' : 'app-window'} />
+              {it.kind === 'setting' ? (
+                <span className="app-icon app-icon-none">
+                  <Icon name="settings" size={16} />
+                </span>
+              ) : (
+                <AppIcon id={it.id} lazy={mode === 'all'} fallback={it.kind === 'file' ? 'file' : 'app-window'} />
+              )}
               <span className="row-name">{it.name}</span>
               {it.kind === 'file' ? (
                 it.folder && <span className="row-sub">{it.folder}</span>
-              ) : (
+              ) : it.kind === 'setting' ? null : (
                 <button
                   className={it.starred ? 'star on' : 'star'}
                   title={it.starred ? tr('Unstar') : tr('Star')}

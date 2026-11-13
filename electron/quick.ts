@@ -54,6 +54,9 @@ export const SETTINGS_PAGES = {
   notifications: 'ms-settings:notifications',
   network: 'ms-settings:network-wifi',
   bluetooth: 'ms-settings:bluetooth',
+  nightlight: 'ms-settings:nightlight',
+  appsfeatures: 'ms-settings:appsfeatures',
+  windowsupdate: 'ms-settings:windowsupdate',
   settings: 'ms-settings:'
 } as const
 export type SettingsKey = keyof typeof SETTINGS_PAGES
