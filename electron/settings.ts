@@ -26,6 +26,8 @@ export interface Settings {
   lyrics: boolean
   /** Show files opened recently (Windows' own list) in Launch, while Windows keeps that list. */
   recentFiles: boolean
+  /** Clicking a clip in the Clipboard tab also pastes it (Ctrl+V) into the window the user was in. Off by default. */
+  pasteOnClick: boolean
   /** Do not disturb until this time (ms since epoch); 0 = off, Infinity is stored as -1 (until turned off). */
   dndUntil: number
   /** The first-run tour was shown (or skipped). */
@@ -75,7 +77,7 @@ export const ACCENTS =['mint', 'windows', 'blue', 'purple', 'pink', 'orange', 'r
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, noteSound: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, recentFiles: true, dndUntil: 0, welcomed: false, reviewAt: 0, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarFull: false, trayIcons: false, taskbarWasAutoHide: null, autoUpdate: true, updateChannel: 'stable', language: 'en' }
+export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, noteSound: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, recentFiles: true, pasteOnClick: false, dndUntil: 0, welcomed: false, reviewAt: 0, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarFull: false, trayIcons: false, taskbarWasAutoHide: null, autoUpdate: true, updateChannel: 'stable', language: 'en' }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -105,6 +107,7 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
         : base.place
   const lyrics = typeof r.lyrics === 'boolean' ? r.lyrics : base.lyrics
   const recentFiles = typeof r.recentFiles === 'boolean' ? r.recentFiles : base.recentFiles
+  const pasteOnClick = typeof r.pasteOnClick === 'boolean' ? r.pasteOnClick : base.pasteOnClick
   const dndUntil = typeof r.dndUntil === 'number' && (r.dndUntil === -1 || r.dndUntil >= 0) ? r.dndUntil : base.dndUntil
   const welcomed = typeof r.welcomed === 'boolean' ? r.welcomed : base.welcomed
   const reviewAt = typeof r.reviewAt === 'number' && Number.isFinite(r.reviewAt) && (r.reviewAt === -1 || r.reviewAt >= 0) ? r.reviewAt : base.reviewAt
@@ -117,7 +120,7 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
   const autoUpdate = typeof r.autoUpdate === 'boolean' ? r.autoUpdate : base.autoUpdate
   const updateChannel = r.updateChannel === 'stable' || r.updateChannel === 'preview' ? r.updateChannel : base.updateChannel
   const language = r.language === 'en' || r.language === 'fil' ? r.language : base.language
-  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, noteSound, reserveTop, accent, place, lyrics, recentFiles, dndUntil, welcomed, reviewAt, seenVersion, visibility, hideTaskbar, taskbarFull, trayIcons, taskbarWasAutoHide, autoUpdate, updateChannel, language }
+  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, noteSound, reserveTop, accent, place, lyrics, recentFiles, pasteOnClick, dndUntil, welcomed, reviewAt, seenVersion, visibility, hideTaskbar, taskbarFull, trayIcons, taskbarWasAutoHide, autoUpdate, updateChannel, language }
 }
 
 export async function loadSettings(): Promise<Settings> {

@@ -212,6 +212,7 @@ export interface Settings {
   place: { name: string; lat: number; lon: number } | null
   lyrics: boolean
   recentFiles: boolean
+  pasteOnClick: boolean
   dndUntil: number
   welcomed: boolean
   reviewAt: number

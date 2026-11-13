@@ -451,4 +451,6 @@ export const FIL: Record<string, string> = {
   "Only today and tomorrow are read from your calendar.": "Ngayon at bukas lang ang binabasa mula sa iyong calendar.",
   "Nothing on your calendar this day.": "Walang event sa iyong calendar sa araw na ito.",
   "Couldn't reach your calendar.": "Hindi maabot ang iyong calendar.",
+  "Paste on click": "I-paste kapag na-click",
+  "Clicking a clip pastes it (Ctrl+V) into the window you were using. Off by default.": "Kapag na-click ang clip, ipe-paste ito (Ctrl+V) sa window na ginagamit mo. Naka-off bilang default.",
 }
