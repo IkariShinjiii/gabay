@@ -36,7 +36,8 @@ function when(ev: CalEvent, now: number): string {
 function Agenda({ now }: { now: number }): React.JSX.Element | null {
   const [agenda, setAgenda] = useState<{ connected: boolean; events: CalEvent[]; error: boolean } | null>(null)
   useEffect(() => {
-    void window.overlay.calendarGet(false).then(setAgenda, () => undefined)
+    // A failed request shows the same state as a calendar that cannot be reached, not a spinner forever.
+    void window.overlay.calendarGet(false).then(setAgenda, () => setAgenda({ connected: true, events: [], error: true }))
   }, [])
   if (!agenda) return <SkeletonRows count={1} />
   if (!agenda.connected) return <div className="agenda-hint">{tr('Add your calendar in Settings to see what\'s next.')}</div>
