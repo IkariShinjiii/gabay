@@ -1358,7 +1358,7 @@ static class Native {
       target = IntPtr.Zero;
       for (IntPtr w = GetWindow(fg, 2); w != IntPtr.Zero; w = GetWindow(w, 2)) { // GW_HWNDNEXT: the window below
         uint wp; GetWindowThreadProcessId(w, out wp);
-        if (wp != self && IsWindowVisible(w) && Listable(w)) { target = w; break; }
+        if (wp != self && IsWindowVisible(w) && !IsIconic(w) && Listable(w)) { target = w; break; } // minimized: Focus would restore it
       }
     }
     if (target == IntPtr.Zero || !Focus(target)) return false;
