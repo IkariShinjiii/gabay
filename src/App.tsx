@@ -993,8 +993,9 @@ export default function App(): React.JSX.Element {
   }
 
   const onInputKey = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    // An IME is composing: Enter and arrows belong to the candidate list, not to the launcher.
-    if (e.nativeEvent.isComposing) return
+    // An IME is composing: Enter and arrows belong to the candidate list, not to the launcher. Some IMEs send the
+    // committing Enter after compositionend, with isComposing false but keyCode 229.
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setSelected((s) => Math.min(s + 1, Math.max(items.length - 1, 0)))
