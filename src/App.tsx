@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { COLLAPSE_DELAY_MS, HIDE_DELAY_MS, NOTCH, REVEAL_DWELL_MS } from './constants'
-import type { DownloadState, LauncherItem, DockApp, TrayIcon, LiveMedia, PowerAction, Settings, SettingsKey, UpdateProgress, Weather } from './global'
+import type { ClipCopyResult, DownloadState, LauncherItem, DockApp, TrayIcon, LiveMedia, PowerAction, Settings, SettingsKey, UpdateProgress, Weather } from './global'
 import Dock from './Dock'
 import { parseCommand, type CommandActions } from './commands'
 import Launcher, { findSettings } from './Launcher'
@@ -963,10 +963,22 @@ export default function App(): React.JSX.Element {
   }
 
   // After copy-back, release the field and let the panel close.
-  const onClipCopied = useCallback((): void => {
-    setInput('')
-    inputRef.current?.blur()
-  }, [])
+  const onClipCopied = useCallback(
+    (result: ClipCopyResult): void => {
+      setInput('')
+      inputRef.current?.blur()
+      // The panel closes after a copy, as its onCopied callback always intended (a notch held open by the pointer would hide
+      // the message below). Toasts show once it is closed.
+      isOpen.current = false
+      setExpanded(false)
+      setLaunchView('home')
+      setInteractive(false)
+      // Only the cases where the user must paste by hand.
+      if (result === 'nohelper') pushToast({ icon: 'copy', title: tr('Copied, not pasted'), sub: tr("Gabay's helper is still starting. Press Ctrl+V yourself."), ms: 4200 })
+      if (result === 'nopaste') pushToast({ icon: 'copy', title: tr('Copied, not pasted'), sub: tr("Couldn't paste into that window. Press Ctrl+V yourself."), ms: 4200 })
+    },
+    [pushToast]
+  )
 
   const launch = async (item: LauncherItem): Promise<void> => {
     if (item.kind === 'all') {

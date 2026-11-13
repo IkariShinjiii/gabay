@@ -63,7 +63,7 @@ export interface OverlayApi {
   /** Forgets all unpinned history. */
   clearClips(): Promise<void>
   /** Puts the item back on the clipboard. */
-  copyClip(id: string): Promise<boolean>
+  copyClip(id: string): Promise<ClipCopyResult>
   /** Returns the new pinned state. Pinned items are the only ones saved to disk. */
   togglePin(id: string): Promise<boolean>
   /** Lock, sleep, restart or shut down. Confirmation for the last two is the caller's job (see PowerPanel). */
@@ -245,6 +245,9 @@ export interface Todo {
   text: string
   done: boolean
 }
+
+/** What a click on a clip did: copied only, pasted too, or why the paste did not happen. */
+export type ClipCopyResult = 'copied' | 'pasted' | 'nohelper' | 'nopaste' | 'failed'
 
 export interface ClipItem {
   id: string
