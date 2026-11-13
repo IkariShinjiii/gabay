@@ -98,7 +98,7 @@ export const EMOJI: EmojiItem[] = [
 
 /** Emoji whose name or keywords contain the typed text (1+ letters after the colon), at most 40. */
 export function findEmoji(query: string): EmojiItem[] {
-  const q = query.trim().replace(/^:/, '').toLowerCase()
+  const q = query.trim().replace(/^:\s*/, '').replace(/\s+/g, ' ').toLowerCase()
   if (!q) return []
   return EMOJI.filter((e) => e.name.includes(q) || e.words.some((w) => w.includes(q))).slice(0, 40)
 }
