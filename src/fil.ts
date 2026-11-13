@@ -204,6 +204,7 @@ export const FIL: Record<string, string> = {
   "Search or command": "Maghanap o command",
   "Type to search apps. Star one to pin it here.": "Mag-type para maghanap ng app. I-star ang isa para i-pin dito.",
   "No matching apps": "Walang tugmang app",
+  "No matching emoji": "Walang tugmang emoji",
   "No": "Walang",
   "Try fewer letters, or part of the name.": "Subukan ang mas kaunting letra, o bahagi ng pangalan.",
   "All apps": "Lahat ng app",
