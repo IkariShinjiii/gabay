@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 // Calendar from a private iCal address (Google Calendar: Settings > your calendar > "Secret address in iCal format").
 // The address is a secret, so it is stored encrypted with Windows' DPAPI (Electron safeStorage) and never sent to the
-// renderer. Only titles, times and locations of the next day's events leave this file.
+// renderer. Only titles, times and locations of today's and tomorrow's events leave this file.
 
 export interface CalEvent {
   title: string
@@ -232,7 +232,18 @@ async function fetchEvents(): Promise<CalEvent[]> {
       events.push({ title: e.title || '(No title)', start: s, end: s + (e.end - e.start), allDay: e.allDay, location: e.location })
     }
   }
-  return events.sort((a, b) => a.start - b.start).slice(0, 40)
+  // Each day has its own bound: a busy today must not push tomorrow's events out of the list.
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime()
+  const kept: CalEvent[] = []
+  const perDay = [0, 0]
+  for (const e of events.sort((a, b) => a.start - b.start)) {
+    const d = e.start < tomorrow ? 0 : 1
+    if (perDay[d] < 60) {
+      perDay[d]++
+      kept.push(e)
+    }
+  }
+  return kept
 }
 
 /** Today's and tomorrow's events. Cached for 10 minutes; `connected` is false when no address is set. */

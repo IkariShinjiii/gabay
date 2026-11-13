@@ -31,9 +31,11 @@ const SETTINGS_FIND: { key: SettingsKey; name: string; words: string[] }[] = [
 
 /** Settings pages whose name or keywords contain the typed text (2+ letters), as launcher rows. */
 export function findSettings(query: string): LauncherItem[] {
-  const q = query.trim().toLowerCase()
+  // spaces and hyphens do not count: "wi fi", "wi-fi" and "wifi" all find Wi-Fi
+  const squash = (s: string): string => s.toLowerCase().replace(/[\s-]/g, '')
+  const q = squash(query)
   if (q.length < 2) return []
-  return SETTINGS_FIND.filter((s) => s.words.some((w) => w.includes(q)))
+  return SETTINGS_FIND.filter((s) => s.words.some((w) => squash(w).includes(q)))
     .map((s) => ({ id: s.key, name: tr(s.name), starred: false, kind: 'setting' as const }))
 }
 
@@ -58,9 +60,9 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
   // no pinned or recent apps yet: say how to get some, above the recent files
   const noApps = mode === 'home' && !items.some((it) => !it.kind)
   return (
-    <div className="body results" ref={listRef}>
+    <div className="body results" ref={listRef} id="launch-results" role="listbox" aria-label={tr('Results')}>
       {mode === 'all' && (
-        <div className="results-back">
+        <div className="results-back" role="presentation">
           <button className="q-icon-btn" title={tr('Back')} aria-label={tr('Back')} onMouseDown={(e) => e.preventDefault()} onClick={onBack}>
             <Icon name="arrow-left" size={16} />
           </button>
@@ -68,7 +70,7 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
           <span className="results-back-count">{items.length}</span>
         </div>
       )}
-      {noApps && <p className="results-hint">{emptyHint}</p>}
+      {noApps && <p className="results-hint" role="presentation">{emptyHint}</p>}
       {items.map((it, i) => {
         const prev = items[i - 1]
         let head: string | null = null
@@ -80,6 +82,9 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
           return (
             <div
               key={it.id}
+              id={`launch-opt-${i}`}
+              role="option"
+              aria-selected={i === selected}
               className={i === selected ? 'row row-more on' : 'row row-more'}
               onMouseMove={() => onHover(i)}
               onMouseDown={(e) => e.preventDefault()}
@@ -96,8 +101,11 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
         return (
           // mousedown is cancelled so clicking a row never steals focus from the search field.
           <Fragment key={it.id}>
-            {head && <div className={mode === 'all' && it.kind !== 'file' ? 'results-head results-letter' : 'results-head'}>{head}</div>}
+            {head && <div role="presentation" className={mode === 'all' && it.kind !== 'file' ? 'results-head results-letter' : 'results-head'}>{head}</div>}
             <div
+              id={`launch-opt-${i}`}
+              role="option"
+              aria-selected={i === selected}
               className={i === selected ? 'row on' : 'row'}
               onMouseMove={() => onHover(i)}
               onMouseDown={(e) => e.preventDefault()}

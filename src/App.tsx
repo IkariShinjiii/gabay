@@ -924,7 +924,7 @@ export default function App(): React.JSX.Element {
     const show = (): void => {
       if (stale || apps === null || !filesIn) return
       if (home) setItems([...apps, ...files, { id: '__all', name: tr('All apps'), starred: false, kind: 'all' }])
-      else setItems([...apps, ...hits, ...files.slice(0, Math.max(3, 10 - apps.length - hits.length))]) // ten rows fit
+      else setItems([...apps, ...hits, ...files.slice(0, Math.max(3, 10 - apps.length - hits.length))]) // files fill up to about ten rows, at least 3; the list scrolls past that
     }
     window.overlay.searchApps(query).then((r) => {
       apps = r
@@ -974,12 +974,14 @@ export default function App(): React.JSX.Element {
       return
     }
     if (item.kind === 'emoji') {
-      await navigator.clipboard.writeText(item.id) // the glyph; the renderer's own clipboard, no IPC
+      // the glyph; the renderer's own clipboard, no IPC. A refused write still closes the panel.
+      await navigator.clipboard.writeText(item.id).catch(() => undefined)
       release()
       return
     }
     if (item.kind === 'setting') {
-      await window.overlay.quickOpen(item.id as SettingsKey) // main checks the key against its own list
+      // main checks the key against its own list; a failed open still closes the panel
+      await window.overlay.quickOpen(item.id as SettingsKey).catch(() => false)
       release()
       return
     }
@@ -1249,6 +1251,11 @@ export default function App(): React.JSX.Element {
               ref={inputRef}
               placeholder={tab === 'Clipboard' ? tr('Search clipboard') : tr('Search apps, or type a command')}
               aria-label={tr('Search or command')}
+              role={tab === 'Launch' ? 'combobox' : undefined}
+              aria-autocomplete={tab === 'Launch' ? 'list' : undefined}
+              aria-expanded={tab === 'Launch' ? showResults && items.length > 0 : undefined}
+              aria-controls={tab === 'Launch' && showResults && items.length > 0 ? 'launch-results' : undefined}
+              aria-activedescendant={tab === 'Launch' && showResults && items[selected] ? `launch-opt-${selected}` : undefined}
               spellCheck={false}
               autoComplete="off"
               value={input}

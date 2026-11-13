@@ -208,6 +208,7 @@ export const FIL: Record<string, string> = {
   "No": "Walang",
   "Try fewer letters, or part of the name.": "Subukan ang mas kaunting letra, o bahagi ng pangalan.",
   "All apps": "Lahat ng app",
+  "Results": "Mga resulta",
   "Recent files": "Mga kamakailang file",
   "Recent files in Launch": "Mga kamakailang file sa Buksan",
   "Files you opened lately, from Windows' own list. None while Windows' \"Show recently opened items\" is off.": "Mga file na binuksan mo kamakailan, mula sa sariling listahan ng Windows. Wala itong ipapakita habang naka-off ang \"Show recently opened items\" ng Windows.",
@@ -457,6 +458,8 @@ export const FIL: Record<string, string> = {
   "Couldn't start {0}": "Hindi masimulan ang {0}",
   "Opened {0} settings": "Binuksan ang settings ng {0}",
   "Couldn't open {0} settings": "Hindi mabuksan ang settings ng {0}",
+  "Sunrise {0}": "Pagsikat ng araw {0}",
+  "Sunset {0}": "Paglubog ng araw {0}",
   "Paste on click": "I-paste kapag na-click",
   "Clicking a clip pastes it (Ctrl+V) into the window you were using. Off by default.": "Kapag na-click ang clip, ipe-paste ito (Ctrl+V) sa window na ginagamit mo. Naka-off bilang default.",
 }
