@@ -16,7 +16,7 @@ export interface Weather {
   day: boolean
   high: number
   low: number
-  /** Sunrise and sunset, minutes since local midnight (absent if the forecast omits them). */
+  /** Sunrise and sunset, minutes since midnight on this PC's clock, the clock the day strip is drawn on (absent if the forecast omits them). */
   rise?: number
   set?: number
   at: number
@@ -41,10 +41,12 @@ export async function findPlace(query: unknown): Promise<Place | null> {
   }
 }
 
-/** "2026-11-14T05:42" -> 342 (minutes since midnight), or undefined. */
-function clockMinutes(iso: unknown): number | undefined {
-  const m = typeof iso === 'string' ? /T(\d{2}):(\d{2})/.exec(iso) : null
-  return m ? Number(m[1]) * 60 + Number(m[2]) : undefined
+/** "2026-11-14T05:42" in the place's clock (offset from Open-Meteo) -> minutes since midnight on this PC's clock, or undefined. */
+function clockMinutes(iso: unknown, offsetSec: number): number | undefined {
+  const m = typeof iso === 'string' ? /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(iso) : null
+  if (!m) return undefined
+  const at = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - offsetSec * 1000)
+  return at.getHours() * 60 + at.getMinutes()
 }
 
 export async function getWeather(place: Place | null): Promise<Weather | null> {
@@ -61,7 +63,10 @@ export async function getWeather(place: Place | null): Promise<Weather | null> {
     const r = (await res.json()) as {
       current?: { temperature_2m?: number; weather_code?: number; is_day?: number }
       daily?: { temperature_2m_max?: number[]; temperature_2m_min?: number[]; sunrise?: string[]; sunset?: string[] }
+      utc_offset_seconds?: number // the place's offset from UTC, for the sun times
     }
+    // Without an offset in the answer, assume the place is on this PC's clock.
+    const offset = typeof r.utc_offset_seconds === 'number' ? r.utc_offset_seconds : -new Date().getTimezoneOffset() * 60
     if (typeof r.current?.temperature_2m !== 'number') return same
     const w: Weather = {
       place: place.name,
@@ -70,8 +75,8 @@ export async function getWeather(place: Place | null): Promise<Weather | null> {
       day: r.current.is_day !== 0,
       high: Math.round(r.daily?.temperature_2m_max?.[0] ?? r.current.temperature_2m),
       low: Math.round(r.daily?.temperature_2m_min?.[0] ?? r.current.temperature_2m),
-      rise: clockMinutes(r.daily?.sunrise?.[0]),
-      set: clockMinutes(r.daily?.sunset?.[0]),
+      rise: clockMinutes(r.daily?.sunrise?.[0], offset),
+      set: clockMinutes(r.daily?.sunset?.[0], offset),
       at: Date.now()
     }
     cache = { key, w }
