@@ -1,7 +1,7 @@
 import { net } from 'electron'
 
 // Weather from Open-Meteo (free, no key, no account). Only the city you type (to find it) and its coordinates (for the
-// forecast) are sent; nothing identifies you. Refreshed at most every 20 minutes.
+// forecast) are sent; nothing identifies you. Cached for 15 minutes; the app asks every 20, so each ask gets a new forecast.
 
 export interface Place {
   name: string
@@ -22,7 +22,7 @@ export interface Weather {
   at: number
 }
 
-const REFRESH_MS = 20 * 60_000
+const REFRESH_MS = 15 * 60_000 // shorter than the app's 20-minute tick, which is measured from before the fetch
 let cache: { key: string; w: Weather } | null = null
 
 /** City name -> first match. */
