@@ -438,4 +438,8 @@ export const FIL: Record<string, string> = {
   "Installing Gabay {0}": "Ini-install ang Gabay {0}",
   "The update couldn't be downloaded": "Hindi ma-download ang update",
   "Try again from Settings": "Subukan ulit mula sa Settings",
+  "Display": "Display",
+  "Night light": "Night light",
+  "Apps": "Mga app",
+  "Windows Update": "Windows Update",
 }

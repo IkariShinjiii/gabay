@@ -1,10 +1,10 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { COLLAPSE_DELAY_MS, HIDE_DELAY_MS, NOTCH, REVEAL_DWELL_MS } from './constants'
-import type { DownloadState, LauncherItem, DockApp, TrayIcon, LiveMedia, PowerAction, Settings, UpdateProgress, Weather } from './global'
+import type { DownloadState, LauncherItem, DockApp, TrayIcon, LiveMedia, PowerAction, Settings, SettingsKey, UpdateProgress, Weather } from './global'
 import Dock from './Dock'
 import { parseCommand, type CommandActions } from './commands'
-import Launcher from './Launcher'
+import Launcher, { findSettings } from './Launcher'
 import Icon from './Icon'
 import NotchStatus, { type NetKind } from './NotchStatus'
 import { useBattery } from './useBattery'
@@ -910,13 +910,14 @@ export default function App(): React.JSX.Element {
       }
     }
     const home = launchMode === 'home'
+    const hits = findSettings(query) // Windows Settings pages matched by name: shown after the apps
     let apps: LauncherItem[] | null = null
     let files: LauncherItem[] = []
     let filesIn = !home
     const show = (): void => {
       if (stale || apps === null || !filesIn) return
       if (home) setItems([...apps, ...files, { id: '__all', name: tr('All apps'), starred: false, kind: 'all' }])
-      else setItems([...apps, ...files.slice(0, Math.max(3, 10 - apps.length))]) // ten rows fit
+      else setItems([...apps, ...hits, ...files.slice(0, Math.max(3, 10 - apps.length - hits.length))]) // ten rows fit
     }
     window.overlay.searchApps(query).then((r) => {
       apps = r
@@ -963,6 +964,11 @@ export default function App(): React.JSX.Element {
   const launch = async (item: LauncherItem): Promise<void> => {
     if (item.kind === 'all') {
       setLaunchView('all') // the search field keeps the focus, so the arrow keys carry on in the A to Z list
+      return
+    }
+    if (item.kind === 'setting') {
+      await window.overlay.quickOpen(item.id as SettingsKey) // main checks the key against its own list
+      release()
       return
     }
     await window.overlay.launchApp(item.id)
