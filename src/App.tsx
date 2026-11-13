@@ -1094,7 +1094,7 @@ export default function App(): React.JSX.Element {
         items={items}
         selected={selected}
         mode={launchMode}
-        emptyHint={launchMode === 'search' ? tr('No matching apps') : tr('Type to search apps. Star one to pin it here.')}
+        emptyHint={launchMode === 'search' ? tr(query.trim().startsWith(':') ? 'No matching emoji' : 'No matching apps') : tr('Type to search apps. Star one to pin it here.')}
         onHover={setSelected}
         onLaunch={(it) => void launch(it)}
         onToggleStar={(it) => void toggleStar(it)}
