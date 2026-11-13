@@ -1,5 +1,5 @@
 import Empty from './Empty'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Icon from './Icon'
 import type { ClipItem } from './global'
 import { tr } from './i18n'
@@ -16,6 +16,7 @@ interface Props {
 export default function ClipboardPanel({ query, onCopied }: Props): React.JSX.Element {
   const [items, setItems] = useState<ClipItem[]>([])
   const [selected, setSelected] = useState(0)
+  const copying = useRef(false) // one copy (and its optional paste) at a time: a double click must not paste twice
 
   useEffect(() => {
     let stale = false
@@ -35,8 +36,14 @@ export default function ClipboardPanel({ query, onCopied }: Props): React.JSX.El
   }, [query])
 
   const copy = async (item: ClipItem): Promise<void> => {
-    await window.overlay.copyClip(item.id)
-    onCopied()
+    if (copying.current) return
+    copying.current = true
+    try {
+      await window.overlay.copyClip(item.id)
+      onCopied()
+    } finally {
+      copying.current = false
+    }
   }
 
   const pin = async (item: ClipItem): Promise<void> => {
