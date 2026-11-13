@@ -924,7 +924,7 @@ export default function App(): React.JSX.Element {
     const show = (): void => {
       if (stale || apps === null || !filesIn) return
       if (home) setItems([...apps, ...files, { id: '__all', name: tr('All apps'), starred: false, kind: 'all' }])
-      else setItems([...apps, ...hits, ...files.slice(0, Math.max(3, 10 - apps.length - hits.length))]) // ten rows fit
+      else setItems([...apps, ...hits, ...files.slice(0, Math.max(3, 10 - apps.length - hits.length))]) // files fill up to about ten rows, at least 3; the list scrolls past that
     }
     window.overlay.searchApps(query).then((r) => {
       apps = r
