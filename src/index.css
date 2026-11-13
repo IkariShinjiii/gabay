@@ -3629,42 +3629,36 @@ button.big-icon {
   .sk { animation: none; background-image: none; }
 }
 
-/* ---------- Today: the day strip (daylight comb) ---------- */
+/* ---------- Today: the day strip (sky comb) ---------- */
 .comb-wrap {
   flex: none;
+  padding: 2px 1px 0;
 }
 
 .comb {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  height: 44px;
+  height: 46px;
 }
 
 .tk {
   width: 5px;
   border-radius: 3px;
-  background: var(--line);
+  opacity: 0.58; /* the hours still to come show the sky dimmed */
   transform-origin: bottom;
   animation: tk-grow 0.6s var(--ease-out) both;
   animation-delay: calc(var(--i) * 12ms);
 }
 
-.tk.night {
-  background: var(--surface-2);
-}
-
-.tk.day {
-  background: #383838;
-}
-
 .tk.past {
-  background: var(--accent);
-  opacity: 0.8;
+  opacity: 1;
 }
 
 .tk.cur {
-  background: #eafffb;
+  opacity: 1;
+  outline: 1.5px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 1.5px;
   animation:
     tk-grow 0.6s var(--ease-out) both,
     tk-sun 2.4s ease-in-out 1s infinite;
@@ -3672,11 +3666,20 @@ button.big-icon {
 }
 
 .comb-hours {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 4px;
+  position: relative;
+  height: 14px;
+  margin-top: 6px;
   font-size: 10px;
+  line-height: 14px;
   color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.comb-hours span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }
 
 @keyframes tk-grow {
@@ -3685,8 +3688,8 @@ button.big-icon {
 }
 
 @keyframes tk-sun {
-  0%, 100% { box-shadow: 0 0 10px 1px rgba(47, 214, 191, 0.55); }
-  50% { box-shadow: 0 0 18px 4px rgba(47, 214, 191, 0.85); }
+  0%, 100% { box-shadow: 0 0 8px 1px var(--glow); }
+  50% { box-shadow: 0 0 18px 4px var(--glow); }
 }
 
 @media (prefers-reduced-motion: reduce) {
