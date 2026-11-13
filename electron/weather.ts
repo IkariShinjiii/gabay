@@ -16,6 +16,9 @@ export interface Weather {
   day: boolean
   high: number
   low: number
+  /** Sunrise and sunset, minutes since local midnight (absent if the forecast omits them). */
+  rise?: number
+  set?: number
   at: number
 }
 
@@ -38,6 +41,12 @@ export async function findPlace(query: unknown): Promise<Place | null> {
   }
 }
 
+/** "2026-11-14T05:42" -> 342 (minutes since midnight), or undefined. */
+function clockMinutes(iso: unknown): number | undefined {
+  const m = typeof iso === 'string' ? /T(\d{2}):(\d{2})/.exec(iso) : null
+  return m ? Number(m[1]) * 60 + Number(m[2]) : undefined
+}
+
 export async function getWeather(place: Place | null): Promise<Weather | null> {
   if (!place) return null
   const key = `${place.lat},${place.lon}`
@@ -45,13 +54,13 @@ export async function getWeather(place: Place | null): Promise<Weather | null> {
   if (same && Date.now() - same.at < REFRESH_MS) return same
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${place.lat}&longitude=${place.lon}` +
-    '&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1'
+    '&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset&timezone=auto&forecast_days=1'
   try {
     const res = await net.fetch(url, { signal: AbortSignal.timeout(10_000) })
     if (!res.ok) return same
     const r = (await res.json()) as {
       current?: { temperature_2m?: number; weather_code?: number; is_day?: number }
-      daily?: { temperature_2m_max?: number[]; temperature_2m_min?: number[] }
+      daily?: { temperature_2m_max?: number[]; temperature_2m_min?: number[]; sunrise?: string[]; sunset?: string[] }
     }
     if (typeof r.current?.temperature_2m !== 'number') return same
     const w: Weather = {
@@ -61,6 +70,8 @@ export async function getWeather(place: Place | null): Promise<Weather | null> {
       day: r.current.is_day !== 0,
       high: Math.round(r.daily?.temperature_2m_max?.[0] ?? r.current.temperature_2m),
       low: Math.round(r.daily?.temperature_2m_min?.[0] ?? r.current.temperature_2m),
+      rise: clockMinutes(r.daily?.sunrise?.[0]),
+      set: clockMinutes(r.daily?.sunset?.[0]),
       at: Date.now()
     }
     cache = { key, w }

@@ -399,6 +399,8 @@ export interface Weather {
   day: boolean
   high: number
   low: number
+  rise?: number
+  set?: number
   at: number
 }
 

@@ -3628,3 +3628,67 @@ button.big-icon {
 @media (prefers-reduced-motion: reduce) {
   .sk { animation: none; background-image: none; }
 }
+
+/* ---------- Today: the day strip (daylight comb) ---------- */
+.comb-wrap {
+  flex: none;
+}
+
+.comb {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 44px;
+}
+
+.tk {
+  width: 5px;
+  border-radius: 3px;
+  background: var(--line);
+  transform-origin: bottom;
+  animation: tk-grow 0.6s var(--ease-out) both;
+  animation-delay: calc(var(--i) * 12ms);
+}
+
+.tk.night {
+  background: var(--surface-2);
+}
+
+.tk.day {
+  background: #383838;
+}
+
+.tk.past {
+  background: var(--accent);
+  opacity: 0.8;
+}
+
+.tk.cur {
+  background: #eafffb;
+  animation:
+    tk-grow 0.6s var(--ease-out) both,
+    tk-sun 2.4s ease-in-out 1s infinite;
+  animation-delay: calc(var(--i) * 12ms), 1s;
+}
+
+.comb-hours {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--faint);
+}
+
+@keyframes tk-grow {
+  from { transform: scaleY(0.1); opacity: 0; }
+  to { transform: scaleY(1); }
+}
+
+@keyframes tk-sun {
+  0%, 100% { box-shadow: 0 0 10px 1px rgba(47, 214, 191, 0.55); }
+  50% { box-shadow: 0 0 18px 4px rgba(47, 214, 191, 0.85); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tk, .tk.cur { animation: none; }
+}
