@@ -1358,6 +1358,8 @@ button.big-icon {
 
 .more-tile .ct-label {
   flex: 1;
+  white-space: normal; /* two lines in the narrow grid rather than 'On-screen key...' */
+  line-height: 1.2;
 }
 
 .more-tile:hover {
