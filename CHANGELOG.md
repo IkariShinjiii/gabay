@@ -7,6 +7,7 @@
 - Controls has a Night light tile that opens its Windows Settings page
 - Launch search with a colon (:smile) lists emoji; Enter copies the one you pick
 - Controls has Magnifier, Narrator and On-screen keyboard tiles that start their Windows programs
+- Optional (Settings, off by default): clicking a clip pastes it with Ctrl+V into the window you were using
 - Today month grid: click a day to list its calendar events (today and tomorrow only, as the calendar is read)
 
 ## 1.6.5

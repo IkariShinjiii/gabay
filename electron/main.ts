@@ -308,9 +308,13 @@ app.whenReady().then(async () => {
     fromUi(e)
     return listClipboard(typeof q === 'string' ? q : '')
   })
-  ipcMain.handle('clipboard:copy', (e, id: unknown) => {
+  ipcMain.handle('clipboard:copy', async (e, id: unknown) => {
     fromUi(e)
-    return typeof id === 'string' ? copyBack(id) : false
+    if (typeof id !== 'string') return false
+    const ok = await copyBack(id)
+    // Opt-in (Settings, off by default): Ctrl+V into the window the clip was copied for. Only on a click, never by itself.
+    if (ok && settings.pasteOnClick && nativeRunning()) await nativeCall('paste').catch(() => null)
+    return ok
   })
   ipcMain.handle('clipboard:toggle-pin', (e, id: unknown) => {
     fromUi(e)

@@ -20,6 +20,7 @@
 //            cover L T R B | cover off       (watch a strip of the screen, physical pixels: pushes cover 1 while a window
 //                                             of another app is under it, cover 0 when none is)
 //            focus <h> | minimize <h>        (switch to / minimize an open window)
+//            paste                           (Ctrl+V into the window under Gabay in the z-order, or the foreground one; only on a click)
 //            tbget | tbset <0|1> [restore]   (the Windows taskbar's auto-hide; restore is applied when Gabay exits)
 //            tray on <gabay pid> | tray off | trayclick <id> l|r   (Gabay as the notification area)
 //            traywait <id> <grace ms>        (after a right-click: true while that app's menu is still open, checked
@@ -870,6 +871,7 @@ static class Native {
         return "true";
       }
       case "focus": return Focus(new IntPtr(long.Parse(arg))) ? "true" : "false";
+      case "paste": return Paste() ? "true" : "false";
       case "close": {
         var h = new IntPtr(long.Parse(arg));
         return IsWindow(h) && Listable(h) && PostMessage(h, 0x0010, IntPtr.Zero, IntPtr.Zero) ? "true" : "false"; // WM_CLOSE
@@ -1344,6 +1346,26 @@ static class Native {
       ok = SetForegroundWindow(h);
     }
     return ok;
+  }
+
+  // Paste-on-click: Ctrl+V goes to the window the user was in before Gabay came up, which is the one just under
+  // Gabay's own window in the z-order (or the foreground window when Gabay is not in front). Only on a click.
+  static bool Paste() {
+    IntPtr fg = GetForegroundWindow();
+    uint fp; GetWindowThreadProcessId(fg, out fp);
+    IntPtr target = fg;
+    if (fp == self) {
+      target = IntPtr.Zero;
+      for (IntPtr w = GetWindow(fg, 2); w != IntPtr.Zero; w = GetWindow(w, 2)) { // GW_HWNDNEXT: the window below
+        uint wp; GetWindowThreadProcessId(w, out wp);
+        if (wp != self && IsWindowVisible(w) && Listable(w)) { target = w; break; }
+      }
+    }
+    if (target == IntPtr.Zero || !Focus(target)) return false;
+    System.Threading.Thread.Sleep(60); // let the window take the focus before the keys arrive
+    keybd_event(0x11, 0, 0, UIntPtr.Zero); keybd_event(0x56, 0, 0, UIntPtr.Zero); // Ctrl down, V down
+    keybd_event(0x56, 0, 2, UIntPtr.Zero); keybd_event(0x11, 0, 2, UIntPtr.Zero); // V up, Ctrl up
+    return true;
   }
 
   // ---------- the Windows taskbar's own auto-hide setting ----------

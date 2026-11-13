@@ -787,6 +787,12 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onSho
           onChange={(recentFiles) => void save({ recentFiles })}
         />
         <SwitchRow
+          label={tr('Paste on click')}
+          desc={tr('Clicking a clip pastes it (Ctrl+V) into the window you were using. Off by default.')}
+          on={settings.pasteOnClick}
+          onChange={(pasteOnClick) => void save({ pasteOnClick })}
+        />
+        <SwitchRow
           label={tr('Lyrics in Now playing')}
           desc={tr("Looks up the song's title and artist on lrclib.net (free, open lyrics).")}
           on={settings.lyrics}
