@@ -117,7 +117,7 @@ function DayComb({ now, weather }: { now: Date; weather: Weather | null }): Reac
   const at = (m: number): string => new Date(2000, 0, 1, 0, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
   return (
     <div className="comb-wrap">
-      <div className="comb" role="img" aria-label={tr('Your day in half hours')} title={sunTimes ? `${at(weather?.rise ?? 360)} \u2192 ${at(weather?.set ?? 1080)}` : undefined}>
+      <div className="comb" role="img" aria-label={sunTimes ? `${tr('Your day in half hours')}. ${tr('Sunrise {0}', at(weather?.rise ?? 360))}. ${tr('Sunset {0}', at(weather?.set ?? 1080))}.` : tr('Your day in half hours')} title={sunTimes ? `${at(weather?.rise ?? 360)} \u2192 ${at(weather?.set ?? 1080)}` : undefined}>
         {Array.from({ length: 48 }, (_, i) => {
           const day = set > rise && i >= rise && i <= set
           const h = (day ? 10 + 30 * Math.sin((Math.PI * (i - rise)) / (set - rise)) : 5) + (i === cur ? 6 : 0)
