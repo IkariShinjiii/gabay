@@ -44,7 +44,7 @@ function Agenda({ now }: { now: number }): React.JSX.Element | null {
   return (
     <div className="agenda">
       {next.length === 0 ? (
-        <div className="agenda-hint">{agenda.error ? "Couldn't reach your calendar." : 'Nothing else on your calendar today.'}</div>
+        <div className="agenda-hint">{agenda.error ? tr("Couldn't reach your calendar.") : tr('Nothing else on your calendar today.')}</div>
       ) : (
         next.map((e) => {
           const live = !e.allDay && e.start <= now && e.end > now
@@ -186,11 +186,11 @@ export default function TodayPanel({ timer, timers, weather, todoVersion, onHold
 
         <div className="timer">
           <div className={`timer-time ${timer.status}`}>
-            {timer.status === 'done' ? 'Done' : formatMs(timer.remainingMs)}
+            {timer.status === 'done' ? tr('Done') : formatMs(timer.remainingMs)}
           </div>
           <div className="timer-buttons">
             <button className="btn small" onClick={() => (running ? timer.pause() : timer.start())}>
-              {running ? 'Pause' : timer.status === 'paused' ? 'Resume' : 'Start'}
+              {running ? tr('Pause') : timer.status === 'paused' ? tr('Resume') : tr('Start')}
             </button>
             <button className="btn small" onClick={timer.reset}>
               {tr('Reset')}
