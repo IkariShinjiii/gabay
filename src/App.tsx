@@ -967,7 +967,13 @@ export default function App(): React.JSX.Element {
     (result: ClipCopyResult): void => {
       setInput('')
       inputRef.current?.blur()
-      // Shown once the panel closes (toasts wait for that). Only the cases where the user must paste by hand.
+      // The panel closes after a copy, as its onCopied callback always intended (a notch held open by the pointer would hide
+      // the message below). Toasts show once it is closed.
+      isOpen.current = false
+      setExpanded(false)
+      setLaunchView('home')
+      setInteractive(false)
+      // Only the cases where the user must paste by hand.
       if (result === 'nohelper') pushToast({ icon: 'copy', title: tr('Copied, not pasted'), sub: tr("Gabay's helper is still starting. Press Ctrl+V yourself."), ms: 4200 })
       if (result === 'nopaste') pushToast({ icon: 'copy', title: tr('Copied, not pasted'), sub: tr("Couldn't paste into that window. Press Ctrl+V yourself."), ms: 4200 })
     },
