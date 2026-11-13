@@ -259,7 +259,7 @@ export interface LauncherItem {
   /** 'file': a file from Windows' search index or its recent list, not an app (no star; opens with its default app).
    *  'all': the row that opens the All apps list (made by the page, never sent by main).
    *  'setting': a Windows Settings page the page matched by name; id is a SettingsKey (quickOpen). */
-  kind?: 'file' | 'all' | 'setting'
+  kind?: 'file' | 'all' | 'setting' | 'emoji'
   /** For files: the name of the folder it is in. */
   folder?: string
 }

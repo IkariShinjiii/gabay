@@ -5,6 +5,7 @@ import type { DownloadState, LauncherItem, DockApp, TrayIcon, LiveMedia, PowerAc
 import Dock from './Dock'
 import { parseCommand, type CommandActions } from './commands'
 import Launcher, { findSettings } from './Launcher'
+import { findEmoji } from './emoji'
 import Icon from './Icon'
 import NotchStatus, { type NetKind } from './NotchStatus'
 import { useBattery } from './useBattery'
@@ -910,6 +911,12 @@ export default function App(): React.JSX.Element {
       }
     }
     const home = launchMode === 'home'
+    if (query.trim().startsWith(':')) {
+      // emoji: the typed text after the colon; Enter copies the glyph (launch)
+      setItems(findEmoji(query).map((e) => ({ id: e.glyph, name: e.name, starred: false, kind: 'emoji' as const })))
+      setSelected(0)
+      return
+    }
     const hits = findSettings(query) // Windows Settings pages matched by name: shown after the apps
     let apps: LauncherItem[] | null = null
     let files: LauncherItem[] = []
@@ -964,6 +971,11 @@ export default function App(): React.JSX.Element {
   const launch = async (item: LauncherItem): Promise<void> => {
     if (item.kind === 'all') {
       setLaunchView('all') // the search field keeps the focus, so the arrow keys carry on in the A to Z list
+      return
+    }
+    if (item.kind === 'emoji') {
+      await navigator.clipboard.writeText(item.id) // the glyph; the renderer's own clipboard, no IPC
+      release()
       return
     }
     if (item.kind === 'setting') {

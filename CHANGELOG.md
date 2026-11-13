@@ -5,6 +5,7 @@
 - Launch opens with the search focused: type right away after clicking the Launch tab or pressing Ctrl+6
 - Launch search finds Windows Settings pages by name (Wi-Fi, Bluetooth, Display, Night light, Sound, Apps, Windows Update)
 - Controls has a Night light tile that opens its Windows Settings page
+- Launch search with a colon (:smile) lists emoji; Enter copies the one you pick
 
 ## 1.6.5
 
