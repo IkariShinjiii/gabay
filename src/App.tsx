@@ -1250,6 +1250,11 @@ export default function App(): React.JSX.Element {
               ref={inputRef}
               placeholder={tab === 'Clipboard' ? tr('Search clipboard') : tr('Search apps, or type a command')}
               aria-label={tr('Search or command')}
+              role={tab === 'Launch' ? 'combobox' : undefined}
+              aria-autocomplete={tab === 'Launch' ? 'list' : undefined}
+              aria-expanded={tab === 'Launch' ? showResults && items.length > 0 : undefined}
+              aria-controls={tab === 'Launch' && showResults && items.length > 0 ? 'launch-results' : undefined}
+              aria-activedescendant={tab === 'Launch' && showResults && items[selected] ? `launch-opt-${selected}` : undefined}
               spellCheck={false}
               autoComplete="off"
               value={input}
