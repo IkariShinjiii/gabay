@@ -974,12 +974,14 @@ export default function App(): React.JSX.Element {
       return
     }
     if (item.kind === 'emoji') {
-      await navigator.clipboard.writeText(item.id) // the glyph; the renderer's own clipboard, no IPC
+      // the glyph; the renderer's own clipboard, no IPC. A refused write still closes the panel.
+      await navigator.clipboard.writeText(item.id).catch(() => undefined)
       release()
       return
     }
     if (item.kind === 'setting') {
-      await window.overlay.quickOpen(item.id as SettingsKey) // main checks the key against its own list
+      // main checks the key against its own list; a failed open still closes the panel
+      await window.overlay.quickOpen(item.id as SettingsKey).catch(() => false)
       release()
       return
     }
