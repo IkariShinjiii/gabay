@@ -68,25 +68,70 @@ function Agenda({ now }: { now: number }): React.JSX.Element | null {
   )
 }
 
-/** The day as 48 half-hour ticks: height follows daylight (sunrise to sunset), past ticks teal, the current one glows. */
+type RGB = [number, number, number]
+const NIGHT: RGB = [40, 46, 104]
+
+/** The colour of the sky at half-hour slot i: indigo night, violet and pink before sunrise, gold, blue midday, then the same in reverse. */
+function skyColor(i: number, rise: number, set: number): string {
+  const mid = (rise + set) / 2
+  const stops: [number, RGB][] = (
+    [
+      [rise - 3, NIGHT],
+      [rise - 1.5, [59, 47, 120]],
+      [rise - 0.3, [217, 99, 138]],
+      [rise + 0.7, [255, 160, 99]],
+      [rise + 2, [255, 216, 138]],
+      [rise + 4, [124, 200, 255]],
+      [mid, [82, 180, 255]],
+      [set - 4, [124, 200, 255]],
+      [set - 2, [255, 210, 122]],
+      [set - 0.7, [255, 138, 79]],
+      [set + 0.3, [224, 86, 138]],
+      [set + 1.5, [90, 58, 146]],
+      [set + 3, NIGHT]
+    ] as [number, RGB][]
+  ).sort((a, b) => a[0] - b[0]) // a very short day can cross the stops over
+  let c: RGB = NIGHT
+  for (let k = 1; k < stops.length; k++) {
+    const [a, ca] = stops[k - 1]
+    const [b, cb] = stops[k]
+    if (i >= a && i <= b) {
+      const t = b === a ? 0 : (i - a) / (b - a)
+      c = [0, 1, 2].map((n) => Math.round(ca[n] + (cb[n] - ca[n]) * t)) as RGB
+      break
+    }
+  }
+  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`
+}
+
+/** The day as 48 half-hour ticks coloured like the sky: height follows daylight, past ticks are lit, the rest are dimmed, and now glows. */
 function DayComb({ now, weather }: { now: Date; weather: Weather | null }): React.JSX.Element {
   const cur = Math.floor((now.getHours() * 60 + now.getMinutes()) / 30)
   const rise = (weather?.rise ?? 360) / 30 // shortcut: 6:00 to 18:00 when there is no forecast
   const set = (weather?.set ?? 1080) / 30
   const hour = (h: number): string => new Date(2000, 0, 1, h).toLocaleTimeString([], { hour: 'numeric' })
+  const at = (m: number): string => new Date(2000, 0, 1, 0, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
   return (
     <div className="comb-wrap">
-      <div className="comb" role="img" aria-label={tr('Your day in half hours')}>
+      <div className="comb" role="img" aria-label={tr('Your day in half hours')} title={`${at(weather?.rise ?? 360)} \u2192 ${at(weather?.set ?? 1080)}`}>
         {Array.from({ length: 48 }, (_, i) => {
           const day = i >= rise && i <= set
-          const h = (day ? 8 + 30 * Math.sin((Math.PI * (i - rise)) / (set - rise)) : 4) + (i === cur ? 6 : 0)
-          const cls = i === cur ? 'tk cur' : !day ? 'tk night' : i < cur ? 'tk past' : 'tk day'
-          return <span key={i} className={cls} style={{ height: Math.round(h), '--i': i } as CSSProperties} />
+          const h = (day ? 10 + 30 * Math.sin((Math.PI * (i - rise)) / (set - rise)) : 5) + (i === cur ? 6 : 0)
+          const color = skyColor(i + 0.5, rise, set)
+          return (
+            <span
+              key={i}
+              className={i === cur ? 'tk cur' : i < cur ? 'tk past' : 'tk'}
+              style={{ height: Math.round(h), background: color, '--glow': color, '--i': i } as CSSProperties}
+            />
+          )
         })}
       </div>
-      <div className="comb-hours">
-        {[0, 6, 12, 18, 24].map((h) => (
-          <span key={h}>{hour(h)}</span>
+      <div className="comb-hours" aria-hidden="true">
+        {[0, 6, 12, 18].map((h) => (
+          <span key={h} style={{ left: `${((h * 2) / 47) * 100}%`, transform: h === 0 ? 'none' : undefined }}>
+            {hour(h)}
+          </span>
         ))}
       </div>
     </div>
