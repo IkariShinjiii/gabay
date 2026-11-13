@@ -611,6 +611,7 @@ static class Native {
   [DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool attach);
   [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
   [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+  [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vk);
   [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out int value, int size);
   [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT rect, int size);
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string cls, string name);
@@ -1331,7 +1332,7 @@ static class Native {
 
   // Windows only lets the foreground app hand focus over. Gabay is in front when this runs (it was just clicked), so
   // join its input queue for the call; if that is refused, a synthetic Alt tap lifts the lock.
-  static bool Focus(IntPtr h) {
+  static bool Focus(IntPtr h, bool altTap = true) {
     if (!IsWindow(h) || !Listable(h)) return false;
     if (IsIconic(h)) ShowWindow(h, 9); // SW_RESTORE
     uint dummy;
@@ -1341,7 +1342,7 @@ static class Native {
     bool ok = SetForegroundWindow(h);
     BringWindowToTop(h);
     if (attached) AttachThreadInput(me, fgThread, false);
-    if (!ok || GetForegroundWindow() != h) {
+    if (altTap && (!ok || GetForegroundWindow() != h)) { // the Alt tap is for the launcher's own focus; paste never uses it
       keybd_event(0x12, 0, 0, UIntPtr.Zero); keybd_event(0x12, 0, 2, UIntPtr.Zero);
       ok = SetForegroundWindow(h);
     }
@@ -1350,7 +1351,15 @@ static class Native {
 
   // Paste-on-click: Ctrl+V goes to the window the user was in before Gabay came up, which is the one just under
   // Gabay's own window in the z-order (or the foreground window when Gabay is not in front). Only on a click.
+  static bool ModifierHeld() {
+    foreach (int vk in new[] { 0x10, 0x11, 0x12, 0x5B, 0x5C }) if ((GetAsyncKeyState(vk) & 0x8000) != 0) return true; // Shift, Ctrl, Alt, Win (both sides)
+    return false;
+  }
+
   static bool Paste() {
+    // Keys sent while the user still holds a modifier come out as another shortcut: wait briefly, else skip the paste.
+    for (int i = 0; i < 10 && ModifierHeld(); i++) System.Threading.Thread.Sleep(50);
+    if (ModifierHeld()) return false;
     IntPtr fg = GetForegroundWindow();
     uint fp; GetWindowThreadProcessId(fg, out fp);
     IntPtr target = fg;
@@ -1361,8 +1370,10 @@ static class Native {
         if (wp != self && IsWindowVisible(w) && !IsIconic(w) && Listable(w)) { target = w; break; } // minimized: Focus would restore it
       }
     }
-    if (target == IntPtr.Zero || !Focus(target)) return false;
+    // Only send the keys once the target really is the foreground window; no fallback that could hit another window.
+    if (target == IntPtr.Zero || !Focus(target, false) || GetForegroundWindow() != target) return false;
     System.Threading.Thread.Sleep(60); // let the window take the focus before the keys arrive
+    if (ModifierHeld()) return false;
     keybd_event(0x11, 0, 0, UIntPtr.Zero); keybd_event(0x56, 0, 0, UIntPtr.Zero); // Ctrl down, V down
     keybd_event(0x56, 0, 2, UIntPtr.Zero); keybd_event(0x11, 0, 2, UIntPtr.Zero); // V up, Ctrl up
     return true;
