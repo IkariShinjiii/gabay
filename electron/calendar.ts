@@ -218,7 +218,7 @@ async function fetchEvents(): Promise<CalEvent[]> {
 
   const now = new Date()
   const from = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() // start of today
-  const to = from + 2 * 86_400_000 // today and tomorrow
+  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2).getTime() // today and tomorrow, to local midnight (DST days are 23 or 25 h)
   // Moved or edited occurrences come as their own events; the series skips those dates.
   const moved = new Map<string, Set<number>>()
   for (const e of raw) if (e.recurrenceId !== null) (moved.get(e.uid) ?? moved.set(e.uid, new Set()).get(e.uid))?.add(e.recurrenceId)

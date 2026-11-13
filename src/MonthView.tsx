@@ -27,7 +27,8 @@ export default function MonthView({ today, onClose }: { today: Date; onClose: ()
   // The picked day's events. The calendar only holds today and tomorrow, so other days say so instead of guessing.
   const dayStart = picked === null ? 0 : new Date(shown.getFullYear(), shown.getMonth(), picked).getTime()
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
-  const inReach = picked !== null && dayStart >= todayStart && dayStart < todayStart + 2 * DAY
+  const reachEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2).getTime() // same bound as electron/calendar.ts
+  const inReach = picked !== null && dayStart >= todayStart && dayStart < reachEnd
   const dayEvents = agenda && inReach ? agenda.events.filter((e) => e.start < dayStart + DAY && e.end > dayStart) : []
   const pick = (d: number): void => setPicked((p) => (p === d ? null : d))
   return (
