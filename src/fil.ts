@@ -208,6 +208,7 @@ export const FIL: Record<string, string> = {
   "No": "Walang",
   "Try fewer letters, or part of the name.": "Subukan ang mas kaunting letra, o bahagi ng pangalan.",
   "All apps": "Lahat ng app",
+  "Results": "Mga resulta",
   "Recent files": "Mga kamakailang file",
   "Recent files in Launch": "Mga kamakailang file sa Buksan",
   "Files you opened lately, from Windows' own list. None while Windows' \"Show recently opened items\" is off.": "Mga file na binuksan mo kamakailan, mula sa sariling listahan ng Windows. Wala itong ipapakita habang naka-off ang \"Show recently opened items\" ng Windows.",

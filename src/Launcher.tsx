@@ -58,9 +58,9 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
   // no pinned or recent apps yet: say how to get some, above the recent files
   const noApps = mode === 'home' && !items.some((it) => !it.kind)
   return (
-    <div className="body results" ref={listRef}>
+    <div className="body results" ref={listRef} id="launch-results" role="listbox" aria-label={tr('Results')}>
       {mode === 'all' && (
-        <div className="results-back">
+        <div className="results-back" role="presentation">
           <button className="q-icon-btn" title={tr('Back')} aria-label={tr('Back')} onMouseDown={(e) => e.preventDefault()} onClick={onBack}>
             <Icon name="arrow-left" size={16} />
           </button>
@@ -68,7 +68,7 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
           <span className="results-back-count">{items.length}</span>
         </div>
       )}
-      {noApps && <p className="results-hint">{emptyHint}</p>}
+      {noApps && <p className="results-hint" role="presentation">{emptyHint}</p>}
       {items.map((it, i) => {
         const prev = items[i - 1]
         let head: string | null = null
@@ -80,6 +80,9 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
           return (
             <div
               key={it.id}
+              id={`launch-opt-${i}`}
+              role="option"
+              aria-selected={i === selected}
               className={i === selected ? 'row row-more on' : 'row row-more'}
               onMouseMove={() => onHover(i)}
               onMouseDown={(e) => e.preventDefault()}
@@ -96,8 +99,11 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
         return (
           // mousedown is cancelled so clicking a row never steals focus from the search field.
           <Fragment key={it.id}>
-            {head && <div className={mode === 'all' && it.kind !== 'file' ? 'results-head results-letter' : 'results-head'}>{head}</div>}
+            {head && <div role="presentation" className={mode === 'all' && it.kind !== 'file' ? 'results-head results-letter' : 'results-head'}>{head}</div>}
             <div
+              id={`launch-opt-${i}`}
+              role="option"
+              aria-selected={i === selected}
               className={i === selected ? 'row on' : 'row'}
               onMouseMove={() => onHover(i)}
               onMouseDown={(e) => e.preventDefault()}
