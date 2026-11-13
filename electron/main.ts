@@ -308,13 +308,14 @@ app.whenReady().then(async () => {
     fromUi(e)
     return listClipboard(typeof q === 'string' ? q : '')
   })
+  // Returns what happened, so the panel can say when a paste did not happen. The paste is opt-in (Settings, off by
+  // default) and only ever follows a click.
   ipcMain.handle('clipboard:copy', async (e, id: unknown) => {
     fromUi(e)
-    if (typeof id !== 'string') return false
-    const ok = await copyBack(id)
-    // Opt-in (Settings, off by default): Ctrl+V into the window the clip was copied for. Only on a click, never by itself.
-    if (ok && settings.pasteOnClick && nativeRunning()) await nativeCall('paste').catch(() => null)
-    return ok
+    if (typeof id !== 'string' || !(await copyBack(id))) return 'failed'
+    if (!settings.pasteOnClick) return 'copied'
+    if (!nativeRunning()) return 'nohelper'
+    return (await nativeCall('paste').catch(() => null)) === true ? 'pasted' : 'nopaste'
   })
   ipcMain.handle('clipboard:toggle-pin', (e, id: unknown) => {
     fromUi(e)
