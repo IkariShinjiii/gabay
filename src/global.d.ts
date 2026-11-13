@@ -16,6 +16,8 @@ export interface OverlayApi {
   quickSlide(kind: 'volume' | 'brightness', value: number): Promise<void>
   /** Opens a fixed Windows Settings page by key. */
   quickOpen(key: SettingsKey): Promise<boolean>
+  /** Starts a fixed accessibility program (Magnifier, Narrator, On-screen keyboard). */
+  quickTool(key: AccessToolKey): Promise<boolean>
   networkKind(): Promise<'wifi' | 'ethernet' | 'offline'>
   /** What this PC has; desktops often have no battery or Wi-Fi. */
   hardware(): Promise<{ battery: boolean; wifi: boolean } | null>
@@ -297,6 +299,8 @@ export type QuickAction =
   | { kind: 'media'; command: 'toggle' | 'next' | 'prev' }
 
 export type ProjectMode = 'internal' | 'clone' | 'extend' | 'external'
+
+export type AccessToolKey = 'magnifier' | 'narrator' | 'osk'
 
 export type SettingsKey =
   | 'energy'

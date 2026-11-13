@@ -443,4 +443,8 @@ export const FIL: Record<string, string> = {
   "Apps": "Mga app",
   "Windows Update": "Windows Update",
   "Emoji": "Emoji",
+  "Magnifier": "Magnifier",
+  "Narrator": "Narrator",
+  "On-screen keyboard": "Keyboard sa screen",
+  "Start {0}": "Simulan ang {0}",
 }
