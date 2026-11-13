@@ -25,7 +25,8 @@ const MORE: MoreTile[] = [
   { kind: 'link', label: 'Mobile hotspot', icon: 'radio-tower', settings: 'hotspot' },
   { kind: 'link', label: 'Nearby sharing', icon: 'share-2', settings: 'nearby' },
   { kind: 'link', label: 'Cast', icon: 'cast', settings: 'cast' },
-  { kind: 'link', label: 'Notifications', icon: 'bell', settings: 'notifications' }
+  { kind: 'link', label: 'Notifications', icon: 'bell', settings: 'notifications' },
+  { kind: 'link', label: 'Night light', icon: 'moon', settings: 'nightlight' }
 ]
 
 /** A split tile like the reference: the main part acts, the chevron part opens the related Windows Settings page. */
