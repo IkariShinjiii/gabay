@@ -1,5 +1,6 @@
 import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { networkInterfaces } from 'node:os'
+import { join } from 'node:path'
 
 /** Everything the Quick tab shows. Fields are null/empty when Windows doesn't expose them (desktop PCs have no brightness). */
 export interface QuickState {
@@ -62,6 +63,20 @@ export const SETTINGS_PAGES = {
 export type SettingsKey = keyof typeof SETTINGS_PAGES
 
 export const isSettingsKey = (k: unknown): k is SettingsKey => typeof k === 'string' && Object.hasOwn(SETTINGS_PAGES, k)
+
+/** Accessibility programs Controls can start. Fixed System32 names: the renderer sends a key, never a path. */
+export const ACCESS_TOOLS = { magnifier: 'magnify.exe', narrator: 'narrator.exe', osk: 'osk.exe' } as const
+export type AccessToolKey = keyof typeof ACCESS_TOOLS
+
+/** Starts one of ACCESS_TOOLS from System32, detached: Gabay neither waits for it nor stops it. */
+export function startAccessTool(key: unknown): boolean {
+  if (typeof key !== 'string' || !Object.hasOwn(ACCESS_TOOLS, key)) return false
+  const exe = join(process.env.SystemRoot || 'C:\\Windows', 'System32', ACCESS_TOOLS[key as AccessToolKey])
+  const child = spawn(exe, [], { detached: true, stdio: 'ignore', windowsHide: true })
+  child.on('error', () => undefined) // a missing program must not crash the main process
+  child.unref()
+  return true
+}
 
 // One hidden PowerShell process holds the audio COM objects and the Windows Runtime radio API, so a slider drag is a
 // few milliseconds instead of a fresh multi-second PowerShell start. It exists only while the Quick tab is in use:

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import Icon from './Icon'
 import type { IconName } from './icons'
-import type { MediaInfo, MixerApp, OutputDevice, ProjectMode, QuickAction, QuickState, SettingsKey, WifiNetwork } from './global'
+import type { AccessToolKey, MediaInfo, MixerApp, OutputDevice, ProjectMode, QuickAction, QuickState, SettingsKey, WifiNetwork } from './global'
 import type { BatteryInfo } from './useBattery'
 import { batteryIcon } from './NotchStatus'
 import { tr } from './i18n'
@@ -17,6 +17,7 @@ type MoreTile =
   | { kind: 'airplane'; label: string; icon: IconName }
   | { kind: 'view'; label: string; icon: IconName }
   | { kind: 'link'; label: string; icon: IconName; settings: SettingsKey }
+  | { kind: 'tool'; label: string; icon: IconName; tool: AccessToolKey }
 const MORE: MoreTile[] = [
   { kind: 'link', label: 'Energy saver', icon: 'leaf', settings: 'energy' },
   { kind: 'view', label: 'Project', icon: 'presentation' },
@@ -26,7 +27,10 @@ const MORE: MoreTile[] = [
   { kind: 'link', label: 'Nearby sharing', icon: 'share-2', settings: 'nearby' },
   { kind: 'link', label: 'Cast', icon: 'cast', settings: 'cast' },
   { kind: 'link', label: 'Notifications', icon: 'bell', settings: 'notifications' },
-  { kind: 'link', label: 'Night light', icon: 'moon', settings: 'nightlight' }
+  { kind: 'link', label: 'Night light', icon: 'moon', settings: 'nightlight' },
+  { kind: 'tool', label: 'Magnifier', icon: 'search', tool: 'magnifier' },
+  { kind: 'tool', label: 'Narrator', icon: 'volume-2', tool: 'narrator' },
+  { kind: 'tool', label: 'On-screen keyboard', icon: 'keyboard', tool: 'osk' }
 ]
 
 /** A split tile like the reference: the main part acts, the chevron part opens the related Windows Settings page. */
@@ -720,11 +724,12 @@ export default function QuickPanel(props: {
                     className={on ? 'more-tile on' : 'more-tile'}
                     aria-pressed={t.kind === 'airplane' ? on : undefined}
                     disabled={t.kind === 'airplane' && state.airplane === null}
-                    title={t.kind === 'link' ? tr('Open {0} settings', tr(t.label)) : tr(t.label)}
+                    title={t.kind === 'link' ? tr('Open {0} settings', tr(t.label)) : t.kind === 'tool' ? tr('Start {0}', tr(t.label)) : tr(t.label)}
                     onClick={() => {
                       if (t.kind === 'airplane') void act({ kind: 'airplane' })
                       else if (t.kind === 'view') setView('project')
-                      else void window.overlay.quickOpen(t.settings)
+                      else if (t.kind === 'tool') void window.overlay.quickTool(t.tool)
+                      else if (t.kind === 'link') void window.overlay.quickOpen(t.settings)
                     }}
                   >
                     <span className="ct-well">

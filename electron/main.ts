@@ -15,7 +15,7 @@ import { findPlace, getWeather } from './weather'
 import { startDownloads, stopDownloads } from './downloads'
 import { getLyrics } from './lyrics'
 import { currentProjectMode, isProjectMode, setProjectMode } from './project'
-import { isSettingsKey, networkKind, quickGet, quickPeek, quickSet, quickSlide, SETTINGS_PAGES, stopQuick } from './quick'
+import { isSettingsKey, networkKind, quickGet, quickPeek, quickSet, quickSlide, SETTINGS_PAGES, startAccessTool, stopQuick } from './quick'
 import { COLLAPSE_MAX, COLLAPSE_MIN, DEFAULTS, HOTKEYS, loadSettings, sanitize, saveSettings, type Settings } from './settings'
 import { getNotes, setNotes } from './notes'
 import { allApps, ensureIndex, findByExe, getIcon, isStarred, shellIcon, launch, movePin, pinnedApps, pinPlace, search, setPinOrder, toggleStar } from './launcher'
@@ -1368,6 +1368,10 @@ app.whenReady().then(async () => {
     if (!isSettingsKey(key)) return false
     await shell.openExternal(SETTINGS_PAGES[key])
     return true
+  })
+  ipcMain.handle('quick:tool', (e, key: unknown) => {
+    fromUi(e)
+    return startAccessTool(key)
   })
   ipcMain.handle('project:get', (e) => {
     fromUi(e)

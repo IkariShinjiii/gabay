@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('overlay', {
   quickPeek: () => ipcRenderer.invoke('quick:peek'),
   quickSlide: (kind: string, value: number) => ipcRenderer.invoke('quick:slide', kind, value),
   quickOpen: (key: string) => ipcRenderer.invoke('quick:open', key),
+  quickTool: (key: string) => ipcRenderer.invoke('quick:tool', key),
   networkKind: () => ipcRenderer.invoke('network:kind'),
   hardware: () => ipcRenderer.invoke('hardware:get'),
   windowsDnd: () => ipcRenderer.invoke('windows:dnd'),
