@@ -447,4 +447,8 @@ export const FIL: Record<string, string> = {
   "Narrator": "Narrator",
   "On-screen keyboard": "Keyboard sa screen",
   "Start {0}": "Simulan ang {0}",
+  "Add your calendar in Settings to see events here.": "Idagdag ang iyong calendar sa Settings para makita ang mga event dito.",
+  "Only today and tomorrow are read from your calendar.": "Ngayon at bukas lang ang binabasa mula sa iyong calendar.",
+  "Nothing on your calendar this day.": "Walang event sa iyong calendar sa araw na ito.",
+  "Couldn't reach your calendar.": "Hindi maabot ang iyong calendar.",
 }
