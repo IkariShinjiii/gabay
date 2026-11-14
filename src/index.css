@@ -19,6 +19,8 @@
   --accent-strong: #2fd6bf; /* filled controls; text on them uses --on-accent */
   --on-accent: #04231f; /* 9:1 on the accent */
   --accent-tint: #0d2a27; /* an "on" tile's surface */
+  --accent-line: #1c5a52; /* hairline ring on the Today Now card */
+  --accent-deep: #0a1d1b; /* darkest accent: Now card gradient end, bar track */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
