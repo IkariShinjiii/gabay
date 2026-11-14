@@ -22,6 +22,7 @@ import { useFocusTimer } from './useFocusTimer'
 import { tr, setLanguage, type Language } from './i18n'
 import Skeleton, { TAB_SKELETON } from './Skeleton'
 import TodayPanel from './TodayPanel'
+import TodayLab from './TodayLab'
 
 // The big tab panels load the first time they open (the first tab and the launcher are in the main bundle), with a
 // skeleton in their place meanwhile.
@@ -103,7 +104,7 @@ export default function App(): React.JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null)
   // Dev preview (see electron/main.ts): open straight onto the named tab, with no pointer involved.
   const previewParam = new URLSearchParams(location.hash.slice(1)).get('preview')
-  const previewTab = TABS.find((t) => t === previewParam)
+  const previewTab = previewParam === 'TodayLab' ? 'Today' : TABS.find((t) => t === previewParam)
   // Dev preview of the first-run tour: open on it with no pointer involved.
   const previewWelcome = previewParam === 'Welcome'
   const previewTour = previewParam === 'Tour'
@@ -1107,6 +1108,8 @@ export default function App(): React.JSX.Element {
     )
   } else if (expanded && tab === 'Clipboard') {
     body = <ClipboardPanel query={query} onCopied={onClipCopied} />
+  } else if (previewParam === 'TodayLab') {
+    body = <TodayLab />
   } else if (expanded && tab === 'Today') {
     body = <TodayPanel timer={focusTimer} timers={timers} weather={weather} todoVersion={todoVersion} onHold={onTodoHold} />
   } else if (expanded && tab === 'Inbox') {
