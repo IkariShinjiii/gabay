@@ -35,7 +35,6 @@ export function skyColor(i: number, rise: number, set: number): string {
     const [b, cb] = stops[k]
     if (i >= a && i <= b) {
       let t = b === a ? 0 : (i - a) / (b - a)
-      t = t * t * (3 - 2 * t)
       c = [0, 1, 2].map((n) => Math.round(ca[n] + (cb[n] - ca[n]) * t)) as RGB
       break
     }
@@ -61,7 +60,7 @@ function buildSky(rise: number, set: number, mode: Mode): { gradient: string; ar
   else if (mode === 'day') gradient = NOON
   else {
     const stops: string[] = []
-    for (let i = 0; i < 48; i++) stops.push(`${skyColor(i + 0.5, rise, set)} ${(((i + 0.5) / 48) * 100).toFixed(2)}%`)
+    for (let i = 0; i < 96; i++) stops.push(`${skyColor((i + 0.5) / 2, rise, set)} ${(((i + 0.5) / 96) * 100).toFixed(2)}%`)
     gradient = `linear-gradient(90deg, ${stops.join(', ')})`
   }
   let arc = ''
@@ -72,7 +71,7 @@ function buildSky(rise: number, set: number, mode: Mode): { gradient: string; ar
     }
   const glow =
     mode === 'normal'
-      ? `radial-gradient(ellipse 16% 95% at ${((rise / 48) * 100).toFixed(1)}% 100%, rgba(255,130,80,.5), transparent), radial-gradient(ellipse 16% 95% at ${((set / 48) * 100).toFixed(1)}% 100%, rgba(255,105,95,.45), transparent)`
+      ? `radial-gradient(ellipse 26% 120% at ${((rise / 48) * 100).toFixed(1)}% 100%, rgba(255,130,80,.42), rgba(255,130,80,.16) 45%, rgba(255,130,80,.04) 75%, rgba(255,130,80,0)), radial-gradient(ellipse 26% 120% at ${((set / 48) * 100).toFixed(1)}% 100%, rgba(255,105,95,.38), rgba(255,105,95,.14) 45%, rgba(255,105,95,.04) 75%, rgba(255,105,95,0))`
       : 'none'
   const stars =
     mode === 'day'
@@ -97,10 +96,10 @@ type Props = {
 }
 
 function TodaySkyInner({ rise, set, minute, polar, locale }: Props): React.JSX.Element {
-  const known = rise !== undefined && set !== undefined && !polar
+  const known = rise !== undefined && set !== undefined && rise < set && !polar
   const mode: Mode = polar ?? 'normal'
-  const r = polar === 'day' ? 0 : polar === 'night' ? 0 : (rise ?? 360) / 30 // shortcut: 6:00 to 18:00 when there is no forecast
-  const s = polar === 'day' ? 48 : polar === 'night' ? 0 : (set ?? 1080) / 30
+  const r = polar === 'day' ? 0 : polar === 'night' ? 0 : known ? rise / 30 : 12 // shortcut: 6:00 to 18:00 when there is no forecast
+  const s = polar === 'day' ? 48 : polar === 'night' ? 0 : known ? set / 30 : 36
   const sky = useMemo(() => buildSky(r, s, mode), [r, s, mode])
   const hours = useMemo(() => [0, 6, 12, 18].map((h) => new Date(2000, 0, 1, h).toLocaleTimeString(locale, { hour: 'numeric' })), [locale])
 
@@ -123,7 +122,8 @@ function TodaySkyInner({ rise, set, minute, polar, locale }: Props): React.JSX.E
 
   return (
     <>
-      <div className="sky" role="img" aria-label={label} title={known ? `${at(rise)} → ${at(set)}` : undefined} style={{ background: sky.gradient }}>
+      <div className="sky" role="img" aria-label={label} title={known ? `${at(rise)} → ${at(set)}` : undefined}>
+        <div className="sky-base" aria-hidden="true" style={{ background: sky.gradient }} />
         <div className="sky-zen" aria-hidden="true" />
         {sky.glow !== 'none' && <div className="sky-glow" aria-hidden="true" style={{ background: sky.glow }} />}
         {sky.stars.map(([x, top], k) => (
@@ -134,7 +134,7 @@ function TodaySkyInner({ rise, set, minute, polar, locale }: Props): React.JSX.E
             <path d={sky.arc} fill="none" stroke="rgba(255,255,255,.55)" strokeWidth="1.2" strokeDasharray="2 5" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
           </svg>
         )}
-        <div className="sky-future" aria-hidden="true" style={{ transform: `translateX(${pct.toFixed(2)}%)` }} />
+        <div className="sky-future" aria-hidden="true" style={{ transform: `translateX(calc(${pct.toFixed(2)}% - 14px))` }} />
         <div className={up ? 'sky-orb' : 'sky-orb is-down'} aria-hidden="true" style={{ transform: `translateX(${pct.toFixed(2)}%)`, '--glow': glow } as CSSProperties}>
           <div className="sky-orb-dot" style={{ transform: `translateY(${y.toFixed(1)}px)` }} />
         </div>

@@ -71,7 +71,11 @@ export function TodayTools({ id, timer, timers, lengthMin, onLength, draft, onDr
           onChange={(e) => onDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') onAddTodo()
-            else if (e.key === 'Escape') e.currentTarget.blur()
+            else if (e.key === 'Escape') {
+              // Blur, landing on the first preset so a second Esc reaches the region and closes the drawer.
+              e.stopPropagation()
+              first.current?.focus()
+            }
           }}
           onFocus={() => onHold(true)}
           onBlur={() => onHold(false)}
@@ -104,7 +108,7 @@ export function TodayTools({ id, timer, timers, lengthMin, onLength, draft, onDr
             <div className="laps">
               {sw.laps.slice(0, 2).map((l, i) => (
                 <span key={sw.laps.length - i}>
-                  Lap {sw.laps.length - i} · {formatClock(l, true)}
+                  {tr('Lap {0}', sw.laps.length - i)} · {formatClock(l, true)}
                 </span>
               ))}
             </div>
@@ -116,7 +120,7 @@ export function TodayTools({ id, timer, timers, lengthMin, onLength, draft, onDr
             {tr('Timers')}
             <span className="tm-add">
               {[1, 5, 10, 30].map((m) => (
-                <button key={m} className="chip" disabled={timers.countdowns.length >= MAX_TIMERS} onClick={() => timers.add(m)} title={`New ${m}-minute timer`}>
+                <button key={m} className="chip" disabled={timers.countdowns.length >= MAX_TIMERS} onClick={() => timers.add(m)} title={tr('New {0}-minute timer', m)}>
                   +{m}m
                 </button>
               ))}
@@ -138,7 +142,7 @@ export function TodayTools({ id, timer, timers, lengthMin, onLength, draft, onDr
                   </button>
                 </div>
               ))}
-              {timers.countdowns.length > 3 && <div className="tm-empty">+{timers.countdowns.length - 3} more</div>}
+              {timers.countdowns.length > 3 && <div className="tm-empty">{tr('+{0} more', timers.countdowns.length - 3)}</div>}
             </div>
           )}
         </div>

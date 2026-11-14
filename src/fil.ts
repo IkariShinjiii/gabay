@@ -169,6 +169,8 @@ export const FIL: Record<string, string> = {
   "Cancel timer": "Kanselahin ang timer",
   "Stopwatch": "Stopwatch",
   "Lap": "Lap",
+  "Lap {0}": "Lap {0}",
+  "New {0}-minute timer": "Bagong {0}-minutong timer",
   "Tomorrow": "Bukas",
   "Tmrw {0}": "Bukas {0}",
   "All day": "Buong araw",

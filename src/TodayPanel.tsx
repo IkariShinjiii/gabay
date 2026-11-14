@@ -38,7 +38,7 @@ export default function TodayPanel({ timer: realTimer, timers, weather: realWeat
   const [todosError, setTodosError] = useState(false)
   const [cal, setCal] = useState<Cal | null>(null)
   const [draft, setDraft] = useState('')
-  const [month, setMonth] = useState(() => new URLSearchParams(location.hash.slice(1)).has('month')) // &month: dev preview
+  const [month, setMonth] = useState(() => !!dev?.has('month')) // &month: dev preview
   const [tools, setTools] = useState(() => !!dev?.has('tools'))
   const [focusField, setFocusField] = useState(false)
   const [lengthMin, setLengthMin] = useState(25)
@@ -68,18 +68,33 @@ export default function TodayPanel({ timer: realTimer, timers, weather: realWeat
   useEffect(() => () => onHold(false), [onHold])
 
   // Preview to-dos never touch the real file.
-  const apply = (real: () => Promise<Todo[]>, local: (l: Todo[]) => Todo[]): void => {
-    if (devTodoList) setTodos(local)
-    else void real().then(setTodos)
-  }
+  const apply = useCallback(
+    (real: () => Promise<Todo[]>, local: (l: Todo[]) => Todo[]): void => {
+      if (devTodoList) setTodos(local)
+      else real().then(setTodos, () => undefined)
+    },
+    [devTodoList]
+  )
   const add = (): void => {
     const text = draft.trim()
     if (!text) return
-    apply(() => window.overlay.addTodo(draft), (l) => [...l, { id: `${Date.now()}`, text, done: false }])
-    setDraft('')
+    if (devTodoList) {
+      setTodos((l) => [...l, { id: `${Date.now()}`, text, done: false }])
+      setDraft('')
+    } else {
+      // The text stays in the field if the add fails (for example at the cap).
+      const before = todos.length
+      window.overlay.addTodo(draft).then(
+        (l) => {
+          setTodos(l)
+          if (l.length > before) setDraft('')
+        },
+        () => undefined
+      )
+    }
   }
-  const toggle = (id: string): void => apply(() => window.overlay.toggleTodo(id), (l) => l.map((t) => (t.id === id ? { ...t, done: !t.done } : t)))
-  const remove = (id: string): void => apply(() => window.overlay.removeTodo(id), (l) => l.filter((t) => t.id !== id))
+  const toggle = useCallback((id: string): void => apply(() => window.overlay.toggleTodo(id), (l) => l.map((t) => (t.id === id ? { ...t, done: !t.done } : t))), [apply])
+  const remove = useCallback((id: string): void => apply(() => window.overlay.removeTodo(id), (l) => l.filter((t) => t.id !== id)), [apply])
 
   const openTools = useCallback((field?: boolean) => {
     setFocusField(!!field)
@@ -109,7 +124,16 @@ export default function TodayPanel({ timer: realTimer, timers, weather: realWeat
   const calState: CalState = cal === null ? 'loading' : !cal.connected ? 'off' : cal.error ? 'error' : 'ok'
 
   return (
-    <div className="body today-wrap">
+    <div
+      className="body today-wrap"
+      onKeyDown={(e) => {
+        // Esc on the Focus pill closes the drawer (inside the drawer its own handler does).
+        if (tools && e.key === 'Escape' && (e.target as HTMLElement).closest('.foc')) {
+          e.stopPropagation()
+          closeTools()
+        }
+      }}
+    >
       <div className="today-head">
         <div>
           <div className="today-clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>

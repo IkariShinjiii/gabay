@@ -85,7 +85,7 @@ function TodayTimelineImpl({ events, calState, todos, todosError, minuteKey, onT
             ? tr('{0}h {1}m left', Math.floor(left / 60), left % 60)
             : tr('{0} min left', left)
         return (
-          <li key={evKey(e)} className={cls(r, i)} style={style(i)} aria-current="time" {...anchor}>
+          <li key={`${evKey(e)}|${i}`} className={cls(r, i)} style={style(i)} aria-current="time" {...anchor}>
             <span className="tl-time tl-now-label">{tr('Now')}</span>
             <span className="tl-dot is-live" aria-hidden="true" />
             <div className="tl-now">
@@ -108,7 +108,7 @@ function TodayTimelineImpl({ events, calState, todos, todosError, minuteKey, onT
       }
       case 'allday':
         return (
-          <li key={evKey(r.e)} className={cls(r, i)} style={style(i)}>
+          <li key={`${evKey(r.e)}|${i}`} className={cls(r, i)} style={style(i)}>
             <span className="tl-time tl-caps">{tr('All day')}</span>
             <span className="tl-dot is-hollow" aria-hidden="true" />
             <span className="tl-title">{r.e.title}</span>
@@ -116,7 +116,7 @@ function TodayTimelineImpl({ events, calState, todos, todosError, minuteKey, onT
         )
       case 'past':
         return (
-          <li key={evKey(r.e)} className={cls(r, i)} style={style(i)}>
+          <li key={`${evKey(r.e)}|${i}`} className={cls(r, i)} style={style(i)}>
             <span className="tl-time">{time(r.e.start)}</span>
             <span className="tl-dot is-done" aria-hidden="true" />
             <span className="tl-title">{r.e.title}</span>
@@ -136,7 +136,7 @@ function TodayTimelineImpl({ events, calState, todos, todosError, minuteKey, onT
                 ? tr('in {0}h {1}m', p.h, p.m)
                 : tr('in {0}m', p.m)
         return (
-          <li key={evKey(e)} className={cls(r, i)} style={style(i)} {...anchor}>
+          <li key={`${evKey(e)}|${i}`} className={cls(r, i)} style={style(i)} {...anchor}>
             <span className="tl-time tl-caps">{e.allDay ? tr('All day') : time(e.start)}</span>
             <span className={`tl-dot ${e.live ? 'is-live-sm' : 'is-hollow'}`} aria-hidden="true" />
             <div className="tl-text">
@@ -188,12 +188,13 @@ function TodayTimelineImpl({ events, calState, todos, todosError, minuteKey, onT
       </li>
     )
   } else if (todos.length === 0) {
-    taskRows.push(
-      <li key="t-empty" className="tl-task is-hint" style={style(n++)}>
-        <span className="tl-hint-t">{tr('Nothing to do. Nice.')}</span>
-        {addBtn}
-      </li>
-    )
+    if (calState !== 'loading')
+      taskRows.push(
+        <li key="t-empty" className="tl-task is-hint" style={style(n++)}>
+          <span className="tl-hint-t">{tr('Nothing to do. Nice.')}</span>
+          {addBtn}
+        </li>
+      )
   } else {
     taskRows.push(
       <li key="t-head" className="tl-task is-group" style={style(n++)}>
@@ -239,7 +240,7 @@ function TodayTimelineImpl({ events, calState, todos, todosError, minuteKey, onT
   const [fade, setFade] = useState(false)
   const measure = (): void => {
     const el = scroller.current
-    if (el) setFade(el.scrollHeight - el.scrollTop - el.clientHeight > 2)
+    if (el) setFade(el.scrollHeight - el.scrollTop - el.clientHeight > 24)
   }
   const lead = calState === 'loading' ? 'l' : 'k'
   useLayoutEffect(() => {

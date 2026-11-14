@@ -37,7 +37,7 @@ export const TodayFocus = memo(function TodayFocus({ timer, lengthMin, open, onT
       <button className="btn small foc-reset" onClick={timer.reset} disabled={idle} aria-label={tr('Reset')} style={{ visibility: idle ? 'hidden' : 'visible' }}>
         {tr('Reset')}
       </button>
-      <button className="foc-more" onClick={onToggleTools} ref={moreRef} aria-expanded={open} aria-controls={toolsId} aria-label={tools} title={tools}>
+      <button className="foc-more" onClick={onToggleTools} ref={moreRef} aria-expanded={open} aria-controls={open ? toolsId : undefined} aria-label={tools} title={tools}>
         <Icon name="chevron-down" size={16} />
       </button>
       <button className="foc-main" onClick={act} aria-label={main}>

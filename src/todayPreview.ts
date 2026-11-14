@@ -22,7 +22,7 @@ export function devNow(q: URLSearchParams | null): Date | null {
 export function devWeather(v: string | null | undefined): Weather | null | undefined {
   if (!v) return undefined
   if (v === 'none') return null
-  const base = { place: 'Iloilo City', temp: 31, code: 2, day: true, high: 33, low: 26, at: 0 }
+  const base = { place: 'Sample City', temp: 31, code: 2, day: true, high: 33, low: 26, at: 0 }
   if (v === 'polar-day') return { ...base, rise: 0, set: 0 }
   if (v === 'polar-night') return { ...base, day: false, rise: 0, set: 0 }
   return { ...base, day: v === 'day', rise: 342, set: 1051 }
