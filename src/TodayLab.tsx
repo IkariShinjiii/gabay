@@ -1,6 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { TodaySky } from './TodaySky'
 import { TodayTimeline, type CalState } from './TodayTimelineView'
+import { TodayFocus } from './TodayFocus'
+import { TodayTools } from './TodayTools'
+import { useTimers } from './useTimers'
+import type { FocusTimer, TimerStatus } from './useFocusTimer'
 import type { CalEvent, Todo } from './global'
 
 // Temporary dev harness for the Today redesign (GABAY_PREVIEW=TodayLab). F5 deletes it.
@@ -79,9 +83,63 @@ function TimelineLab({ id }: { id: string }): React.JSX.Element {
   )
 }
 
+// F4: Focus pill states (&focus) and Tools drawer cases (&tools=empty|laps|three|max|long).
+const stub = (status: TimerStatus, remainingMs: number): FocusTimer => ({ status, totalMs: 25 * 60000, remainingMs, start: () => undefined, pause: () => undefined, reset: () => undefined })
+const PILLS: [string, FocusTimer][] = [
+  ['idle', stub('idle', 25 * 60000)],
+  ['running', stub('running', 14 * 60000 + 12000)],
+  ['paused', stub('paused', 6 * 60000 + 3000)],
+  ['done', stub('done', 0)]
+]
+
+function ToolsLab({ id }: { id: string }): React.JSX.Element {
+  const timers = useTimers(() => undefined)
+  const [draft, setDraft] = useState(id === 'long' ? 'A very long to-do that goes on and on past the edge of the field for sure, '.repeat(3).slice(0, 200) : '')
+  const [len, setLen] = useState(25)
+  const [open, setOpen] = useState(true)
+  useEffect(() => {
+    const n = id === 'max' ? 6 : id === 'three' ? 3 : 0
+    for (let i = 0; i < n; i++) timers.add([5, 10, 30, 1, 5, 10][i])
+    if (id === 'laps') {
+      timers.swToggle()
+      window.setTimeout(timers.swLap, 150)
+      window.setTimeout(timers.swLap, 300)
+      window.setTimeout(timers.swLap, 450)
+      window.setTimeout(timers.swToggle, 600)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const pill = id === 'laps' ? PILLS[2][1] : PILLS[0][1]
+  return (
+    <div className="body" style={{ width: 480, boxSizing: 'border-box', padding: '0 20px' }}>
+      <div style={{ height: 266, display: 'flex', flexDirection: 'column', outline: '1px dashed #222' }}>
+        {open && (
+          <TodayTools id="today-tools" timer={pill} timers={timers} lengthMin={len} onLength={setLen} draft={draft} onDraft={setDraft} onAddTodo={() => setDraft('')} onHold={() => undefined} onClose={() => setOpen(false)} />
+        )}
+      </div>
+      <TodayFocus timer={pill} lengthMin={len} open={open} onToggleTools={() => setOpen((o) => !o)} toolsId="today-tools" />
+    </div>
+  )
+}
+
+function PillLab(): React.JSX.Element {
+  return (
+    <div className="body" style={{ width: 480, boxSizing: 'border-box', padding: '0 20px 12px' }}>
+      {PILLS.map(([n, t]) => (
+        <div key={n}>
+          <div style={{ font: '10px var(--font)', color: 'var(--muted)', paddingTop: 6 }}>{n}</div>
+          <TodayFocus timer={t} lengthMin={25} open={n === 'paused'} onToggleTools={() => undefined} toolsId="today-tools" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function TodayLab(): React.JSX.Element {
   const q = new URLSearchParams(location.hash.slice(1))
   const lang = q.get('lang') ?? undefined
+  if (q.has('focus')) return <PillLab />
+  if (q.has('tools')) return <ToolsLab id={q.get('tools') ?? 'empty'} />
   if (q.has('case')) return <TimelineLab id={q.get('case') ?? 'a'} />
   return (
     <div className="body" style={{ width: 480, overflowY: 'auto' }}>
