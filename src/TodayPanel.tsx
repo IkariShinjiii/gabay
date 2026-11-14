@@ -1,12 +1,16 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Icon from './Icon'
 import type { CalEvent, Todo, Weather } from './global'
-import { formatClock, leftOf, MAX_TIMERS, type Timers } from './useTimers'
+import type { Timers } from './useTimers'
 import { weatherLook } from './weatherIcon'
-import { formatMs, type FocusTimer } from './useFocusTimer'
+import type { FocusTimer } from './useFocusTimer'
 import { dateLocale, tr } from './i18n'
 import MonthView from './MonthView'
-import { SkeletonRows } from './Skeleton'
+import { TodaySky } from './TodaySky'
+import { TodayTimeline, type CalState } from './TodayTimelineView'
+import { TodayFocus } from './TodayFocus'
+import { TodayTools } from './TodayTools'
+import { devCal, devNow, devQuery, devTimer, devTodos, devWeather } from './todayPreview'
 
 interface Props {
   timer: FocusTimer
@@ -19,308 +23,175 @@ interface Props {
   onHold: (held: boolean) => void
 }
 
-const PRESETS = [15, 25, 50]
-
-const time = (t: number): string => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-
-/** "Now", "9:30 AM", or "Tomorrow" for events after today. */
-function when(ev: CalEvent, now: number): string {
-  const startOfTomorrow = new Date(new Date(now).setHours(24, 0, 0, 0)).getTime()
-  if (ev.start >= startOfTomorrow) return ev.allDay ? tr('Tomorrow') : tr('Tmrw {0}', time(ev.start))
-  if (ev.allDay) return tr('All day')
-  if (ev.start <= now && ev.end > now) return tr('Now')
-  return time(ev.start)
-}
-
-/** Up next from the connected calendar: what's on now and the next few events of today and tomorrow. */
-function Agenda({ now }: { now: number }): React.JSX.Element | null {
-  const [agenda, setAgenda] = useState<{ connected: boolean; events: CalEvent[]; error: boolean } | null>(null)
-  useEffect(() => {
-    // A failed request shows the same state as a calendar that cannot be reached, not a spinner forever.
-    void window.overlay.calendarGet(false).then(setAgenda, () => setAgenda({ connected: true, events: [], error: true }))
-  }, [])
-  if (!agenda) return <SkeletonRows count={1} />
-  if (!agenda.connected) return <div className="agenda-hint">{tr('Add your calendar in Settings to see what\'s next.')}</div>
-  const next = agenda.events.filter((e) => e.end > now).slice(0, 3)
-  return (
-    <div className="agenda">
-      {next.length === 0 ? (
-        <div className="agenda-hint">{agenda.error ? tr("Couldn't reach your calendar.") : tr('Nothing else on your calendar today.')}</div>
-      ) : (
-        next.map((e) => {
-          const live = !e.allDay && e.start <= now && e.end > now
-          return (
-            <div key={`${e.title}|${e.start}`} className={live ? 'ev live' : 'ev'}>
-              <span className="ev-when">{when(e, now)}</span>
-              <span className="ev-text">
-                <span className="ev-title">{e.title}</span>
-                {e.location && (
-                  <span className="ev-loc">
-                    <Icon name="map-pin" size={10} />
-                    {e.location}
-                  </span>
-                )}
-              </span>
-            </div>
-          )
-        })
-      )}
-    </div>
-  )
-}
-
-type RGB = [number, number, number]
-const NIGHT: RGB = [40, 46, 104]
-
-/** The colour of the sky at half-hour slot i: indigo night, violet and pink before sunrise, gold, blue midday, then the same in reverse. */
-function skyColor(i: number, rise: number, set: number): string {
-  const mid = (rise + set) / 2
-  const stops: [number, RGB][] = (
-    [
-      [rise - 3, NIGHT],
-      [rise - 1.5, [59, 47, 120]],
-      [rise - 0.3, [217, 99, 138]],
-      [rise + 0.7, [255, 160, 99]],
-      [rise + 2, [255, 216, 138]],
-      [rise + 4, [124, 200, 255]],
-      [mid, [82, 180, 255]],
-      [set - 4, [124, 200, 255]],
-      [set - 2, [255, 210, 122]],
-      [set - 0.7, [255, 138, 79]],
-      [set + 0.3, [224, 86, 138]],
-      [set + 1.5, [90, 58, 146]],
-      [set + 3, NIGHT]
-    ] as [number, RGB][]
-  ).sort((a, b) => a[0] - b[0]) // a very short day can cross the stops over
-  let c: RGB = NIGHT
-  for (let k = 1; k < stops.length; k++) {
-    const [a, ca] = stops[k - 1]
-    const [b, cb] = stops[k]
-    if (i >= a && i <= b) {
-      const t = b === a ? 0 : (i - a) / (b - a)
-      c = [0, 1, 2].map((n) => Math.round(ca[n] + (cb[n] - ca[n]) * t)) as RGB
-      break
-    }
-  }
-  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`
-}
-
-/** The day as 48 half-hour ticks coloured like the sky: height follows daylight, past ticks are lit, the rest are dimmed, and now glows. */
-function DayComb({ now, weather }: { now: Date; weather: Weather | null }): React.JSX.Element {
-  const cur = Math.floor((now.getHours() * 60 + now.getMinutes()) / 30)
-  // Arctic: the forecast gives equal sun times (sun up or down all day), so the strip is all day or all night.
-  const polar = weather?.rise !== undefined && weather.rise === weather.set
-  const rise = polar ? 0 : (weather?.rise ?? 360) / 30 // shortcut: 6:00 to 18:00 when there is no forecast
-  const set = polar ? (weather?.day ? 48 : 0) : (weather?.set ?? 1080) / 30
-  const sunTimes = weather?.rise !== undefined && weather.set !== undefined && !polar // the tooltip only states real forecast times
-  const hour = (h: number): string => new Date(2000, 0, 1, h).toLocaleTimeString([], { hour: 'numeric' })
-  const at = (m: number): string => new Date(2000, 0, 1, 0, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-  return (
-    <div className="comb-wrap">
-      <div className="comb" role="img" aria-label={sunTimes ? `${tr('Your day in half hours')}. ${tr('Sunrise {0}', at(weather?.rise ?? 360))}. ${tr('Sunset {0}', at(weather?.set ?? 1080))}.` : tr('Your day in half hours')} title={sunTimes ? `${at(weather?.rise ?? 360)} \u2192 ${at(weather?.set ?? 1080)}` : undefined}>
-        {Array.from({ length: 48 }, (_, i) => {
-          const day = set > rise && i >= rise && i <= set
-          const h = (day ? 10 + 30 * Math.sin((Math.PI * (i - rise)) / (set - rise)) : 5) + (i === cur ? 6 : 0)
-          const color = skyColor(i + 0.5, rise, set)
-          return (
-            <span
-              key={i}
-              className={i === cur ? 'tk cur' : i < cur ? 'tk past' : 'tk'}
-              style={{ height: Math.round(h), background: color, '--glow': color, '--i': i } as CSSProperties}
-            />
-          )
-        })}
-      </div>
-      <div className="comb-hours" aria-hidden="true">
-        {[0, 6, 12, 18].map((h) => (
-          <span key={h} style={{ left: `${((h * 2) / 47) * 100}%`, transform: h === 0 ? 'none' : undefined }}>
-            {hour(h)}
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
+type Cal = { connected: boolean; events: CalEvent[]; error: boolean }
 
 /** Mounted only while the Today tab is visible, so its 1 s clock stops when the panel closes. */
-export default function TodayPanel({ timer, timers, weather, todoVersion, onHold }: Props): React.JSX.Element {
-  const [now, setNow] = useState(() => new Date())
-  const [todos, setTodos] = useState<Todo[]>([])
+export default function TodayPanel({ timer: realTimer, timers, weather: realWeather, todoVersion, onHold }: Props): React.JSX.Element {
+  const dev = useRef(devQuery()).current // null in a packaged build
+  const fixedNow = useRef(devNow(dev)).current
+  const devW = devWeather(dev?.get('wx'))
+  const weather = devW === undefined ? realWeather : devW
+  const timer = devTimer(dev?.get('focus'), realTimer)
+  const devTodoList = useRef(devTodos(dev?.get('todos'))).current
+  const [now, setNow] = useState(() => fixedNow ?? new Date())
+  const [todos, setTodos] = useState<Todo[]>(devTodoList ?? [])
+  const [todosError, setTodosError] = useState(false)
+  const [cal, setCal] = useState<Cal | null>(null)
   const [draft, setDraft] = useState('')
-  const [month, setMonth] = useState(() => new URLSearchParams(location.hash.slice(1)).has('month')) // &month: dev preview
+  const [month, setMonth] = useState(() => !!dev?.has('month')) // &month: dev preview
+  const [tools, setTools] = useState(() => !!dev?.has('tools'))
+  const [focusField, setFocusField] = useState(false)
+  const [lengthMin, setLengthMin] = useState(25)
+  const moreRef = useRef<HTMLButtonElement>(null)
+  const adding = useRef(false)
 
   useEffect(() => {
+    if (fixedNow) return
     const id = window.setInterval(() => setNow(new Date()), 1000)
     return () => window.clearInterval(id)
-  }, [])
+  }, [fixedNow])
 
   useEffect(() => {
-    void window.overlay.listTodos().then(setTodos)
-  }, [todoVersion])
+    if (devTodoList) return
+    setTodosError(false)
+    window.overlay.listTodos().then(setTodos, () => setTodosError(true))
+  }, [todoVersion, devTodoList])
+
+  useEffect(() => {
+    const d = devCal(dev?.get('cal'), now)
+    if (d) return void setCal(d === 'loading' ? null : d)
+    // A failed request shows the same state as a calendar that cannot be reached, not a spinner forever.
+    void window.overlay.calendarGet(false).then(setCal, () => setCal({ connected: true, events: [], error: true }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Releasing the hold if this unmounts while the field is focused.
   useEffect(() => () => onHold(false), [onHold])
 
-  const add = async (): Promise<void> => {
-    if (!draft.trim()) return
-    setTodos(await window.overlay.addTodo(draft))
-    setDraft('')
+  // Preview to-dos never touch the real file.
+  const apply = useCallback(
+    (real: () => Promise<Todo[]>, local: (l: Todo[]) => Todo[]): void => {
+      if (devTodoList) setTodos(local)
+      else real().then(setTodos, () => undefined)
+    },
+    [devTodoList]
+  )
+  const add = (): void => {
+    const text = draft.trim()
+    if (!text) return
+    if (devTodoList) {
+      setTodos((l) => [...l, { id: `${Date.now()}`, text, done: false }])
+      setDraft('')
+    } else {
+      // One add at a time (a double Enter must not add twice). The field clears at once and gets the text back only if the add rejects and nothing new was typed.
+      if (adding.current) return
+      adding.current = true
+      setDraft('')
+      window.overlay
+        .addTodo(text)
+        .then(setTodos, () => setDraft((d) => d || text))
+        .finally(() => {
+          adding.current = false
+        })
+    }
   }
+  const toggle = useCallback((id: string): void => apply(() => window.overlay.toggleTodo(id), (l) => l.map((t) => (t.id === id ? { ...t, done: !t.done } : t))), [apply])
+  const remove = useCallback((id: string): void => apply(() => window.overlay.removeTodo(id), (l) => l.filter((t) => t.id !== id)), [apply])
 
-  const running = timer.status === 'running'
+  const openTools = useCallback((field?: boolean) => {
+    setFocusField(!!field)
+    setTools(true)
+  }, [])
+  const toggleTools = useCallback(() => {
+    setFocusField(false)
+    setTools((o) => !o)
+  }, [])
+  const closeTools = useCallback(() => {
+    setTools(false)
+    moreRef.current?.focus()
+  }, [])
+  const onLength = useCallback(
+    (m: number) => {
+      setLengthMin(m)
+      timer.start(m)
+    },
+    [timer]
+  )
+
+  const minute = now.getHours() * 60 + now.getMinutes()
+  const minuteKey = Math.floor(now.getTime() / 60000)
+  const polar = weather && weather.rise !== undefined && weather.rise === weather.set ? (weather.day ? 'day' : 'night') : undefined
+  const look = weather ? weatherLook(weather.code, weather.day) : null
+  const hl = weather ? tr('H {0} L {1}', `${weather.high}°`, `${weather.low}°`) : ''
+  const calState: CalState = cal === null ? 'loading' : !cal.connected ? 'off' : cal.error ? 'error' : 'ok'
+
   return (
-    <div className="body today-wrap">
-    <DayComb now={now} weather={weather} />
-    <div className="today">
-      <div className="today-left">
-        <div className="clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-        <button className="date date-btn" onClick={() => setMonth((m) => !m)} title={tr('Calendar')}>
-          {now.toLocaleDateString(dateLocale(), { weekday: 'long', month: 'short', day: 'numeric' })}
-          <Icon name="calendar" size={11} />
-        </button>
-        {weather && (
-          <div className="wx" title={weather.place}>
-            <Icon name={weatherLook(weather.code, weather.day).icon} size={14} />
-            <span className="wx-temp">{weather.temp}°</span>
-            <span className="wx-desc">
-              {weatherLook(weather.code, weather.day).label} · H {weather.high}° L {weather.low}°
-            </span>
+    <div
+      className="body today-wrap"
+      onKeyDown={(e) => {
+        // Esc on the Focus pill closes the drawer (inside the drawer its own handler does).
+        if (tools && e.key === 'Escape' && (e.target as HTMLElement).closest('.foc')) {
+          e.stopPropagation()
+          closeTools()
+        }
+      }}
+    >
+      <div className="today-head">
+        <div>
+          <div className="today-clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+          <button className="date-btn" onClick={() => setMonth((m) => !m)} title={tr('Calendar')} aria-expanded={month}>
+            {now.toLocaleDateString(dateLocale(), { weekday: 'long', month: 'short', day: 'numeric' })}
+            <Icon name="calendar" size={12} />
+          </button>
+        </div>
+        {weather && look && (
+          <div className="today-wx" title={hl}>
+            <span className="today-temp">{weather.temp}°</span>
+            <span className="today-wx-line">{weather.place ? `${look.label} · ${weather.place}` : look.label}</span>
+            <span className="sr-only">{hl}</span>
           </div>
         )}
-
-        <div className="timer">
-          <div className={`timer-time ${timer.status}`}>
-            {timer.status === 'done' ? tr('Done') : formatMs(timer.remainingMs)}
-          </div>
-          <div className="timer-buttons">
-            <button className="btn small" onClick={() => (running ? timer.pause() : timer.start())}>
-              {running ? tr('Pause') : timer.status === 'paused' ? tr('Resume') : tr('Start')}
-            </button>
-            <button className="btn small" onClick={timer.reset}>
-              {tr('Reset')}
-            </button>
-          </div>
-          <div className="timer-presets">
-            {PRESETS.map((m) => (
-              <button key={m} className="chip" onClick={() => timer.start(m)}>
-                {m}m
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
-      <div className="today-right">
-        {month ? <MonthView today={now} onClose={() => setMonth(false)} /> : <>
-        <Agenda now={now.getTime()} />
-        <input
-          className="field todo-field"
-          placeholder={tr('Add a to-do…')}
-          spellCheck={false}
-          autoComplete="off"
-          maxLength={200}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') void add()
-            else if (e.key === 'Escape') e.currentTarget.blur()
-          }}
-          onFocus={() => onHold(true)}
-          onBlur={() => onHold(false)}
-        />
-        <div className="todos">
-          {todos.length === 0 && <div className="todo-empty">{tr('Nothing to do. Nice.')}</div>}
-          {todos.map((t) => (
-            <div key={t.id} className="todo">
-              <button
-                className={t.done ? 'check on' : 'check'}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => void window.overlay.toggleTodo(t.id).then(setTodos)}
-                aria-label={t.done ? tr('Mark not done') : tr('Mark done')}
-              >
-                {t.done && <Icon name="check" size={12} />}
-              </button>
-              <span className={t.done ? 'todo-text done' : 'todo-text'}>{t.text}</span>
-              <button
-                className="star"
-                title={tr('Delete')}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => void window.overlay.removeTodo(t.id).then(setTodos)}
-              >
-                <Icon name="x" size={14} />
-              </button>
-            </div>
-          ))}
+      {month ? (
+        <div className="today-month">
+          <MonthView today={now} onClose={() => setMonth(false)} />
         </div>
-        </>}
-      </div>
-    </div>
-      <div className="today-row">
-        <div className="card sw">
-          <div className="card-head">
-            <Icon name="timer" size={13} />
-            {tr('Stopwatch')}
-          </div>
-          <div className={timers.stopwatch.running ? 'sw-time running' : 'sw-time'}>{formatClock(timers.elapsedMs, true)}</div>
-          <div className="timer-buttons">
-            <button className="btn small" onClick={timers.swToggle}>
-              {timers.stopwatch.running ? tr('Stop') : timers.elapsedMs > 0 ? tr('Resume') : tr('Start')}
-            </button>
-            {timers.stopwatch.running ? (
-              <button className="btn small" onClick={timers.swLap}>
-                {tr('Lap')}
-              </button>
+      ) : (
+        <>
+          <TodaySky rise={weather?.rise} set={weather?.set} minute={minute} polar={polar} locale={dateLocale()} />
+          <div className="today-slot">
+            {tools ? (
+              <TodayTools
+                id="today-tools"
+                timer={timer}
+                timers={timers}
+                lengthMin={lengthMin}
+                onLength={onLength}
+                draft={draft}
+                onDraft={setDraft}
+                onAddTodo={add}
+                onHold={onHold}
+                onClose={closeTools}
+                focusField={focusField}
+              />
             ) : (
-              timers.elapsedMs > 0 && (
-                <button className="btn small" onClick={timers.swReset}>
-                  {tr('Reset')}
-                </button>
-              )
+              <TodayTimeline
+                events={cal?.events ?? null}
+                calState={calState}
+                todos={todos}
+                todosError={todosError}
+                minuteKey={minuteKey}
+                onToggle={toggle}
+                onRemove={remove}
+                onOpenTools={openTools}
+              />
             )}
           </div>
-          {timers.stopwatch.laps.length > 0 && (
-            <div className="laps">
-              {timers.stopwatch.laps.slice(0, 2).map((l, i) => (
-                <span key={timers.stopwatch.laps.length - i}>
-                  Lap {timers.stopwatch.laps.length - i} · {formatClock(l, true)}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="card tm">
-          <div className="card-head">
-            <Icon name="timer" size={13} />
-            {tr('Timers')}
-            <span className="tm-add">
-              {[1, 5, 10, 30].map((m) => (
-                <button key={m} className="chip" disabled={timers.countdowns.length >= MAX_TIMERS} onClick={() => timers.add(m)} title={`New ${m}-minute timer`}>
-                  +{m}m
-                </button>
-              ))}
-            </span>
-          </div>
-          {timers.countdowns.length === 0 ? (
-            <div className="tm-empty">{tr('Tap +5m to start one. It keeps running when the notch closes.')}</div>
-          ) : (
-            <div className="tm-list">
-              {timers.countdowns.slice(0, 3).map((c) => (
-                <div key={c.id} className={c.endAt === null ? 'tm-row paused' : 'tm-row'}>
-                  <span className="tm-left">{formatClock(leftOf(c, timers.now) + 999)}</span>
-                  <span className="tm-label">{c.label}</span>
-                  <button className="tm-btn" onClick={() => timers.toggle(c.id)} title={c.endAt === null ? tr('Resume') : tr('Pause')} aria-label={c.endAt === null ? tr('Resume') : tr('Pause')}>
-                    <Icon name={c.endAt === null ? 'play' : 'pause'} size={11} />
-                  </button>
-                  <button className="tm-btn" onClick={() => timers.remove(c.id)} title={tr('Cancel')} aria-label={tr('Cancel timer')}>
-                    <Icon name="x" size={11} />
-                  </button>
-                </div>
-              ))}
-              {timers.countdowns.length > 3 && <div className="tm-empty">+{timers.countdowns.length - 3} more</div>}
-            </div>
-          )}
-        </div>
-      </div>
+        </>
+      )}
+
+      <TodayFocus timer={timer} lengthMin={lengthMin} open={tools} onToggleTools={toggleTools} toolsId="today-tools" moreRef={moreRef} />
     </div>
   )
 }
