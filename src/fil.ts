@@ -186,6 +186,7 @@ export const FIL: Record<string, string> = {
   "Paused": "Naka-pause",
   "Focus length": "Haba ng focus",
   "Could not load your to-dos": "Hindi ma-load ang mga gawain",
+  "+{0} more": "+{0} pa",
   "H {0} L {1}": "Mataas {0} Mababa {1}",
   "Sky: sunrise {0}, sunset {1}, now {2}": "Langit: sikat ng araw {0}, paglubog {1}, ngayon {2}",
   "Sky: the sun does not set today, now {0}": "Langit: hindi lumulubog ang araw ngayon, ngayon {0}",
