@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.6.6
 
 - Today redesigned: a sky window for sunrise and sunset, your day as a timeline with what's live now, and a Focus pill with a tools drawer for presets, to-dos, stopwatch and timers
 - Launch opens with the search focused: type right away after clicking the Launch tab or pressing Ctrl+6
@@ -10,6 +10,7 @@
 - Controls has Magnifier, Narrator and On-screen keyboard tiles that start their Windows programs
 - Optional (Settings, off by default): clicking a clip pastes it with Ctrl+V into the window you were using
 - Today month grid: click a day to list its calendar events (today and tomorrow only, as the calendar is read)
+- Smaller fixes: the day strip uses the sunrise and sunset of your weather place on your PC's clock, the calendar keeps tomorrow's events on a busy day, a failed calendar request says so instead of loading forever, and Launch search ignores spaces ("wi fi")
 
 ## 1.6.5
 
