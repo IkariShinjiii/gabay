@@ -43,6 +43,7 @@ export default function TodayPanel({ timer: realTimer, timers, weather: realWeat
   const [focusField, setFocusField] = useState(false)
   const [lengthMin, setLengthMin] = useState(25)
   const moreRef = useRef<HTMLButtonElement>(null)
+  const adding = useRef(false)
 
   useEffect(() => {
     if (fixedNow) return
@@ -82,15 +83,16 @@ export default function TodayPanel({ timer: realTimer, timers, weather: realWeat
       setTodos((l) => [...l, { id: `${Date.now()}`, text, done: false }])
       setDraft('')
     } else {
-      // The text stays in the field if the add fails (for example at the cap).
-      const before = todos.length
-      window.overlay.addTodo(draft).then(
-        (l) => {
-          setTodos(l)
-          if (l.length > before) setDraft('')
-        },
-        () => undefined
-      )
+      // One add at a time (a double Enter must not add twice). The field clears at once and gets the text back only if the add rejects and nothing new was typed.
+      if (adding.current) return
+      adding.current = true
+      setDraft('')
+      window.overlay
+        .addTodo(text)
+        .then(setTodos, () => setDraft((d) => d || text))
+        .finally(() => {
+          adding.current = false
+        })
     }
   }
   const toggle = useCallback((id: string): void => apply(() => window.overlay.toggleTodo(id), (l) => l.map((t) => (t.id === id ? { ...t, done: !t.done } : t))), [apply])

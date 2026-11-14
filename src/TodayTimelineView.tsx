@@ -188,13 +188,13 @@ function TodayTimelineImpl({ events, calState, todos, todosError, minuteKey, onT
       </li>
     )
   } else if (todos.length === 0) {
-    if (calState !== 'loading')
-      taskRows.push(
-        <li key="t-empty" className="tl-task is-hint" style={style(n++)}>
-          <span className="tl-hint-t">{tr('Nothing to do. Nice.')}</span>
-          {addBtn}
-        </li>
-      )
+    // While the calendar loads the line is held back but the + stays.
+    taskRows.push(
+      <li key="t-empty" className="tl-task is-hint" style={style(n++)}>
+        {calState !== 'loading' && <span className="tl-hint-t">{tr('Nothing to do. Nice.')}</span>}
+        {addBtn}
+      </li>
+    )
   } else {
     taskRows.push(
       <li key="t-head" className="tl-task is-group" style={style(n++)}>
