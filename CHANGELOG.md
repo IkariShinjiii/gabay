@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Today redesigned: a sky window for sunrise and sunset, your day as a timeline with what's live now, and a Focus pill with a tools drawer for presets, to-dos, stopwatch and timers
 - Launch opens with the search focused: type right away after clicking the Launch tab or pressing Ctrl+6
 - Launch search finds Windows Settings pages by name (Wi-Fi, Bluetooth, Display, Night light, Sound, Apps, Windows Update)
 - Controls has a Night light tile that opens its Windows Settings page

@@ -466,57 +466,8 @@ body,
   color: var(--accent-text);
 }
 
-.today {
-  display: flex;
-  gap: 14px;
-  padding: 8px 0 0;
-}
-
-.today-left {
-  flex: 0 0 190px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.clock {
-  white-space: nowrap;
-  font-size: 40px;
-  line-height: 1.1;
-  color: #fff;
-  font-variant-numeric: tabular-nums;
-}
-
-.date {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.timer {
-  margin-top: 26px;
-}
-
-.timer-time {
-  font-size: 24px;
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-}
-
 /* Running is the accent, paused is dimmed, done is green: the state reads from the color. */
-.timer-time.running {
-  color: var(--accent-text);
-}
-
-.timer-time.paused {
-  color: var(--muted);
-}
-
-.timer-time.done {
-  color: #7ee0a0;
-}
-
-.timer-buttons,
-.timer-presets {
+.timer-buttons {
   display: flex;
   gap: 6px;
   margin-top: 6px;
@@ -541,73 +492,9 @@ body,
   color: var(--accent);
 }
 
-.today-right {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .todo-field {
   padding: 7px 10px;
   font-size: 13px;
-}
-
-.todos {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.todo-empty {
-  color: var(--muted);
-  padding: 8px 4px;
-}
-
-.todo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 3px 4px;
-}
-
-.todo-text {
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.todo-text.done {
-  color: var(--muted);
-  text-decoration: line-through;
-}
-
-.check {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 5px;
-  border: 1px solid var(--faint);
-  background: none;
-  color: #000;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  line-height: 1;
-  padding: 0;
-  cursor: pointer;
-}
-
-.check.on {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--on-accent);
 }
 
 .chip {
@@ -1673,12 +1560,6 @@ button.big-icon {
 }
 
 /* ---------- Today: up next from the calendar ---------- */
-.agenda {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 .agenda-hint {
   font-size: 11.5px;
   color: var(--muted);
@@ -1692,50 +1573,6 @@ button.big-icon {
   border-radius: 10px;
   background: var(--surface);
   box-shadow: inset 3px 0 0 var(--well);
-}
-
-.ev.live {
-  background: var(--accent-tint);
-  box-shadow: inset 3px 0 0 var(--accent);
-}
-
-.ev-when {
-  flex: none;
-  min-width: 58px;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-2);
-  font-variant-numeric: tabular-nums;
-}
-
-.ev.live .ev-when {
-  color: var(--accent-text);
-}
-
-.ev-text {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.ev-title {
-  font-size: 12.5px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ev-loc {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Thin dark scrollbars wherever a list scrolls. */
@@ -2235,20 +2072,6 @@ button.big-icon {
   color: var(--muted);
 }
 
-/* ---------- polish: Today's timer sits in a card ---------- */
-.today .timer {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-}
-
-.today .timer .btn,
-.today .timer .chip {
-  background: var(--well);
-}
-
 .clip-thumb {
   flex: none;
   width: 40px;
@@ -2463,37 +2286,19 @@ button.big-icon {
 .today-wrap {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
+  padding-top: 4px;
+  overflow: hidden; /* the timeline and tools scroll inside their own slot */
   min-height: 0;
 }
 
-.wx {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--text-2);
-}
-
-.wx-temp {
-  font-weight: 600;
-  color: var(--text);
-}
-
-.wx-desc {
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.today-row {
-  display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-  gap: 10px;
-}
+.today-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; height: 80px; margin-bottom: 12px; flex: none; }
+.today-clock { font-size: 60px; line-height: 58px; font-weight: 600; letter-spacing: -0.035em; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.today-wx { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; padding-bottom: 2px; }
+.today-temp { font-size: 22px; line-height: 24px; font-weight: 600; color: var(--text); }
+.today-wx-line { max-width: 160px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.today-slot { display: flex; flex-direction: column; flex: 1; min-height: 0; margin-top: 10px; }
+.today-month { flex: 1; min-height: 0; overflow-y: auto; margin-top: 10px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .card {
   padding: 12px;
@@ -3292,10 +3097,14 @@ button.big-icon {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  margin: 6px -8px -4px;
   border: 0;
+  border-radius: 8px;
   background: none;
-  padding: 0;
+  padding: 4px 8px;
   font: inherit;
+  font-size: 13px;
+  color: var(--text-2);
   text-align: left;
   cursor: pointer;
 }
@@ -3651,73 +3460,6 @@ button.big-icon {
 @keyframes sk-sweep { to { background-position: -60% 0; } }
 @media (prefers-reduced-motion: reduce) {
   .sk { animation: none; background-image: none; }
-}
-
-/* ---------- Today: the day strip (sky comb) ---------- */
-.comb-wrap {
-  flex: none;
-  padding: 2px 1px 0;
-}
-
-.comb {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  height: 46px;
-}
-
-.tk {
-  width: 5px;
-  border-radius: 3px;
-  opacity: 0.58; /* the hours still to come show the sky dimmed */
-  transform-origin: bottom;
-  animation: tk-grow 0.6s var(--ease-out) both;
-  animation-delay: calc(var(--i) * 12ms);
-}
-
-.tk.past {
-  opacity: 1;
-}
-
-.tk.cur {
-  opacity: 1;
-  outline: 1.5px solid rgba(255, 255, 255, 0.9);
-  outline-offset: 1.5px;
-  animation:
-    tk-grow 0.6s var(--ease-out) both,
-    tk-sun 2.4s ease-in-out 1s infinite;
-  animation-delay: calc(var(--i) * 12ms), 1s;
-}
-
-.comb-hours {
-  position: relative;
-  height: 14px;
-  margin-top: 6px;
-  font-size: 10px;
-  line-height: 14px;
-  color: var(--faint);
-  font-variant-numeric: tabular-nums;
-}
-
-.comb-hours span {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  white-space: nowrap;
-}
-
-@keyframes tk-grow {
-  from { transform: scaleY(0.1); opacity: 0; }
-  to { transform: scaleY(1); }
-}
-
-@keyframes tk-sun {
-  0%, 100% { box-shadow: 0 0 8px 1px var(--glow); }
-  50% { box-shadow: 0 0 18px 4px var(--glow); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tk, .tk.cur { animation: none; }
 }
 
 /* Today sky window (TodaySky): transform and opacity only, plus a one-time clip-path wipe. */
