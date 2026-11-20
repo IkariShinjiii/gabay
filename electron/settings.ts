@@ -44,6 +44,8 @@ export interface Settings {
   taskbarFull: boolean
   /** With hideTaskbar: other apps' tray icons in the dock (Gabay acts as the notification area). */
   trayIcons: boolean
+  /** With hideTaskbar: a tap of the Windows key opens Gabay's Launch instead of Start. */
+  winKey: boolean
   /** Install updates by themselves while the person is away from the PC. */
   autoUpdate: boolean
   /** 'preview' also gets pre-releases (new versions before everyone else). */
@@ -77,7 +79,7 @@ export const ACCENTS =['mint', 'windows', 'blue', 'purple', 'pink', 'orange', 'r
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, noteSound: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, recentFiles: true, pasteOnClick: false, dndUntil: 0, welcomed: false, reviewAt: 0, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarFull: false, trayIcons: false, taskbarWasAutoHide: null, autoUpdate: true, updateChannel: 'stable', language: 'en' }
+export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, noteSound: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, recentFiles: true, pasteOnClick: false, dndUntil: 0, welcomed: false, reviewAt: 0, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarFull: false, trayIcons: false, winKey: true, taskbarWasAutoHide: null, autoUpdate: true, updateChannel: 'stable', language: 'en' }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -115,12 +117,13 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
   const hideTaskbar = typeof r.hideTaskbar === 'boolean' ? r.hideTaskbar : base.hideTaskbar
   const taskbarFull = typeof r.taskbarFull === 'boolean' ? r.taskbarFull : base.taskbarFull
   const trayIcons = typeof r.trayIcons === 'boolean' ? r.trayIcons : base.trayIcons
+  const winKey = typeof r.winKey === 'boolean' ? r.winKey : base.winKey
   const taskbarWasAutoHide =
     r.taskbarWasAutoHide === null || typeof r.taskbarWasAutoHide === 'boolean' ? r.taskbarWasAutoHide : base.taskbarWasAutoHide
   const autoUpdate = typeof r.autoUpdate === 'boolean' ? r.autoUpdate : base.autoUpdate
   const updateChannel = r.updateChannel === 'stable' || r.updateChannel === 'preview' ? r.updateChannel : base.updateChannel
   const language = r.language === 'en' || r.language === 'fil' ? r.language : base.language
-  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, noteSound, reserveTop, accent, place, lyrics, recentFiles, pasteOnClick, dndUntil, welcomed, reviewAt, seenVersion, visibility, hideTaskbar, taskbarFull, trayIcons, taskbarWasAutoHide, autoUpdate, updateChannel, language }
+  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, noteSound, reserveTop, accent, place, lyrics, recentFiles, pasteOnClick, dndUntil, welcomed, reviewAt, seenVersion, visibility, hideTaskbar, taskbarFull, trayIcons, winKey, taskbarWasAutoHide, autoUpdate, updateChannel, language }
 }
 
 export async function loadSettings(): Promise<Settings> {

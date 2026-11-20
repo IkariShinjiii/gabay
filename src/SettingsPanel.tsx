@@ -843,6 +843,14 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onSho
             onChange={(trayIcons) => void save({ trayIcons })}
           />
         )}
+        {settings.hideTaskbar && (
+          <SwitchRow
+            label={tr('Windows key opens Gabay')}
+            desc={tr('A tap of the Windows key opens Launch, ready to type, instead of the Start menu. Win with another key works as usual.')}
+            on={settings.winKey}
+            onChange={(winKey) => void save({ winKey })}
+          />
+        )}
       </Group>
 
       <Group title={tr('Help and feedback')}>

@@ -387,6 +387,13 @@ export default function App(): React.JSX.Element {
       window.setTimeout(() => inputRef.current?.focus(), 60)
       evaluate()
     })
+    // The Windows key was tapped while Gabay is open: close it, whatever kept it open but a tour or the welcome.
+    const offDismiss = window.overlay.onDismiss(() => {
+      ;(document.activeElement as HTMLElement | null)?.blur?.()
+      for (const h of [...holds.current]) if (h !== 'welcome') holds.current.delete(h)
+      pointerInside.current = false
+      evaluate()
+    })
     // The PC is locking: the panel closes and lets go of the mouse, whatever kept it open (a half-typed note, a menu,
     // a confirmation). Only a tour stays where it was, to finish after unlocking.
     const offLock = window.overlay.onLock((locked) => {
@@ -412,6 +419,7 @@ export default function App(): React.JSX.Element {
       window.clearTimeout(edgeTimer.current)
       window.clearTimeout(hideTimer.current)
       offSummon()
+      offDismiss()
       offLock()
       offStart()
       offFullscreen()
