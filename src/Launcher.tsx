@@ -31,9 +31,11 @@ const SETTINGS_FIND: { key: SettingsKey; name: string; words: string[] }[] = [
 
 /** Settings pages whose name or keywords contain the typed text (2+ letters), as launcher rows. */
 export function findSettings(query: string): LauncherItem[] {
-  const q = query.trim().toLowerCase()
+  // spaces and hyphens do not count: "wi fi", "wi-fi" and "wifi" all find Wi-Fi
+  const squash = (s: string): string => s.toLowerCase().replace(/[\s-]/g, '')
+  const q = squash(query)
   if (q.length < 2) return []
-  return SETTINGS_FIND.filter((s) => s.words.some((w) => w.includes(q)))
+  return SETTINGS_FIND.filter((s) => s.words.some((w) => squash(w).includes(q)))
     .map((s) => ({ id: s.key, name: tr(s.name), starred: false, kind: 'setting' as const }))
 }
 
@@ -42,6 +44,15 @@ const letterOf = (name: string): string => {
   const c = name.trim().charAt(0).toLocaleUpperCase()
   return /\p{L}/u.test(c) ? c : '#'
 }
+
+/** Launch home: the starred apps at the front of the list are shown as tiles. How many (0 outside home). */
+export const pinnedCount = (items: LauncherItem[], mode: string): number => {
+  if (mode !== 'home') return 0
+  let n = 0
+  while (n < items.length && !items[n].kind && items[n].starred) n++
+  return n
+}
+export const PIN_COLS = 6
 
 export default function Launcher({ items, selected, mode, emptyHint, onHover, onLaunch, onToggleStar, onReveal, onBack }: Props): React.JSX.Element {
   const listRef = useRef<HTMLDivElement>(null)
@@ -57,10 +68,11 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
 
   // no pinned or recent apps yet: say how to get some, above the recent files
   const noApps = mode === 'home' && !items.some((it) => !it.kind)
+  const pins = pinnedCount(items, mode)
   return (
-    <div className="body results" ref={listRef}>
+    <div className={`body results is-${mode}`} ref={listRef} id="launch-results" role="listbox" aria-label={tr('Results')}>
       {mode === 'all' && (
-        <div className="results-back">
+        <div className="results-back" role="presentation">
           <button className="q-icon-btn" title={tr('Back')} aria-label={tr('Back')} onMouseDown={(e) => e.preventDefault()} onClick={onBack}>
             <Icon name="arrow-left" size={16} />
           </button>
@@ -68,10 +80,39 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
           <span className="results-back-count">{items.length}</span>
         </div>
       )}
-      {noApps && <p className="results-hint">{emptyHint}</p>}
+      {noApps && <p className="results-hint" role="presentation">{emptyHint}</p>}
+      {pins > 0 && (
+        <>
+          <div role="presentation" className="results-head pin-head">{tr('Pinned')}</div>
+          <div className="pin-grid" role="presentation">
+            {items.slice(0, pins).map((it, i) => (
+              <div
+                key={it.id}
+                id={`launch-opt-${i}`}
+                role="option"
+                aria-selected={i === selected}
+                className={i === selected ? 'pin on' : 'pin'}
+                title={`${it.name} (${tr('Right-click to unpin')})`}
+                onMouseMove={() => onHover(i)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => onLaunch(it)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  onToggleStar(it)
+                }}
+              >
+                <AppIcon id={it.id} lazy={false} fallback="app-window" />
+                <span className="pin-name">{it.name}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
       {items.map((it, i) => {
+        if (i < pins) return null
         const prev = items[i - 1]
         let head: string | null = null
+        if (pins > 0 && i === pins && !it.kind) head = tr('Recent apps')
         if (it.kind === 'file' && prev?.kind !== 'file') head = mode === 'home' ? tr('Recent files') : tr('Files')
         else if (it.kind === 'emoji' && prev?.kind !== 'emoji') head = tr('Emoji')
         else if (it.kind === 'setting' && prev?.kind !== 'setting') head = tr('Settings')
@@ -80,6 +121,9 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
           return (
             <div
               key={it.id}
+              id={`launch-opt-${i}`}
+              role="option"
+              aria-selected={i === selected}
               className={i === selected ? 'row row-more on' : 'row row-more'}
               onMouseMove={() => onHover(i)}
               onMouseDown={(e) => e.preventDefault()}
@@ -96,9 +140,12 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
         return (
           // mousedown is cancelled so clicking a row never steals focus from the search field.
           <Fragment key={it.id}>
-            {head && <div className={mode === 'all' && it.kind !== 'file' ? 'results-head results-letter' : 'results-head'}>{head}</div>}
+            {head && <div role="presentation" className={mode === 'all' && it.kind !== 'file' ? 'results-head results-letter' : 'results-head'}>{head}</div>}
             <div
-              className={i === selected ? 'row on' : 'row'}
+              id={`launch-opt-${i}`}
+              role="option"
+              aria-selected={i === selected}
+              className={(i === selected ? 'row on' : 'row') + (mode === 'search' && i === 0 ? ' row-top' : '')}
               onMouseMove={() => onHover(i)}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => onLaunch(it)}
@@ -121,6 +168,7 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
                 <AppIcon id={it.id} lazy={mode === 'all'} fallback={it.kind === 'file' ? 'file' : 'app-window'} />
               )}
               <span className="row-name">{it.name}</span>
+              {mode === 'search' && i === 0 && <kbd className="row-key">Enter</kbd>}
               {it.kind === 'file' ? (
                 it.folder && <span className="row-sub">{it.folder}</span>
               ) : it.kind === 'setting' || it.kind === 'emoji' ? null : (

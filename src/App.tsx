@@ -4,7 +4,7 @@ import { COLLAPSE_DELAY_MS, HIDE_DELAY_MS, NOTCH, REVEAL_DWELL_MS } from './cons
 import type { ClipCopyResult, DownloadState, LauncherItem, DockApp, TrayIcon, LiveMedia, PowerAction, Settings, SettingsKey, UpdateProgress, Weather } from './global'
 import Dock from './Dock'
 import { parseCommand, type CommandActions } from './commands'
-import Launcher, { findSettings } from './Launcher'
+import Launcher, { findSettings, pinnedCount, PIN_COLS } from './Launcher'
 import { findEmoji } from './emoji'
 import Icon from './Icon'
 import NotchStatus, { type NetKind } from './NotchStatus'
@@ -383,7 +383,15 @@ export default function App(): React.JSX.Element {
     // The hotkey opens Launch with the caret in its search field.
     const offSummon = window.overlay.onSummon(() => {
       setTab('Launch')
-      window.setTimeout(() => inputRef.current?.focus(), 0)
+      // after the tab has rendered, so the field exists even when Gabay was open on another tab
+      window.setTimeout(() => inputRef.current?.focus(), 60)
+      evaluate()
+    })
+    // The Windows key was tapped while Gabay is open: close it, whatever kept it open but a tour or the welcome.
+    const offDismiss = window.overlay.onDismiss(() => {
+      ;(document.activeElement as HTMLElement | null)?.blur?.()
+      for (const h of [...holds.current]) if (h !== 'welcome') holds.current.delete(h)
+      pointerInside.current = false
       evaluate()
     })
     // The PC is locking: the panel closes and lets go of the mouse, whatever kept it open (a half-typed note, a menu,
@@ -411,6 +419,7 @@ export default function App(): React.JSX.Element {
       window.clearTimeout(edgeTimer.current)
       window.clearTimeout(hideTimer.current)
       offSummon()
+      offDismiss()
       offLock()
       offStart()
       offFullscreen()
@@ -924,7 +933,7 @@ export default function App(): React.JSX.Element {
     const show = (): void => {
       if (stale || apps === null || !filesIn) return
       if (home) setItems([...apps, ...files, { id: '__all', name: tr('All apps'), starred: false, kind: 'all' }])
-      else setItems([...apps, ...hits, ...files.slice(0, Math.max(3, 10 - apps.length - hits.length))]) // ten rows fit
+      else setItems([...apps, ...hits, ...files.slice(0, Math.max(3, 10 - apps.length - hits.length))]) // files fill up to about ten rows, at least 3; the list scrolls past that
     }
     window.overlay.searchApps(query).then((r) => {
       apps = r
@@ -986,12 +995,14 @@ export default function App(): React.JSX.Element {
       return
     }
     if (item.kind === 'emoji') {
-      await navigator.clipboard.writeText(item.id) // the glyph; the renderer's own clipboard, no IPC
+      // the glyph; the renderer's own clipboard, no IPC. A refused write still closes the panel.
+      await navigator.clipboard.writeText(item.id).catch(() => undefined)
       release()
       return
     }
     if (item.kind === 'setting') {
-      await window.overlay.quickOpen(item.id as SettingsKey) // main checks the key against its own list
+      // main checks the key against its own list; a failed open still closes the panel
+      await window.overlay.quickOpen(item.id as SettingsKey).catch(() => false)
       release()
       return
     }
@@ -1008,12 +1019,18 @@ export default function App(): React.JSX.Element {
     // An IME is composing: Enter and arrows belong to the candidate list, not to the launcher. Some IMEs send the
     // committing Enter after compositionend, with isComposing false but keyCode 229.
     if (e.nativeEvent.isComposing || e.keyCode === 229) return
-    if (e.key === 'ArrowDown') {
+    const pins = pinnedCount(items, launchMode)
+    if (pins > 0 && !query && selected < pins && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      // inside the pinned tiles the arrows walk the grid
       e.preventDefault()
-      setSelected((s) => Math.min(s + 1, Math.max(items.length - 1, 0)))
+      setSelected((s) => Math.min(Math.max(s + (e.key === 'ArrowRight' ? 1 : -1), 0), pins - 1))
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      // a tile's Down is the tile below it; from the last row it goes on to the first recent row
+      setSelected((s) => (s < pins ? (s + PIN_COLS < pins ? s + PIN_COLS : pins) : Math.min(s + 1, Math.max(items.length - 1, 0))))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setSelected((s) => Math.max(s - 1, 0))
+      setSelected((s) => (s < pins ? Math.max(s - PIN_COLS, 0) : s === pins ? Math.max(Math.floor((pins - 1) / PIN_COLS) * PIN_COLS, 0) : s - 1))
     } else if (e.key === 'Enter') {
       // preventDefault: a confirmation button that autofocuses during this very keydown (restart/shutdown)
       // would otherwise receive the Enter's default action and cancel itself instantly.
@@ -1168,6 +1185,7 @@ export default function App(): React.JSX.Element {
         onRecord={() => (recording ? recorder.stop() : void recorder.start())}
         onShot={() => void takeShot()}
         onOpen={selectTab}
+        onNotice={pushToast}
       />
     )
   } else {
@@ -1260,6 +1278,11 @@ export default function App(): React.JSX.Element {
               ref={inputRef}
               placeholder={tab === 'Clipboard' ? tr('Search clipboard') : tr('Search apps, or type a command')}
               aria-label={tr('Search or command')}
+              role={tab === 'Launch' ? 'combobox' : undefined}
+              aria-autocomplete={tab === 'Launch' ? 'list' : undefined}
+              aria-expanded={tab === 'Launch' ? showResults && items.length > 0 : undefined}
+              aria-controls={tab === 'Launch' && showResults && items.length > 0 ? 'launch-results' : undefined}
+              aria-activedescendant={tab === 'Launch' && showResults && items[selected] ? `launch-opt-${selected}` : undefined}
               spellCheck={false}
               autoComplete="off"
               value={input}

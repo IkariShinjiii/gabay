@@ -174,5 +174,10 @@ contextBridge.exposeInMainWorld('overlay', {
     const handler = (): void => cb()
     ipcRenderer.on('overlay:summon', handler)
     return () => ipcRenderer.removeListener('overlay:summon', handler)
+  },
+  onDismiss: (cb: () => void): (() => void) => {
+    const handler = (): void => cb()
+    ipcRenderer.on('overlay:dismiss', handler)
+    return () => ipcRenderer.removeListener('overlay:dismiss', handler)
   }
 })

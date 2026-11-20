@@ -12,7 +12,8 @@ export default function MonthView({ today, onClose }: { today: Date; onClose: ()
   const [picked, setPicked] = useState<number | null>(null)
   const [agenda, setAgenda] = useState<{ connected: boolean; events: CalEvent[]; error: boolean } | null>(null)
   useEffect(() => {
-    void window.overlay.calendarGet(false).then(setAgenda, () => undefined)
+    // A failed request shows the same state as a calendar that cannot be reached, not a spinner forever.
+    void window.overlay.calendarGet(false).then(setAgenda, () => setAgenda({ connected: true, events: [], error: true }))
   }, [])
   const first = shown.getDay()
   const days = new Date(shown.getFullYear(), shown.getMonth() + 1, 0).getDate()

@@ -10,8 +10,11 @@
 //            noteaccess <status>        whether Windows lets Gabay read notifications (Allowed, Denied, ...)
 //   requests <id> <command> [args]  ->  r <id> <json>
 //            vol <0-100> | volget | micget | micset mute|unmute | media toggle|next|prev | bt | notes on|off
-//            appbar L T R B H [notch] | appbar off   (reserve a band at the top of a monitor, physical pixels; it
+//            appbar L T R B H [notch][;...] | appbar off   (reserve a band at the top of each monitor given, physical pixels; it
 //                                             sits right under the notch window, given as a number)
+//            ownfocus <hwnd>                 (bring one of Gabay's own windows to the front with the keyboard focus: the
+//                                             foreground handoff Electron can't get from a key the helper saw)
+//            toolwin <hwnd>                  (hide one of Gabay's own windows from Alt+Tab)
 //            clipok                          (false when the copying app asked to keep it out of clipboard history)
 //            clipseq                         (clipboard sequence number: changes on every copy)
 //            mixer | appvol <pid> <0-100>    (per-app volume)
@@ -27,6 +30,8 @@
 //                                             for up to 6 s; false once it closed, or if none opened within the grace)
 //            tbhide <0|1>                    (hide the taskbar windows outright; always shown again when Gabay exits)
 //            startmenu                       (open or close the Start menu, as the taskbar's Start button does)
+//            winkey <0|1>                    (1: a plain tap of the Windows key does not open Start but pushes "winkey";
+//                                             Win plus any other key, and a held Win, are left alone)
 //            desktop                         (Show desktop and back, as the taskbar's far corner does)
 //            files <base64 utf-8 query>      (up to 8 files and folders in the user's folders whose names match, from
 //                                             Windows' search index, newest first: [{p,n}])
@@ -35,6 +40,7 @@
 //                                             base64 PNG string, or null)
 //   pushes   priv <json>                     camera / microphone in use, and by which apps
 //            wins <json>                     open windows, in z-order, while wins is on
+//            winkey                          a plain Windows key tap was swallowed (only while winkey is on)
 //            cover 0 | cover 1               smart hide: a window is under the notch strip (only while cover is on)
 //            tray <json>                     tray icons, while tray is on
 //            start 0|1                       the Start menu (or its search) is in front
@@ -399,6 +405,7 @@ class Band : Form {
   // it; so for the moment of each request Gabay's steps behind Explorer's.
   UIntPtr Bar(uint msg, ref APPBARDATA d) {
     bool aside = Native.TrayAside();
+    Native.bandHwnd = d.hWnd; // the band making this request (there is one per screen)
     UIntPtr r;
     try { r = SHAppBarMessage(msg, ref d); } finally { if (aside) Native.TrayBack(); }
     return r;
@@ -408,7 +415,9 @@ class Band : Form {
   // told to remove (the band then stays out of the usable area however often it is registered again).
   bool used;
   void Fresh() { if (used) RecreateHandle(); used = true; }
-  protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Native.bandHwnd = Handle; }
+
+  public bool Is(int l, int t) { return registered && this.l == l && this.t == t; }
+  public bool Active { get { return registered; } }
 
   public void Reserve(int l, int t, int r, int b, int h, IntPtr notch) {
     bool changed = !registered || l != this.l || t != this.t || r != this.r || b != this.b || h != this.h;
@@ -476,7 +485,10 @@ class Band : Form {
 
   // The band has left where it was: if Explorer still keeps exactly its space there, give back exactly that.
   static void GiveBack(RECT was) {
-    var mi = Mon(was);
+    var hmon = MonitorFromRect(ref was, 0); // MONITOR_DEFAULTTONULL: another screen's own band must not be undone
+    if (hmon == IntPtr.Zero) return;
+    var mi = new MONITORINFO(); mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+    if (!GetMonitorInfo(hmon, ref mi)) return;
     if (mi.rcWork.T == was.B && was.T >= mi.rcMonitor.T) { var w = mi.rcWork; w.T = was.T; SystemParametersInfo(SPI_SETWORKAREA, 0, ref w, 2); }
   }
 
@@ -611,6 +623,7 @@ static class Native {
   [DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool attach);
   [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
   [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+  [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vk);
   [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out int value, int size);
   [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT rect, int size);
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string cls, string name);
@@ -665,6 +678,52 @@ static class Native {
       Send("start " + now);
     }
   }
+  // --- Windows key tap: Gabay opens instead of Start ---
+  delegate IntPtr KbdFn(int code, IntPtr wp, IntPtr lp);
+  [DllImport("user32.dll", SetLastError = true)] static extern IntPtr SetWindowsHookEx(int id, KbdFn fn, IntPtr mod, uint tid);
+  [DllImport("user32.dll")] static extern IntPtr CallNextHookEx(IntPtr hook, int code, IntPtr wp, IntPtr lp);
+  [DllImport("kernel32.dll", EntryPoint = "GetModuleHandleW", CharSet = CharSet.Unicode)] static extern IntPtr GetModH(string name);
+  static KbdFn kbdHook; // kept alive: Windows calls it
+  static volatile bool winKeyOn;
+  static bool winDown, winCombo, winStarted;
+  static IntPtr KbdProc(int code, IntPtr wp, IntPtr lp) {
+    try {
+      if (code >= 0 && winKeyOn) {
+        int vk = Marshal.ReadInt32(lp), flags = Marshal.ReadInt32(lp, 8);
+        bool up = wp.ToInt32() == 0x0101 || wp.ToInt32() == 0x0105;
+        if ((flags & 0x10) == 0) { // LLKHF_INJECTED: our own dummy key below, and other tools' keys, never count
+          if (vk == 0x5B || vk == 0x5C) {
+            if (!up) { if (!winDown) { winDown = true; winCombo = false; } }
+            else if (winDown) {
+              winDown = false;
+              if (!winCombo) {
+                // A key between Win down and up keeps Start from opening (0xE8 is unassigned); Gabay opens instead.
+                keybd_event(0xE8, 0, 0, UIntPtr.Zero); keybd_event(0xE8, 0, 2, UIntPtr.Zero);
+                Send("winkey");
+              }
+            }
+          } else if (winDown) winCombo = true;
+        }
+      }
+    } catch { }
+    return CallNextHookEx(IntPtr.Zero, code, wp, lp);
+  }
+  static void WinKey(bool on) {
+    winKeyOn = on;
+    if (!on) { winDown = false; return; }
+    if (winStarted) return;
+    winStarted = true;
+    var th = new Thread(() => {
+      // The helper runs below normal priority; a hook on a starved thread would lag every key and get dropped by Windows.
+      Thread.CurrentThread.Priority = ThreadPriority.Highest;
+      kbdHook = KbdProc;
+      SetWindowsHookEx(13, kbdHook, GetModH(null), 0); // WH_KEYBOARD_LL
+      Application.Run();
+    });
+    th.SetApartmentState(ApartmentState.STA);
+    th.IsBackground = true;
+    th.Start();
+  }
   static void WatchStart() {
     var th = new Thread(() => {
       startHook = (hk, ev, h, obj, child, thread, time) => { try { CheckStart(); } catch { } };
@@ -693,7 +752,7 @@ static class Native {
     return b.Append('"').ToString();
   }
 
-  static Band band;
+  static readonly List<Band> bands = new List<Band>(); // one per screen; the first is also what the others are made through
   internal static IntPtr bandHwnd; // the band's window, kept current by the band: its app bar requests always reach Explorer (see TrayWndProc)
   [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr ctx);
   static void StartBand() {
@@ -703,21 +762,56 @@ static class Native {
       // way on every monitor and scale. Without it (Windows 10 before 1607) the band works as before, minus the checks.
       bool physical = false;
       try { physical = SetThreadDpiAwarenessContext(new IntPtr(-4)) != IntPtr.Zero; } catch { }
-      band = new Band(self, physical); bandHwnd = band.Handle; ready.Set(); Application.Run();
+      bandPhysical = physical; bands.Add(new Band(self, physical)); var h0 = bands[0].Handle; ready.Set(); Application.Run();
     });
     th.SetApartmentState(ApartmentState.STA);
     th.IsBackground = true;
     th.Start();
     ready.WaitOne();
   }
+  static bool bandPhysical;
+  // appbar G[;G...] with G = L T R B H [notch]: one band per group (per screen). A group goes to the band already on that
+  // screen, else a free one; bands left over are released. Everything runs on the band thread.
+
+  // Gabay's own overlay windows get the tool-window style: skipTaskbar only drops the taskbar button, Alt+Tab still lists
+  // a window without it. Gabay's own windows only, so it can never restyle another app.
+  [DllImport("user32.dll", EntryPoint = "SetWindowLongW")] static extern int SetWindowLong(IntPtr h, int i, int v);
+  static bool ToolWin(IntPtr h) {
+    uint pid = 0;
+    if (h == IntPtr.Zero || !IsWindow(h) || GetWindowThreadProcessId(h, out pid) == 0 || pid != self) return false;
+    int ex = GetWindowLong(h, -20);
+    if ((ex & 0x80) == 0) SetWindowLong(h, -20, (ex | 0x80) & ~0x00040000); // WS_EX_TOOLWINDOW, not WS_EX_APPWINDOW
+    return true;
+  }
   static string AppBar(string arg) {
-    if (band == null) StartBand();
-    if (arg == "off") { band.Invoke((Action)(() => band.Release())); return "true"; }
-    var n = arg.Split(' ');
-    if (n.Length != 5 && n.Length != 6) return "false";
-    int l = int.Parse(n[0]), t = int.Parse(n[1]), r = int.Parse(n[2]), b = int.Parse(n[3]), h = Math.Max(1, Math.Min(80, int.Parse(n[4])));
-    var notch = n.Length == 6 ? new IntPtr(long.Parse(n[5])) : IntPtr.Zero; // checked in the band: Gabay's own window only
-    band.Invoke((Action)(() => band.Reserve(l, t, r, b, h, notch)));
+    if (bands.Count == 0) StartBand();
+    var groups = new List<int[]>(); var notches = new List<IntPtr>();
+    if (arg != "off") {
+      foreach (var g in arg.Split(';')) {
+        var n = g.Trim().Split(' ');
+        if (n.Length != 5 && n.Length != 6) return "false";
+        var v = new int[5];
+        for (int i = 0; i < 5; i++) v[i] = int.Parse(n[i]);
+        v[4] = Math.Max(1, Math.Min(80, v[4]));
+        groups.Add(v);
+        notches.Add(n.Length == 6 ? new IntPtr(long.Parse(n[5])) : IntPtr.Zero); // checked in the band: Gabay's own window only
+      }
+      if (groups.Count > 8) return "false";
+    }
+    bands[0].Invoke((Action)(() => {
+      var used = new List<Band>(); var todo = new List<int>();
+      for (int i = 0; i < groups.Count; i++) {
+        var b = bands.Find(x => !used.Contains(x) && x.Is(groups[i][0], groups[i][1]));
+        if (b != null) { used.Add(b); b.Reserve(groups[i][0], groups[i][1], groups[i][2], groups[i][3], groups[i][4], notches[i]); } else todo.Add(i);
+      }
+      foreach (var x in bands) if (!used.Contains(x)) x.Release(); // screens that are gone or no longer wanted (or all, for off)
+      foreach (var i in todo) {
+        var b = bands.Find(x => !used.Contains(x) && !x.Active);
+        if (b == null) { b = new Band(self, bandPhysical); bands.Add(b); }
+        used.Add(b);
+        b.Reserve(groups[i][0], groups[i][1], groups[i][2], groups[i][3], groups[i][4], notches[i]);
+      }
+    }));
     return "true";
   }
 
@@ -816,7 +910,7 @@ static class Native {
       }
     } catch { }
     // Gabay closed our stdin: it is gone. Give the reserved space back, and the taskbar setting, before leaving.
-    try { if (band != null) band.Invoke((Action)(() => band.Release())); } catch { }
+    try { if (bands.Count > 0) bands[0].Invoke((Action)(() => { foreach (var x in bands) x.Release(); })); } catch { }
     try { if (trayCtl != null) trayCtl.Invoke((Action)TrayOff); } catch { }
     try { TaskbarHide(false); } catch { }
     try { if (tbRestore >= 0) TaskbarAutoHide(tbRestore == 1); } catch { }
@@ -850,6 +944,12 @@ static class Native {
         try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "shell:AppsFolder\\" + aumid) { UseShellExecute = false }); return "true"; } catch { return "false"; }
       }
       case "appbar": return AppBar(arg);
+      case "ownfocus": {
+        var h = new IntPtr(long.Parse(arg));
+        uint pid = 0;
+        return IsWindow(h) && GetWindowThreadProcessId(h, out pid) != 0 && pid == self && Focus(h, true, true) ? "true" : "false";
+      }
+      case "toolwin": return ToolWin(new IntPtr(long.Parse(arg))) ? "true" : "false";
       case "clipok": return ClipOk() ? "true" : "false";
       case "clipseq": return GetClipboardSequenceNumber().ToString();
       case "mixer": return Mixer();
@@ -885,6 +985,7 @@ static class Native {
       case "tray": return Tray(arg);
       case "trayclick": return TrayClick(arg) ? "true" : "false";
       case "traywait": return TrayWait(arg);
+      case "winkey": WinKey(arg == "1"); return "true";
       case "startmenu": {
         // The taskbar's own message for its Start button (WM_SYSCOMMAND SC_TASKLIST); works while it is hidden.
         var tb = ExplorerTray();
@@ -1331,8 +1432,8 @@ static class Native {
 
   // Windows only lets the foreground app hand focus over. Gabay is in front when this runs (it was just clicked), so
   // join its input queue for the call; if that is refused, a synthetic Alt tap lifts the lock.
-  static bool Focus(IntPtr h) {
-    if (!IsWindow(h) || !Listable(h)) return false;
+  static bool Focus(IntPtr h, bool altTap = true, bool own = false) {
+    if (!IsWindow(h) || (!own && !Listable(h))) return false;
     if (IsIconic(h)) ShowWindow(h, 9); // SW_RESTORE
     uint dummy;
     uint fgThread = GetWindowThreadProcessId(GetForegroundWindow(), out dummy);
@@ -1341,7 +1442,7 @@ static class Native {
     bool ok = SetForegroundWindow(h);
     BringWindowToTop(h);
     if (attached) AttachThreadInput(me, fgThread, false);
-    if (!ok || GetForegroundWindow() != h) {
+    if (altTap && (!ok || GetForegroundWindow() != h)) { // the Alt tap is for the launcher's own focus; paste never uses it
       keybd_event(0x12, 0, 0, UIntPtr.Zero); keybd_event(0x12, 0, 2, UIntPtr.Zero);
       ok = SetForegroundWindow(h);
     }
@@ -1350,7 +1451,15 @@ static class Native {
 
   // Paste-on-click: Ctrl+V goes to the window the user was in before Gabay came up, which is the one just under
   // Gabay's own window in the z-order (or the foreground window when Gabay is not in front). Only on a click.
+  static bool ModifierHeld() {
+    foreach (int vk in new[] { 0x10, 0x11, 0x12, 0x5B, 0x5C }) if ((GetAsyncKeyState(vk) & 0x8000) != 0) return true; // Shift, Ctrl, Alt, Win (both sides)
+    return false;
+  }
+
   static bool Paste() {
+    // Keys sent while the user still holds a modifier come out as another shortcut: wait briefly, else skip the paste.
+    for (int i = 0; i < 10 && ModifierHeld(); i++) System.Threading.Thread.Sleep(50);
+    if (ModifierHeld()) return false;
     IntPtr fg = GetForegroundWindow();
     uint fp; GetWindowThreadProcessId(fg, out fp);
     IntPtr target = fg;
@@ -1361,8 +1470,10 @@ static class Native {
         if (wp != self && IsWindowVisible(w) && !IsIconic(w) && Listable(w)) { target = w; break; } // minimized: Focus would restore it
       }
     }
-    if (target == IntPtr.Zero || !Focus(target)) return false;
+    // Only send the keys once the target really is the foreground window; no fallback that could hit another window.
+    if (target == IntPtr.Zero || !Focus(target, false) || GetForegroundWindow() != target) return false;
     System.Threading.Thread.Sleep(60); // let the window take the focus before the keys arrive
+    if (ModifierHeld()) return false;
     keybd_event(0x11, 0, 0, UIntPtr.Zero); keybd_event(0x56, 0, 0, UIntPtr.Zero); // Ctrl down, V down
     keybd_event(0x56, 0, 2, UIntPtr.Zero); keybd_event(0x11, 0, 2, UIntPtr.Zero); // V up, Ctrl up
     return true;

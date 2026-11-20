@@ -2,6 +2,26 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.6.7',
+    [
+      "With Hide taskbar on, tapping the Windows key opens Gabay's Launch ready to type instead of the Start menu, and a second tap closes it. Win with another key works as usual, and Settings has a switch to turn it off",
+      "Launch shows your starred apps as a tile grid under Pinned, with recent apps below",
+      "A bolder look: a stronger active tab, a bigger clock and sky in Today, and a tall top result when you search",
+      "Gabay no longer shows up in Alt+Tab",
+      "Reserve space at the top now works on every screen, not just the one with the notch"
+    ]
+  ],
+  [
+    '1.6.6',
+    [
+      "Today is redesigned: a sky window that shows sunrise, daylight and sunset, your day as one timeline with what is on now, and a Focus pill with a drawer for presets, to-dos, stopwatch and timers",
+      "Launch opens with the search ready: click the tab or press Ctrl+6 and type. It also finds Windows Settings pages by name, and a colon (:smile) lists emoji",
+      "Controls gets Night light, Magnifier, Narrator and On-screen keyboard tiles",
+      "In Today, click a day in the month view to see its events",
+      "Optional, off by default: clicking a clipboard item pastes it into the window you were using (Settings)"
+    ]
+  ],
+  [
     '1.6.5',
     [
       "New Smart option for Notch visibility: the notch steps aside only while a window (like a maximized Chrome) is under it, and comes back when you rest the pointer at the top edge. The reserved band at the top is now clear, so the notch still looks like it floats"

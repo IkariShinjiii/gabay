@@ -69,6 +69,16 @@ function notchBounds(display: Electron.Display): Electron.Rectangle {
   return { x: Math.round(x + (width - WIN_WIDTH) / 2), y, width: WIN_WIDTH, height: WIN_HEIGHT }
 }
 
+/** skipTaskbar only drops the taskbar button; Alt+Tab still lists the window unless it is a tool window (done by the helper). */
+function markTool(w: BrowserWindow): void {
+  if (PREVIEW || w.isDestroyed()) return
+  void nativeCall('toolwin', String(w.getNativeWindowHandle().readUInt32LE(0))).catch(() => null)
+}
+function hideFromAltTab(w: BrowserWindow): void {
+  markTool(w) // a no-op until the helper is up; its ready callback marks every window again
+  w.on('show', () => markTool(w)) // harmless when the style is already set
+}
+
 function createOverlay(display: Electron.Display): BrowserWindow {
   const { x, y } = notchBounds(display)
 
@@ -100,6 +110,7 @@ function createOverlay(display: Electron.Display): BrowserWindow {
   // "screen-saver" is the highest always-on-top level Electron exposes. On Windows this maps
   // to a topmost window; whether it beats full-screen apps is exactly what the kill test checks.
   win.setAlwaysOnTop(true, 'screen-saver')
+  hideFromAltTab(win)
 
   // Start click-through. `forward: true` still delivers mousemove to the renderer
   // (Windows/macOS only), which is how the renderer knows when the pointer reaches the notch.
@@ -165,6 +176,7 @@ function createDockWindow(display: Electron.Display, shouldShow: () => boolean):
   w.setBounds(b)
   w.setBounds(b)
   w.setAlwaysOnTop(true, 'screen-saver')
+  hideFromAltTab(w)
   w.setIgnoreMouseEvents(true, { forward: true })
   w.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   w.webContents.on('will-navigate', (e) => e.preventDefault())
@@ -196,6 +208,7 @@ app.whenReady().then(async () => {
   // false -> mouse passes through to whatever is underneath (click-through)
   // The other screens' dock notches, by display id (see syncDocks).
   const docks = new Map<number, BrowserWindow>()
+  let winOpen = false // the notch is open (it takes the mouse)
   const dockOf = (wc: Electron.WebContents): BrowserWindow | undefined =>
     [...docks.values()].find((d) => !d.isDestroyed() && d.webContents === wc)
   ipcMain.on('overlay:set-interactive', (event, interactive: unknown) => {
@@ -203,6 +216,7 @@ app.whenReady().then(async () => {
     const target = event.sender === win.webContents ? win : dockOf(event.sender)
     if (!target) return
     if (mouseLocked) return // a game has the mouse: nothing on the notch may take it
+    if (target === win) winOpen = interactive
     if (interactive) target.setIgnoreMouseEvents(false)
     else {
       target.setIgnoreMouseEvents(true, { forward: true })
@@ -509,6 +523,17 @@ app.whenReady().then(async () => {
         }
         send('overlay:start', show)
       },
+      // A tap of the Windows key (Start was kept from opening): Gabay opens instead. Over a game that holds the mouse,
+      // Gabay can't take focus, so Start opens as usual.
+      winkey: () => {
+        if (mouseLocked || fsNow) void nativeCall('startmenu')
+        else if (winOpen) win.webContents.send('overlay:dismiss') // a second tap closes it, as it closes Start
+        else {
+          // Electron gets no foreground right from a key the helper saw: the helper hands it over, then the page opens Launch
+          const h = String(win.getNativeWindowHandle().readUInt32LE(0))
+          void nativeCall('ownfocus', h).finally(() => summonNow?.())
+        }
+      },
       windows: (raw) => {
         openWins = settings.hideTaskbar ? takeWins(raw) : []
         void pushWins()
@@ -536,6 +561,7 @@ app.whenReady().then(async () => {
       }
     }, () => {
       void nativeCall('notes', settings.notifications && !PREVIEW ? 'on' : 'off')
+      for (const w of [win, ...docks.values()]) markTool(w)
       applyReserve()
       applyCover()
       void applyTaskbar()
@@ -1025,7 +1051,7 @@ app.whenReady().then(async () => {
   // Put the window back at top-center of the chosen display. Setting bounds twice is deliberate: moving to a
   // display with a different scale factor can rescale the window on the first call, and the second pins it.
   let placedOn = targetDisplay(settings).id
-  // Reserved band: the collapsed notch's height (NOTCH.collapsed.height, 24 px) across the notch's display, in physical
+  // Reserved band: the collapsed notch's height (NOTCH.collapsed.height, 24 px) across the top of every display, in physical
   // pixels for the helper. Off in preview so a screenshot run never moves the person's windows.
   const BAND_DIP = 24
   const applyReserve = (): void => {
@@ -1034,13 +1060,17 @@ app.whenReady().then(async () => {
       void nativeCall('appbar', 'off')
       return
     }
-    const d = targetDisplay(settings)
-    const px = screen.dipToScreenRect(null, d.bounds)
-    const h = Math.round(BAND_DIP * d.scaleFactor)
-    // the notch's window, so the band goes right under it and never covers the clock (only the low 32 bits of a
-    // window handle count, so this reads the same on every Windows)
-    const notch = win.getNativeWindowHandle().readUInt32LE(0)
-    void nativeCall('appbar', [px.x, px.y, px.x + px.width, px.y + px.height, h, notch].map((n) => Math.round(n)).join(' '))
+    // every screen gets the band; each sits right under that screen's own notch window (the main notch, or a dock notch)
+    const groups = screen.getAllDisplays().map((d) => {
+      const px = screen.dipToScreenRect(null, d.bounds)
+      const h = Math.round(BAND_DIP * d.scaleFactor)
+      const w = d.id === placedOn ? win : docks.get(d.id)
+      // the notch's window, so the band goes right under it and never covers the clock (only the low 32 bits of a
+      // window handle count, so this reads the same on every Windows)
+      const notch = w && !w.isDestroyed() ? w.getNativeWindowHandle().readUInt32LE(0) : 0
+      return [px.x, px.y, px.x + px.width, px.y + px.height, h, notch].map((n) => Math.round(n)).join(' ')
+    })
+    void nativeCall('appbar', groups.join(';'))
   }
   // Smart hide: the helper watches the strip of screen the collapsed notch sits in (its width plus some room for a toast's
   // growth, the collapsed height) and says when a window of another app is under it. The notch steps aside only then.
@@ -1089,7 +1119,9 @@ app.whenReady().then(async () => {
       await nativeCall('tbhide', settings.taskbarFull ? '1' : '0')
       await nativeCall('tray', settings.trayIcons ? `on ${process.pid}` : 'off')
       await nativeCall('wins', 'on')
+      await nativeCall('winkey', settings.winKey ? '1' : '0')
     } else {
+      await nativeCall('winkey', '0')
       await nativeCall('tbhide', '0') // also undoes a hide left over from a run that was killed
       await nativeCall('tray', 'off')
       trayIcons = []
@@ -1110,9 +1142,9 @@ app.whenReady().then(async () => {
     const b = notchBounds(d)
     win.setBounds(b)
     win.setBounds(b)
-    applyReserve()
     applyCover()
     syncDocks()
+    applyReserve() // after the docks, so each band can sit under its screen's notch
   }
   // While the taskbar is hidden, every other screen gets a dock notch (the taskbar is gone there too). Following the
   // mouse moves the main notch between screens, so then each screen keeps one and the notch's own screen hides it.
@@ -1263,6 +1295,7 @@ app.whenReady().then(async () => {
     const prevHide = settings.hideTaskbar
     const prevFull = settings.taskbarFull
     const prevTray = settings.trayIcons
+    const prevWinKey = settings.winKey
     const prevChannel = settings.updateChannel
     // taskbarWasAutoHide is main's own record; a patch (or Reset's defaults) never overwrites it.
     const next: Settings = { ...sanitize(patch, settings), taskbarWasAutoHide: settings.taskbarWasAutoHide }
@@ -1276,7 +1309,7 @@ app.whenReady().then(async () => {
     if (next.reserveTop !== prevReserve) applyReserve()
     if (next.visibility !== prevVisibility) applyCover()
     await saveSettings(settings)
-    if (next.hideTaskbar !== prevHide || next.taskbarFull !== prevFull || next.trayIcons !== prevTray) await applyTaskbar()
+    if (next.hideTaskbar !== prevHide || next.taskbarFull !== prevFull || next.trayIcons !== prevTray || next.winKey !== prevWinKey) await applyTaskbar()
     if (next.hideTaskbar !== prevHide || next.followMouse !== prevFollow) syncDocks()
     sendDocks('dock:look', dockLook())
     if (next.updateChannel !== prevChannel && app.isPackaged) void lookForUpdate()

@@ -616,7 +616,7 @@ html.pre-lock, html.pre-lock body { overflow: hidden; }
       <div class="sec-head">
         <p class="eyebrow">What lives in the notch</p>
         <h2 id="f-h">A status bar when you're busy, a control center when you reach for it.</h2>
-        <p class="lede">Collapsed, Gabay is a slim strip with the time, Wi-Fi, weather and battery. Hover it and it opens into nine tabs. It steps aside when a video or game goes full screen. Hide the Windows taskbar and your open apps move into a dock at the bottom of the panel, with window previews and pins you drag into order.</p>
+        <p class="lede">Collapsed, Gabay is a slim strip with the time, Wi-Fi, weather and battery. Hover it and it opens into nine tabs. It steps aside when a video or game goes full screen. Hide the Windows taskbar and your open apps move into a dock at the bottom of the panel, with window previews and pins you drag into order. Tap the Windows key and Gabay opens ready to type, instead of the Start menu.</p>
       </div>
 
       <div class="bento">
@@ -679,7 +679,7 @@ html.pre-lock, html.pre-lock body { overflow: hidden; }
       <div class="more">
         <div class="mini card"><h3>Notes</h3><p>A scratchpad that saves as you type, one hover away.</p></div>
         <div class="mini card"><h3>Clipboard</h3><p>Text and images you copied, with pinned items kept. Skips anything a password manager marks private.</p></div>
-        <div class="mini card"><h3>Launch and Power</h3><p>Search apps, files and folders, or type <code>lock</code>, <code>focus 25</code>, <code>todo buy milk</code>. Lock, sleep, restart, shut down.</p></div>
+        <div class="mini card"><h3>Launch and Power</h3><p>Your starred apps as tiles, then search apps, files and folders, or type <code>lock</code>, <code>focus 25</code>, <code>todo buy milk</code>. Lock, sleep, restart, shut down.</p></div>
         <div class="mini card"><h3>Settings</h3><p>Accent colours, screens, space at the top for your windows, every shortcut, and Report a bug.</p></div>
       </div>
     </div>
@@ -784,20 +784,20 @@ html.pre-lock, html.pre-lock body { overflow: hidden; }
       </div>
       <div class="releases" id="releases">
         <article class="rel">
+          <div class="rel-head"><h3>Gabay 1.6.7</h3><time datetime="2026-11-20">Nov 20, 2026</time></div>
+          <p>Tap the Windows key and Gabay opens ready to type, instead of Start. Launch shows your starred apps as tiles, the look is bolder, Gabay is gone from Alt+Tab, and the reserved top space now works on every screen.</p>
+        </article>
+        <article class="rel">
+          <div class="rel-head"><h3>Gabay 1.6.6</h3><time datetime="2026-11-14">Nov 14, 2026</time></div>
+          <p>Today is redesigned with a sky window, one timeline and a Focus pill. Launch opens ready to type and finds Windows Settings pages and emoji. Controls gets Night light, Magnifier, Narrator and On-screen keyboard tiles.</p>
+        </article>
+        <article class="rel">
           <div class="rel-head"><h3>Gabay 1.6.5</h3><time datetime="2026-11-10">Nov 10, 2026</time></div>
           <p>New Smart notch visibility: the notch steps aside only while a window is under it, such as a maximized browser. The reserved band at the top is now clear.</p>
         </article>
         <article class="rel">
           <div class="rel-head"><h3>Gabay 1.6.4</h3><time datetime="2026-11-09">Nov 9, 2026</time></div>
           <p>Panels now show a placeholder while they load instead of appearing from nowhere, and open faster the first time. The app's page code is about 60% smaller.</p>
-        </article>
-        <article class="rel">
-          <div class="rel-head"><h3>Gabay 1.6.3</h3><time datetime="2026-11-08">Nov 8, 2026</time></div>
-          <p>A fix for the Controls tab: Wi-Fi, Bluetooth, Audio, Airplane mode and Dark mode no longer all show Unavailable when one system read fails. They keep their last values and recover on the next refresh.</p>
-        </article>
-        <article class="rel">
-          <div class="rel-head"><h3>Gabay 1.6.2</h3><time datetime="2026-11-03">Nov 3, 2026</time></div>
-          <p>Updates show their download progress on the notch, and slow connections can finish them. Reserve space at the top now moves windows that were already open below the band, and goes back cleanly when you turn it off.</p>
         </article>
       </div>
       <p class="small" style="margin-top:14px"><a href="https://github.com/IkariShinjiii/gabay/releases">All releases on GitHub</a></p>
@@ -817,8 +817,12 @@ html.pre-lock, html.pre-lock body { overflow: hidden; }
           <p>It does most of the taskbar's everyday jobs from the notch. Your Windows taskbar still works. Many people set it to auto-hide so the bottom of the screen is free.</p>
         </details>
         <details class="q">
+          <summary>Can the Windows key open Gabay?</summary>
+          <p>Yes. With Hide taskbar on, tapping the Windows key opens Launch with the search ready, and a second tap closes it. Windows plus another key works as usual. Settings has a switch to turn it off.</p>
+        </details>
+        <details class="q">
           <summary>Will it cover my browser tabs?</summary>
-          <p>Settings › Experiments › Reserve space at the top makes maximized windows sit just below the notch, the way they sit above the taskbar. You can also set the notch to hide until you rest the pointer on the top edge.</p>
+          <p>Settings › Experiments › Reserve space at the top makes maximized windows sit just below the notch, the way they sit above the taskbar, on every screen. You can also set the notch to hide until you rest the pointer on the top edge.</p>
         </details>
         <details class="q">
           <summary>Why does Windows warn me when I install it?</summary>

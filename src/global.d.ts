@@ -82,6 +82,8 @@ export interface OverlayApi {
   pauseHotkey(on: boolean): Promise<boolean>
   /** Fires when the global hotkey is pressed. Returns an unsubscribe function. */
   onSummon(cb: () => void): () => void
+  /** The Windows key was tapped while Gabay is open: close it, as the Start key closes Start. */
+  onDismiss(cb: () => void): () => void
   /** Now playing, from the native helper (art is a data URL). */
   mediaGet(): Promise<LiveMedia | null>
   mediaCommand(c: 'toggle' | 'next' | 'prev'): Promise<boolean>
@@ -221,6 +223,7 @@ export interface Settings {
   hideTaskbar: boolean
   taskbarFull: boolean
   trayIcons: boolean
+  winKey: boolean
   autoUpdate: boolean
   updateChannel: 'stable' | 'preview'
   language: 'en' | 'fil'
