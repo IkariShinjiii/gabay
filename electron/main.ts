@@ -208,6 +208,7 @@ app.whenReady().then(async () => {
   // false -> mouse passes through to whatever is underneath (click-through)
   // The other screens' dock notches, by display id (see syncDocks).
   const docks = new Map<number, BrowserWindow>()
+  let winOpen = false // the notch is open (it takes the mouse)
   const dockOf = (wc: Electron.WebContents): BrowserWindow | undefined =>
     [...docks.values()].find((d) => !d.isDestroyed() && d.webContents === wc)
   ipcMain.on('overlay:set-interactive', (event, interactive: unknown) => {
@@ -215,6 +216,7 @@ app.whenReady().then(async () => {
     const target = event.sender === win.webContents ? win : dockOf(event.sender)
     if (!target) return
     if (mouseLocked) return // a game has the mouse: nothing on the notch may take it
+    if (target === win) winOpen = interactive
     if (interactive) target.setIgnoreMouseEvents(false)
     else {
       target.setIgnoreMouseEvents(true, { forward: true })
@@ -519,6 +521,17 @@ app.whenReady().then(async () => {
           if (fsNow) send('overlay:fullscreen', (fsNow = false))
         }
         send('overlay:start', show)
+      },
+      // A tap of the Windows key (Start was kept from opening): Gabay opens instead. Over a game that holds the mouse,
+      // Gabay can't take focus, so Start opens as usual.
+      winkey: () => {
+        if (mouseLocked || fsNow) void nativeCall('startmenu')
+        else if (winOpen) win.webContents.send('overlay:dismiss') // a second tap closes it, as it closes Start
+        else {
+          // Electron gets no foreground right from a key the helper saw: the helper hands it over, then the page opens Launch
+          const h = String(win.getNativeWindowHandle().readUInt32LE(0))
+          void nativeCall('ownfocus', h).finally(() => summonNow?.())
+        }
       },
       windows: (raw) => {
         openWins = settings.hideTaskbar ? takeWins(raw) : []
@@ -1105,7 +1118,9 @@ app.whenReady().then(async () => {
       await nativeCall('tbhide', settings.taskbarFull ? '1' : '0')
       await nativeCall('tray', settings.trayIcons ? `on ${process.pid}` : 'off')
       await nativeCall('wins', 'on')
+      await nativeCall('winkey', settings.winKey ? '1' : '0')
     } else {
+      await nativeCall('winkey', '0')
       await nativeCall('tbhide', '0') // also undoes a hide left over from a run that was killed
       await nativeCall('tray', 'off')
       trayIcons = []
@@ -1279,6 +1294,7 @@ app.whenReady().then(async () => {
     const prevHide = settings.hideTaskbar
     const prevFull = settings.taskbarFull
     const prevTray = settings.trayIcons
+    const prevWinKey = settings.winKey
     const prevChannel = settings.updateChannel
     // taskbarWasAutoHide is main's own record; a patch (or Reset's defaults) never overwrites it.
     const next: Settings = { ...sanitize(patch, settings), taskbarWasAutoHide: settings.taskbarWasAutoHide }
@@ -1292,7 +1308,7 @@ app.whenReady().then(async () => {
     if (next.reserveTop !== prevReserve) applyReserve()
     if (next.visibility !== prevVisibility) applyCover()
     await saveSettings(settings)
-    if (next.hideTaskbar !== prevHide || next.taskbarFull !== prevFull || next.trayIcons !== prevTray) await applyTaskbar()
+    if (next.hideTaskbar !== prevHide || next.taskbarFull !== prevFull || next.trayIcons !== prevTray || next.winKey !== prevWinKey) await applyTaskbar()
     if (next.hideTaskbar !== prevHide || next.followMouse !== prevFollow) syncDocks()
     sendDocks('dock:look', dockLook())
     if (next.updateChannel !== prevChannel && app.isPackaged) void lookForUpdate()
