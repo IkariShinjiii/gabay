@@ -2,6 +2,14 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.6.8',
+    [
+      "The Wi-Fi tile shows the network name and signal on Windows set to any language, not just English (thanks to bfs2021)",
+      "With Paste on click on, Gabay tells you when it copied a clip but could not paste it, and the notch closes after a copy",
+      "The Windows key is left alone over full-screen apps and games"
+    ]
+  ],
+  [
     '1.6.7',
     [
       "With Hide taskbar on, tapping the Windows key opens Gabay's Launch ready to type instead of the Start menu, and a second tap closes it. Win with another key works as usual, and Settings has a switch to turn it off",
