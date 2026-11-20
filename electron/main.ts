@@ -1024,7 +1024,7 @@ app.whenReady().then(async () => {
   // Put the window back at top-center of the chosen display. Setting bounds twice is deliberate: moving to a
   // display with a different scale factor can rescale the window on the first call, and the second pins it.
   let placedOn = targetDisplay(settings).id
-  // Reserved band: the collapsed notch's height (NOTCH.collapsed.height, 24 px) across the notch's display, in physical
+  // Reserved band: the collapsed notch's height (NOTCH.collapsed.height, 24 px) across the top of every display, in physical
   // pixels for the helper. Off in preview so a screenshot run never moves the person's windows.
   const BAND_DIP = 24
   const applyReserve = (): void => {
@@ -1033,13 +1033,17 @@ app.whenReady().then(async () => {
       void nativeCall('appbar', 'off')
       return
     }
-    const d = targetDisplay(settings)
-    const px = screen.dipToScreenRect(null, d.bounds)
-    const h = Math.round(BAND_DIP * d.scaleFactor)
-    // the notch's window, so the band goes right under it and never covers the clock (only the low 32 bits of a
-    // window handle count, so this reads the same on every Windows)
-    const notch = win.getNativeWindowHandle().readUInt32LE(0)
-    void nativeCall('appbar', [px.x, px.y, px.x + px.width, px.y + px.height, h, notch].map((n) => Math.round(n)).join(' '))
+    // every screen gets the band; each sits right under that screen's own notch window (the main notch, or a dock notch)
+    const groups = screen.getAllDisplays().map((d) => {
+      const px = screen.dipToScreenRect(null, d.bounds)
+      const h = Math.round(BAND_DIP * d.scaleFactor)
+      const w = d.id === placedOn ? win : docks.get(d.id)
+      // the notch's window, so the band goes right under it and never covers the clock (only the low 32 bits of a
+      // window handle count, so this reads the same on every Windows)
+      const notch = w && !w.isDestroyed() ? w.getNativeWindowHandle().readUInt32LE(0) : 0
+      return [px.x, px.y, px.x + px.width, px.y + px.height, h, notch].map((n) => Math.round(n)).join(' ')
+    })
+    void nativeCall('appbar', groups.join(';'))
   }
   // Smart hide: the helper watches the strip of screen the collapsed notch sits in (its width plus some room for a toast's
   // growth, the collapsed height) and says when a window of another app is under it. The notch steps aside only then.
@@ -1109,9 +1113,9 @@ app.whenReady().then(async () => {
     const b = notchBounds(d)
     win.setBounds(b)
     win.setBounds(b)
-    applyReserve()
     applyCover()
     syncDocks()
+    applyReserve() // after the docks, so each band can sit under its screen's notch
   }
   // While the taskbar is hidden, every other screen gets a dock notch (the taskbar is gone there too). Following the
   // mouse moves the main notch between screens, so then each screen keeps one and the notch's own screen hides it.
