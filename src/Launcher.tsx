@@ -45,6 +45,15 @@ const letterOf = (name: string): string => {
   return /\p{L}/u.test(c) ? c : '#'
 }
 
+/** Launch home: the starred apps at the front of the list are shown as tiles. How many (0 outside home). */
+export const pinnedCount = (items: LauncherItem[], mode: string): number => {
+  if (mode !== 'home') return 0
+  let n = 0
+  while (n < items.length && !items[n].kind && items[n].starred) n++
+  return n
+}
+export const PIN_COLS = 6
+
 export default function Launcher({ items, selected, mode, emptyHint, onHover, onLaunch, onToggleStar, onReveal, onBack }: Props): React.JSX.Element {
   const listRef = useRef<HTMLDivElement>(null)
   // keep the row picked with the arrow keys in view when the list scrolls
@@ -59,6 +68,7 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
 
   // no pinned or recent apps yet: say how to get some, above the recent files
   const noApps = mode === 'home' && !items.some((it) => !it.kind)
+  const pins = pinnedCount(items, mode)
   return (
     <div className={`body results is-${mode}`} ref={listRef} id="launch-results" role="listbox" aria-label={tr('Results')}>
       {mode === 'all' && (
@@ -71,9 +81,38 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
         </div>
       )}
       {noApps && <p className="results-hint" role="presentation">{emptyHint}</p>}
+      {pins > 0 && (
+        <>
+          <div role="presentation" className="results-head pin-head">{tr('Pinned')}</div>
+          <div className="pin-grid" role="presentation">
+            {items.slice(0, pins).map((it, i) => (
+              <div
+                key={it.id}
+                id={`launch-opt-${i}`}
+                role="option"
+                aria-selected={i === selected}
+                className={i === selected ? 'pin on' : 'pin'}
+                title={`${it.name} (${tr('Right-click to unpin')})`}
+                onMouseMove={() => onHover(i)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => onLaunch(it)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  onToggleStar(it)
+                }}
+              >
+                <AppIcon id={it.id} lazy={false} fallback="app-window" />
+                <span className="pin-name">{it.name}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
       {items.map((it, i) => {
+        if (i < pins) return null
         const prev = items[i - 1]
         let head: string | null = null
+        if (pins > 0 && i === pins && !it.kind) head = tr('Recent apps')
         if (it.kind === 'file' && prev?.kind !== 'file') head = mode === 'home' ? tr('Recent files') : tr('Files')
         else if (it.kind === 'emoji' && prev?.kind !== 'emoji') head = tr('Emoji')
         else if (it.kind === 'setting' && prev?.kind !== 'setting') head = tr('Settings')

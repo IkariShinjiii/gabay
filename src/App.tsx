@@ -4,7 +4,7 @@ import { COLLAPSE_DELAY_MS, HIDE_DELAY_MS, NOTCH, REVEAL_DWELL_MS } from './cons
 import type { DownloadState, LauncherItem, DockApp, TrayIcon, LiveMedia, PowerAction, Settings, SettingsKey, UpdateProgress, Weather } from './global'
 import Dock from './Dock'
 import { parseCommand, type CommandActions } from './commands'
-import Launcher, { findSettings } from './Launcher'
+import Launcher, { findSettings, pinnedCount, PIN_COLS } from './Launcher'
 import { findEmoji } from './emoji'
 import Icon from './Icon'
 import NotchStatus, { type NetKind } from './NotchStatus'
@@ -998,12 +998,18 @@ export default function App(): React.JSX.Element {
     // An IME is composing: Enter and arrows belong to the candidate list, not to the launcher. Some IMEs send the
     // committing Enter after compositionend, with isComposing false but keyCode 229.
     if (e.nativeEvent.isComposing || e.keyCode === 229) return
-    if (e.key === 'ArrowDown') {
+    const pins = pinnedCount(items, launchMode)
+    if (pins > 0 && !query && selected < pins && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      // inside the pinned tiles the arrows walk the grid
       e.preventDefault()
-      setSelected((s) => Math.min(s + 1, Math.max(items.length - 1, 0)))
+      setSelected((s) => Math.min(Math.max(s + (e.key === 'ArrowRight' ? 1 : -1), 0), pins - 1))
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      // a tile's Down is the tile below it; from the last row it goes on to the first recent row
+      setSelected((s) => (s < pins ? (s + PIN_COLS < pins ? s + PIN_COLS : pins) : Math.min(s + 1, Math.max(items.length - 1, 0))))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setSelected((s) => Math.max(s - 1, 0))
+      setSelected((s) => (s < pins ? Math.max(s - PIN_COLS, 0) : s === pins ? Math.max(Math.floor((pins - 1) / PIN_COLS) * PIN_COLS, 0) : s - 1))
     } else if (e.key === 'Enter') {
       // preventDefault: a confirmation button that autofocuses during this very keydown (restart/shutdown)
       // would otherwise receive the Enter's default action and cancel itself instantly.
