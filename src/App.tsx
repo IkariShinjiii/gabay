@@ -383,7 +383,8 @@ export default function App(): React.JSX.Element {
     // The hotkey opens Launch with the caret in its search field.
     const offSummon = window.overlay.onSummon(() => {
       setTab('Launch')
-      window.setTimeout(() => inputRef.current?.focus(), 0)
+      // after the tab has rendered, so the field exists even when Gabay was open on another tab
+      window.setTimeout(() => inputRef.current?.focus(), 60)
       evaluate()
     })
     // The PC is locking: the panel closes and lets go of the mouse, whatever kept it open (a half-typed note, a menu,
