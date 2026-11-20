@@ -520,6 +520,12 @@ app.whenReady().then(async () => {
         }
         send('overlay:start', show)
       },
+      // A tap of the Windows key (Start was kept from opening): Gabay opens instead. Over a game that holds the mouse,
+      // Gabay can't take focus, so Start opens as usual.
+      winkey: () => {
+        if (mouseLocked || fsNow) void nativeCall('startmenu')
+        else summonNow?.()
+      },
       windows: (raw) => {
         openWins = settings.hideTaskbar ? takeWins(raw) : []
         void pushWins()
@@ -1105,7 +1111,9 @@ app.whenReady().then(async () => {
       await nativeCall('tbhide', settings.taskbarFull ? '1' : '0')
       await nativeCall('tray', settings.trayIcons ? `on ${process.pid}` : 'off')
       await nativeCall('wins', 'on')
+      await nativeCall('winkey', '1')
     } else {
+      await nativeCall('winkey', '0')
       await nativeCall('tbhide', '0') // also undoes a hide left over from a run that was killed
       await nativeCall('tray', 'off')
       trayIcons = []

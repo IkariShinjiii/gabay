@@ -28,6 +28,8 @@
 //                                             for up to 6 s; false once it closed, or if none opened within the grace)
 //            tbhide <0|1>                    (hide the taskbar windows outright; always shown again when Gabay exits)
 //            startmenu                       (open or close the Start menu, as the taskbar's Start button does)
+//            winkey <0|1>                    (1: a plain tap of the Windows key does not open Start but pushes "winkey";
+//                                             Win plus any other key, and a held Win, are left alone)
 //            desktop                         (Show desktop and back, as the taskbar's far corner does)
 //            files <base64 utf-8 query>      (up to 8 files and folders in the user's folders whose names match, from
 //                                             Windows' search index, newest first: [{p,n}])
@@ -36,6 +38,7 @@
 //                                             base64 PNG string, or null)
 //   pushes   priv <json>                     camera / microphone in use, and by which apps
 //            wins <json>                     open windows, in z-order, while wins is on
+//            winkey                          a plain Windows key tap was swallowed (only while winkey is on)
 //            cover 0 | cover 1               smart hide: a window is under the notch strip (only while cover is on)
 //            tray <json>                     tray icons, while tray is on
 //            start 0|1                       the Start menu (or its search) is in front
@@ -673,6 +676,50 @@ static class Native {
       Send("start " + now);
     }
   }
+  // --- Windows key tap: Gabay opens instead of Start ---
+  delegate IntPtr KbdFn(int code, IntPtr wp, IntPtr lp);
+  [DllImport("user32.dll", SetLastError = true)] static extern IntPtr SetWindowsHookEx(int id, KbdFn fn, IntPtr mod, uint tid);
+  [DllImport("user32.dll")] static extern IntPtr CallNextHookEx(IntPtr hook, int code, IntPtr wp, IntPtr lp);
+  [DllImport("kernel32.dll", EntryPoint = "GetModuleHandleW", CharSet = CharSet.Unicode)] static extern IntPtr GetModH(string name);
+  static KbdFn kbdHook; // kept alive: Windows calls it
+  static volatile bool winKeyOn;
+  static bool winDown, winCombo, winStarted;
+  static IntPtr KbdProc(int code, IntPtr wp, IntPtr lp) {
+    try {
+      if (code >= 0 && winKeyOn) {
+        int vk = Marshal.ReadInt32(lp), flags = Marshal.ReadInt32(lp, 8);
+        bool up = wp.ToInt32() == 0x0101 || wp.ToInt32() == 0x0105;
+        if ((flags & 0x10) == 0) { // LLKHF_INJECTED: our own dummy key below, and other tools' keys, never count
+          if (vk == 0x5B || vk == 0x5C) {
+            if (!up) { if (!winDown) { winDown = true; winCombo = false; } }
+            else if (winDown) {
+              winDown = false;
+              if (!winCombo) {
+                // A key between Win down and up keeps Start from opening (0xE8 is unassigned); Gabay opens instead.
+                keybd_event(0xE8, 0, 0, UIntPtr.Zero); keybd_event(0xE8, 0, 2, UIntPtr.Zero);
+                Send("winkey");
+              }
+            }
+          } else if (winDown) winCombo = true;
+        }
+      }
+    } catch { }
+    return CallNextHookEx(IntPtr.Zero, code, wp, lp);
+  }
+  static void WinKey(bool on) {
+    winKeyOn = on;
+    if (!on) { winDown = false; return; }
+    if (winStarted) return;
+    winStarted = true;
+    var th = new Thread(() => {
+      kbdHook = KbdProc;
+      SetWindowsHookEx(13, kbdHook, GetModH(null), 0); // WH_KEYBOARD_LL
+      Application.Run();
+    });
+    th.SetApartmentState(ApartmentState.STA);
+    th.IsBackground = true;
+    th.Start();
+  }
   static void WatchStart() {
     var th = new Thread(() => {
       startHook = (hk, ev, h, obj, child, thread, time) => { try { CheckStart(); } catch { } };
@@ -929,6 +976,7 @@ static class Native {
       case "tray": return Tray(arg);
       case "trayclick": return TrayClick(arg) ? "true" : "false";
       case "traywait": return TrayWait(arg);
+      case "winkey": WinKey(arg == "1"); return "true";
       case "startmenu": {
         // The taskbar's own message for its Start button (WM_SYSCOMMAND SC_TASKLIST); works while it is hidden.
         var tb = ExplorerTray();
