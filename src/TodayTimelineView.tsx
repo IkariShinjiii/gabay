@@ -84,6 +84,7 @@ function TodayTimelineImpl({ events, calState, todos, todosError, minuteKey, onT
           : left > 59
             ? tr('{0}h {1}m left', Math.floor(left / 60), left % 60)
             : tr('{0} min left', left)
+        const big = left <= 59 && !underMinute(e, now) ? /^(\d+)(\D.*)$/.exec(text) : null // the minutes read as a number, the rest as a small unit
         return (
           <li key={`${evKey(e)}|${i}`} className={cls(r, i)} style={style(i)} aria-current="time" {...anchor}>
             <span className="tl-time tl-now-label">{tr('Now')}</span>
@@ -91,7 +92,7 @@ function TodayTimelineImpl({ events, calState, todos, todosError, minuteKey, onT
             <div className="tl-now">
               <div className="tl-now-top">
                 <span className="tl-title">{e.title}</span>
-                <span className="tl-left">{text}</span>
+                <span className="tl-left">{big ? <><b>{big[1]}</b>{big[2]}</> : text}</span>
               </div>
               <div className="tl-now-sub">
                 <span className="tl-range">

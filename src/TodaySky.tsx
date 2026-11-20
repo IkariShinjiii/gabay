@@ -49,7 +49,7 @@ const SEEDS: [number, number][] = [
   [30, 12], [38, 34], [46, 18], [54, 40], [62, 14], [70, 30], [77, 44], [82, 20]
 ]
 
-const sunY = (slot: number, rise: number, set: number): number => 54 - 40 * Math.sin((Math.PI * (slot - rise)) / (set - rise))
+const sunY = (slot: number, rise: number, set: number): number => 72 - 56 * Math.sin((Math.PI * (slot - rise)) / (set - rise))
 
 type Mode = 'day' | 'night' | 'normal'
 
@@ -106,7 +106,7 @@ function TodaySkyInner({ rise, set, minute, polar, locale }: Props): React.JSX.E
   const slot = minute / 30
   const pct = (minute / 1440) * 100
   const up = polar === 'day' || (mode === 'normal' && slot >= r && slot <= s)
-  const y = up ? sunY(slot, r, s) : 54
+  const y = up ? sunY(slot, r, s) : 72
   const glow = up ? skyColor(slot, r, s) : 'transparent'
 
   const at = (m: number): string => new Date(2000, 0, 1, 0, m).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' })
@@ -130,7 +130,7 @@ function TodaySkyInner({ rise, set, minute, polar, locale }: Props): React.JSX.E
           <i key={k} className="sky-star" aria-hidden="true" style={{ left: `${x}%`, top, animationDelay: `${(k * 0.37).toFixed(2)}s` }} />
         ))}
         {sky.arc && (
-          <svg className="sky-arc" viewBox="0 0 480 68" preserveAspectRatio="none" aria-hidden="true">
+          <svg className="sky-arc" viewBox="0 0 480 88" preserveAspectRatio="none" aria-hidden="true">
             <path d={sky.arc} fill="none" stroke="rgba(255,255,255,.55)" strokeWidth="1.2" strokeDasharray="2 5" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
           </svg>
         )}
@@ -138,7 +138,7 @@ function TodaySkyInner({ rise, set, minute, polar, locale }: Props): React.JSX.E
         <div className={up ? 'sky-orb' : 'sky-orb is-down'} aria-hidden="true" style={{ transform: `translateX(${pct.toFixed(2)}%)`, '--glow': glow } as CSSProperties}>
           <div className="sky-orb-dot" style={{ transform: `translateY(${y.toFixed(1)}px)` }} />
         </div>
-        <svg className="sky-hills" viewBox="0 0 480 26" preserveAspectRatio="none" width="100%" height="26" aria-hidden="true">
+        <svg className="sky-hills" viewBox="0 0 480 26" preserveAspectRatio="none" width="100%" height="30" aria-hidden="true">
           <path d="M0 26V14C40 6 80 16 130 11S220 2 270 10S370 18 420 10S465 6 480 12V26Z" fill="#05060b" />
           <path d="M0 26V19C50 13 90 22 150 18S250 11 310 18S410 24 480 17V26Z" fill="#000" />
         </svg>
