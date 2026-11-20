@@ -12,6 +12,8 @@
 //            vol <0-100> | volget | micget | micset mute|unmute | media toggle|next|prev | bt | notes on|off
 //            appbar L T R B H [notch][;...] | appbar off   (reserve a band at the top of each monitor given, physical pixels; it
 //                                             sits right under the notch window, given as a number)
+//            ownfocus <hwnd>                 (bring one of Gabay's own windows to the front with the keyboard focus: the
+//                                             foreground handoff Electron can't get from a key the helper saw)
 //            toolwin <hwnd>                  (hide one of Gabay's own windows from Alt+Tab)
 //            clipok                          (false when the copying app asked to keep it out of clipboard history)
 //            clipseq                         (clipboard sequence number: changes on every copy)
@@ -712,6 +714,8 @@ static class Native {
     if (winStarted) return;
     winStarted = true;
     var th = new Thread(() => {
+      // The helper runs below normal priority; a hook on a starved thread would lag every key and get dropped by Windows.
+      Thread.CurrentThread.Priority = ThreadPriority.Highest;
       kbdHook = KbdProc;
       SetWindowsHookEx(13, kbdHook, GetModH(null), 0); // WH_KEYBOARD_LL
       Application.Run();
@@ -940,6 +944,11 @@ static class Native {
         try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "shell:AppsFolder\\" + aumid) { UseShellExecute = false }); return "true"; } catch { return "false"; }
       }
       case "appbar": return AppBar(arg);
+      case "ownfocus": {
+        var h = new IntPtr(long.Parse(arg));
+        uint pid = 0;
+        return IsWindow(h) && GetWindowThreadProcessId(h, out pid) != 0 && pid == self && Focus(h, true, true) ? "true" : "false";
+      }
       case "toolwin": return ToolWin(new IntPtr(long.Parse(arg))) ? "true" : "false";
       case "clipok": return ClipOk() ? "true" : "false";
       case "clipseq": return GetClipboardSequenceNumber().ToString();
@@ -1423,8 +1432,8 @@ static class Native {
 
   // Windows only lets the foreground app hand focus over. Gabay is in front when this runs (it was just clicked), so
   // join its input queue for the call; if that is refused, a synthetic Alt tap lifts the lock.
-  static bool Focus(IntPtr h, bool altTap = true) {
-    if (!IsWindow(h) || !Listable(h)) return false;
+  static bool Focus(IntPtr h, bool altTap = true, bool own = false) {
+    if (!IsWindow(h) || (!own && !Listable(h))) return false;
     if (IsIconic(h)) ShowWindow(h, 9); // SW_RESTORE
     uint dummy;
     uint fgThread = GetWindowThreadProcessId(GetForegroundWindow(), out dummy);

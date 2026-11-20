@@ -524,7 +524,11 @@ app.whenReady().then(async () => {
       // Gabay can't take focus, so Start opens as usual.
       winkey: () => {
         if (mouseLocked || fsNow) void nativeCall('startmenu')
-        else summonNow?.()
+        else {
+          // Electron gets no foreground right from a key the helper saw: the helper hands it over, then the page opens Launch
+          const h = String(win.getNativeWindowHandle().readUInt32LE(0))
+          void nativeCall('ownfocus', h).finally(() => summonNow?.())
+        }
       },
       windows: (raw) => {
         openWins = settings.hideTaskbar ? takeWins(raw) : []
