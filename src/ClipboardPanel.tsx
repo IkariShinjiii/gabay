@@ -1,15 +1,15 @@
 import Empty from './Empty'
 import { useEffect, useRef, useState } from 'react'
 import Icon from './Icon'
-import type { ClipItem } from './global'
+import type { ClipCopyResult, ClipItem } from './global'
 import { tr } from './i18n'
 
 const REFRESH_MS = 1000
 
 interface Props {
   query: string
-  /** Called after an item was copied back, so the panel can close. */
-  onCopied: () => void
+  /** Called after an item was copied back, so the panel can close. Says whether a requested paste happened. */
+  onCopied: (result: ClipCopyResult) => void
 }
 
 /** Mounted only while the Clipboard tab is visible in an expanded notch, so the refresh stops on unmount. */
@@ -39,8 +39,7 @@ export default function ClipboardPanel({ query, onCopied }: Props): React.JSX.El
     if (copying.current) return
     copying.current = true
     try {
-      await window.overlay.copyClip(item.id)
-      onCopied()
+      onCopied(await window.overlay.copyClip(item.id))
     } finally {
       copying.current = false
     }
