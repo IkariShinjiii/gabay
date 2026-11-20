@@ -12,6 +12,7 @@
 //            vol <0-100> | volget | micget | micset mute|unmute | media toggle|next|prev | bt | notes on|off
 //            appbar L T R B H [notch][;...] | appbar off   (reserve a band at the top of each monitor given, physical pixels; it
 //                                             sits right under the notch window, given as a number)
+//            toolwin <hwnd>                  (hide one of Gabay's own windows from Alt+Tab)
 //            clipok                          (false when the copying app asked to keep it out of clipboard history)
 //            clipseq                         (clipboard sequence number: changes on every copy)
 //            mixer | appvol <pid> <0-100>    (per-app volume)
@@ -720,6 +721,17 @@ static class Native {
   static bool bandPhysical;
   // appbar G[;G...] with G = L T R B H [notch]: one band per group (per screen). A group goes to the band already on that
   // screen, else a free one; bands left over are released. Everything runs on the band thread.
+
+  // Gabay's own overlay windows get the tool-window style: skipTaskbar only drops the taskbar button, Alt+Tab still lists
+  // a window without it. Gabay's own windows only, so it can never restyle another app.
+  [DllImport("user32.dll", EntryPoint = "SetWindowLongW")] static extern int SetWindowLong(IntPtr h, int i, int v);
+  static bool ToolWin(IntPtr h) {
+    uint pid = 0;
+    if (h == IntPtr.Zero || !IsWindow(h) || GetWindowThreadProcessId(h, out pid) == 0 || pid != self) return false;
+    int ex = GetWindowLong(h, -20);
+    if ((ex & 0x80) == 0) SetWindowLong(h, -20, (ex | 0x80) & ~0x00040000); // WS_EX_TOOLWINDOW, not WS_EX_APPWINDOW
+    return true;
+  }
   static string AppBar(string arg) {
     if (bands.Count == 0) StartBand();
     var groups = new List<int[]>(); var notches = new List<IntPtr>();
@@ -881,6 +893,7 @@ static class Native {
         try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "shell:AppsFolder\\" + aumid) { UseShellExecute = false }); return "true"; } catch { return "false"; }
       }
       case "appbar": return AppBar(arg);
+      case "toolwin": return ToolWin(new IntPtr(long.Parse(arg))) ? "true" : "false";
       case "clipok": return ClipOk() ? "true" : "false";
       case "clipseq": return GetClipboardSequenceNumber().ToString();
       case "mixer": return Mixer();

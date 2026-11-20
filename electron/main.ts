@@ -69,6 +69,16 @@ function notchBounds(display: Electron.Display): Electron.Rectangle {
   return { x: Math.round(x + (width - WIN_WIDTH) / 2), y, width: WIN_WIDTH, height: WIN_HEIGHT }
 }
 
+/** skipTaskbar only drops the taskbar button; Alt+Tab still lists the window unless it is a tool window (done by the helper). */
+function markTool(w: BrowserWindow): void {
+  if (PREVIEW || w.isDestroyed()) return
+  void nativeCall('toolwin', String(w.getNativeWindowHandle().readUInt32LE(0))).catch(() => null)
+}
+function hideFromAltTab(w: BrowserWindow): void {
+  markTool(w) // a no-op until the helper is up; its ready callback marks every window again
+  w.on('show', () => markTool(w)) // harmless when the style is already set
+}
+
 function createOverlay(display: Electron.Display): BrowserWindow {
   const { x, y } = notchBounds(display)
 
@@ -100,6 +110,7 @@ function createOverlay(display: Electron.Display): BrowserWindow {
   // "screen-saver" is the highest always-on-top level Electron exposes. On Windows this maps
   // to a topmost window; whether it beats full-screen apps is exactly what the kill test checks.
   win.setAlwaysOnTop(true, 'screen-saver')
+  hideFromAltTab(win)
 
   // Start click-through. `forward: true` still delivers mousemove to the renderer
   // (Windows/macOS only), which is how the renderer knows when the pointer reaches the notch.
@@ -165,6 +176,7 @@ function createDockWindow(display: Electron.Display, shouldShow: () => boolean):
   w.setBounds(b)
   w.setBounds(b)
   w.setAlwaysOnTop(true, 'screen-saver')
+  hideFromAltTab(w)
   w.setIgnoreMouseEvents(true, { forward: true })
   w.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   w.webContents.on('will-navigate', (e) => e.preventDefault())
@@ -535,6 +547,7 @@ app.whenReady().then(async () => {
       }
     }, () => {
       void nativeCall('notes', settings.notifications && !PREVIEW ? 'on' : 'off')
+      for (const w of [win, ...docks.values()]) markTool(w)
       applyReserve()
       applyCover()
       void applyTaskbar()
