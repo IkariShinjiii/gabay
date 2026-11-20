@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
+## 1.6.8
 
-- The Wi-Fi tile shows the network name and signal on Windows set to any language, not just English
+- The Wi-Fi tile shows the network name and signal on Windows set to any language, not just English (thanks to bfs2021)
+- Paste on click: a toast says when a clip was copied but could not be pasted; the notch closes after a copy
+- The Windows key is left alone over full-screen apps and games
 
 ## 1.6.7
 
