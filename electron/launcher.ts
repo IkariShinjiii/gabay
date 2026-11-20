@@ -141,8 +141,9 @@ export async function search(query: string): Promise<LauncherItem[]> {
   const q = query.trim().slice(0, 100)
 
   if (!q) {
-    const ids = [...s.starred, ...s.recent.filter((id) => !s.starred.includes(id))]
-    return ids.flatMap((id) => (entries.has(id) ? [toItem(entries.get(id)!, s)] : [])).slice(0, MAX_RESULTS)
+    // the pinned apps fill the tile grid (two rows at most), then the recents, however many are pinned
+    const items = (ids: string[]): LauncherItem[] => ids.flatMap((id) => (entries.has(id) ? [toItem(entries.get(id)!, s)] : []))
+    return [...items(s.starred).slice(0, 12), ...items(s.recent.filter((id) => !s.starred.includes(id))).slice(0, MAX_RESULTS)]
   }
 
   const scored: { e: Entry; score: number }[] = []
