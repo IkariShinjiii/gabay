@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The Wi-Fi tile shows the network name and signal on Windows set to any language, not just English
+
 ## 1.6.7
 
 - With Hide taskbar on, a tap of the Windows key opens Gabay's Launch with the search ready instead of the Start menu; a second tap closes it; Win with another key is untouched; a Settings switch turns it off
