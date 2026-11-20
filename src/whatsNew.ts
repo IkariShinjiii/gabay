@@ -2,6 +2,16 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.6.7',
+    [
+      "With Hide taskbar on, tapping the Windows key opens Gabay's Launch ready to type instead of the Start menu, and a second tap closes it. Win with another key works as usual, and Settings has a switch to turn it off",
+      "Launch shows your starred apps as a tile grid under Pinned, with recent apps below",
+      "A bolder look: a stronger active tab, a bigger clock and sky in Today, and a tall top result when you search",
+      "Gabay no longer shows up in Alt+Tab",
+      "Reserve space at the top now works on every screen, not just the one with the notch"
+    ]
+  ],
+  [
     '1.6.6',
     [
       "Today is redesigned: a sky window that shows sunrise, daylight and sunset, your day as one timeline with what is on now, and a Focus pill with a drawer for presets, to-dos, stopwatch and timers",

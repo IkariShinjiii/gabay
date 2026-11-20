@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.7
+
+- With Hide taskbar on, a tap of the Windows key opens Gabay's Launch with the search ready instead of the Start menu; a second tap closes it; Win with another key is untouched; a Settings switch turns it off
+- Launch shows starred apps as a six-across tile grid under Pinned, recent apps below
+- Bolder design: stronger active tab, bigger Today clock and sky window, taller top result in search
+- The notch windows no longer appear in Alt+Tab
+- Reserve space at the top applies to every screen, not just the notch's
+
 ## 1.6.6
 
 - Today redesigned: a sky window for sunrise and sunset, your day as a timeline with what's live now, and a Focus pill with a tools drawer for presets, to-dos, stopwatch and timers
