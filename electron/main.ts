@@ -377,6 +377,15 @@ app.whenReady().then(async () => {
   const dockFs = new Map<number, boolean>() // full screen on each dock's screen, as last told
   const str = (v: unknown, max: number): string | null => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null)
   let fsNow = false
+  // The Windows key tap is taken over only while Gabay can show: not over a full-screen app or a game holding the mouse,
+  // where the key must reach Windows untouched. Sent to the helper only when the answer changes.
+  let winKeySent: boolean | null = null
+  const syncWinKey = (force = false): void => {
+    const want = !PREVIEW && settings.hideTaskbar && settings.winKey && !fsNow && !mouseLocked
+    if (!force && want === winKeySent) return
+    winKeySent = want
+    void nativeCall('winkey', want ? '1' : '0')
+  }
   let startShown = false // Gabay is up because the Start menu is
   let startOpen = false // the Start menu is in front (whatever the settings)
   let startClosedAt = 0
@@ -475,6 +484,7 @@ app.whenReady().then(async () => {
         }
         fs = on(targetDisplay(settings).bounds)
         if (fs !== fsNow) send('overlay:fullscreen', (fsNow = fs))
+        syncWinKey()
         // each other screen's dock notch steps aside for a full-screen app on its own screen
         for (const [id, d] of docks) {
           const disp = screen.getAllDisplays().find((x) => x.id === id)
@@ -520,6 +530,7 @@ app.whenReady().then(async () => {
             for (const w of [win, ...docks.values()]) if (!w.isDestroyed()) w.setIgnoreMouseEvents(true, { forward: true })
           }
           if (fsNow) send('overlay:fullscreen', (fsNow = false))
+          syncWinKey()
         }
         send('overlay:start', show)
       },
@@ -1119,9 +1130,9 @@ app.whenReady().then(async () => {
       await nativeCall('tbhide', settings.taskbarFull ? '1' : '0')
       await nativeCall('tray', settings.trayIcons ? `on ${process.pid}` : 'off')
       await nativeCall('wins', 'on')
-      await nativeCall('winkey', settings.winKey ? '1' : '0')
+      syncWinKey(true)
     } else {
-      await nativeCall('winkey', '0')
+      syncWinKey(true)
       await nativeCall('tbhide', '0') // also undoes a hide left over from a run that was killed
       await nativeCall('tray', 'off')
       trayIcons = []

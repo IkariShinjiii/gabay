@@ -717,7 +717,7 @@ static class Native {
       // The helper runs below normal priority; a hook on a starved thread would lag every key and get dropped by Windows.
       Thread.CurrentThread.Priority = ThreadPriority.Highest;
       kbdHook = KbdProc;
-      SetWindowsHookEx(13, kbdHook, GetModH(null), 0); // WH_KEYBOARD_LL
+      if (SetWindowsHookEx(13, kbdHook, GetModH(null), 0) == IntPtr.Zero) { winKeyOn = false; winStarted = false; return; } // WH_KEYBOARD_LL: no hook, Start stays as it is
       Application.Run();
     });
     th.SetApartmentState(ApartmentState.STA);
