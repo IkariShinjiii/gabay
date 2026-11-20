@@ -12,6 +12,7 @@
 //            vol <0-100> | volget | micget | micset mute|unmute | media toggle|next|prev | bt | notes on|off
 //            appbar L T R B H [notch] | appbar off   (reserve a band at the top of a monitor, physical pixels; it
 //                                             sits right under the notch window, given as a number)
+//            toolwin <hwnd>                  (hide one of Gabay's own windows from Alt+Tab)
 //            clipok                          (false when the copying app asked to keep it out of clipboard history)
 //            clipseq                         (clipboard sequence number: changes on every copy)
 //            mixer | appvol <pid> <0-100>    (per-app volume)
@@ -711,6 +712,16 @@ static class Native {
     th.Start();
     ready.WaitOne();
   }
+  // Gabay's own overlay windows get the tool-window style: skipTaskbar only drops the taskbar button, Alt+Tab still lists
+  // a window without it. Gabay's own windows only, so it can never restyle another app.
+  [DllImport("user32.dll", EntryPoint = "SetWindowLongW")] static extern int SetWindowLong(IntPtr h, int i, int v);
+  static bool ToolWin(IntPtr h) {
+    uint pid = 0;
+    if (h == IntPtr.Zero || !IsWindow(h) || GetWindowThreadProcessId(h, out pid) == 0 || pid != self) return false;
+    int ex = GetWindowLong(h, -20);
+    if ((ex & 0x80) == 0) SetWindowLong(h, -20, (ex | 0x80) & ~0x00040000); // WS_EX_TOOLWINDOW, not WS_EX_APPWINDOW
+    return true;
+  }
   static string AppBar(string arg) {
     if (band == null) StartBand();
     if (arg == "off") { band.Invoke((Action)(() => band.Release())); return "true"; }
@@ -851,6 +862,7 @@ static class Native {
         try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "shell:AppsFolder\\" + aumid) { UseShellExecute = false }); return "true"; } catch { return "false"; }
       }
       case "appbar": return AppBar(arg);
+      case "toolwin": return ToolWin(new IntPtr(long.Parse(arg))) ? "true" : "false";
       case "clipok": return ClipOk() ? "true" : "false";
       case "clipseq": return GetClipboardSequenceNumber().ToString();
       case "mixer": return Mixer();
