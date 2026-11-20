@@ -122,6 +122,7 @@ body,
 
 .tab.on {
   color: #fff;
+  font-weight: 700; /* the loudest word on the bar */
 }
 
 /* Launch, Clipboard, Power and Settings: icons, set a little apart from the named tabs */
@@ -142,9 +143,10 @@ body,
   left: 7px;
   right: 7px;
   bottom: 1px;
-  height: 2px;
-  border-radius: 1px;
+  height: 3px;
+  border-radius: 2px;
   background: var(--accent);
+  box-shadow: 0 6px 10px -6px var(--accent);
 }
 
 .tab:focus-visible {
@@ -228,6 +230,34 @@ body,
 .row.on {
   background: var(--line);
 }
+
+/* Search: the first result is the top hit, tall, with a big icon; the rest stay small and quiet */
+.row-top {
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+.row-top .app-icon { width: 36px; height: 36px; }
+.row-top.on { background: var(--accent-tint); box-shadow: inset 0 0 0 1px var(--accent-line); }
+.row-key {
+  flex: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent-deep);
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  padding: 3px 9px;
+}
+
+/* Launch home: pinned and recent apps carry bigger icons; recent files stay quiet */
+.is-home .row .app-icon { width: 28px; height: 28px; }
+.is-home .row { padding-top: 7px; padding-bottom: 7px; }
 
 .row-name {
   flex: 1;
@@ -417,11 +447,11 @@ body,
   flex: none;
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 42px;
+  gap: 12px;
+  height: 50px;
   box-sizing: border-box;
-  padding: 0 14px;
-  border-radius: 16px;
+  padding: 0 16px;
+  border-radius: 18px;
   background: var(--surface);
   box-shadow: inset 0 0 0 1px var(--line);
   color: var(--muted);
@@ -2291,8 +2321,8 @@ button.big-icon {
   min-height: 0;
 }
 
-.today-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; height: 80px; margin-bottom: 12px; flex: none; }
-.today-clock { font-size: 60px; line-height: 58px; font-weight: 600; letter-spacing: -0.035em; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.today-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; height: 86px; margin-bottom: 10px; flex: none; }
+.today-clock { font-size: 76px; line-height: 72px; font-weight: 600; letter-spacing: -0.04em; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .today-wx { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; padding-bottom: 2px; }
 .today-temp { font-size: 22px; line-height: 24px; font-weight: 600; color: var(--text); }
 .today-wx-line { max-width: 160px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -3465,7 +3495,7 @@ button.big-icon {
 /* Today sky window (TodaySky): transform and opacity only, plus a one-time clip-path wipe. */
 .sky {
   position: relative;
-  height: 68px;
+  height: 88px;
   flex: none; /* a tall timeline must not squeeze the sky */
   overflow: hidden;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent), linear-gradient(180deg, transparent, #000 9px);
@@ -3485,10 +3515,10 @@ button.big-icon {
 .sky-orb.is-down { opacity: 0; }
 .sky-orb-dot {
   position: absolute;
-  left: -8px;
-  top: -8px;
-  width: 16px;
-  height: 16px;
+  left: -12px;
+  top: -12px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, #fffdf2, #ffe9a8 60%, #ffc864);
   box-shadow: 0 0 14px 4px var(--glow);
@@ -3573,14 +3603,15 @@ button.big-icon {
 .tl-sep { grid-column: 3 / -1; display: flex; align-items: center; gap: 8px; color: var(--muted); }
 .tl-sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 
-.tl-now { grid-column: 3 / -1; min-width: 0; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--accent-line); background: linear-gradient(135deg, var(--accent-tint), var(--accent-deep)); }
+.tl-now { grid-column: 3 / -1; min-width: 0; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--accent-line); background: linear-gradient(135deg, var(--accent-tint), var(--accent-deep)); }
 .tl-now-top { display: flex; align-items: baseline; gap: 8px; }
-.tl-now .tl-title { flex: 1; font-size: 15px; font-weight: 600; }
-.tl-left { flex: none; font-size: 11px; color: var(--accent-text); white-space: nowrap; }
-.tl-now-sub { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; font-size: 12px; color: var(--muted); min-width: 0; }
+.tl-now .tl-title { flex: 1; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.tl-left { flex: none; font-size: 12px; font-weight: 600; color: var(--accent-text); white-space: nowrap; }
+.tl-left b { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-right: 3px; }
+.tl-now-sub { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 12px; color: var(--muted); min-width: 0; }
 .tl-range { flex: none; white-space: nowrap; }
 .tl-now-sub .tl-loc { font-size: 12px; }
-.tl-bar { height: 4px; border-radius: 2px; overflow: hidden; background: var(--accent-deep); box-shadow: inset 0 0 0 1px var(--accent-line); }
+.tl-bar { height: 6px; border-radius: 3px; overflow: hidden; background: var(--accent-deep); box-shadow: inset 0 0 0 1px var(--accent-line); }
 .tl-bar i { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(var(--p, 0)); transition: transform 1s linear; animation: bar-fill 1.2s var(--ease-out) 500ms both; }
 
 /* Tasks: no rail; the square box sits under the rail line. */

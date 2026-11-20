@@ -60,7 +60,7 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
   // no pinned or recent apps yet: say how to get some, above the recent files
   const noApps = mode === 'home' && !items.some((it) => !it.kind)
   return (
-    <div className="body results" ref={listRef} id="launch-results" role="listbox" aria-label={tr('Results')}>
+    <div className={`body results is-${mode}`} ref={listRef} id="launch-results" role="listbox" aria-label={tr('Results')}>
       {mode === 'all' && (
         <div className="results-back" role="presentation">
           <button className="q-icon-btn" title={tr('Back')} aria-label={tr('Back')} onMouseDown={(e) => e.preventDefault()} onClick={onBack}>
@@ -106,7 +106,7 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
               id={`launch-opt-${i}`}
               role="option"
               aria-selected={i === selected}
-              className={i === selected ? 'row on' : 'row'}
+              className={(i === selected ? 'row on' : 'row') + (mode === 'search' && i === 0 ? ' row-top' : '')}
               onMouseMove={() => onHover(i)}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => onLaunch(it)}
@@ -129,6 +129,7 @@ export default function Launcher({ items, selected, mode, emptyHint, onHover, on
                 <AppIcon id={it.id} lazy={mode === 'all'} fallback={it.kind === 'file' ? 'file' : 'app-window'} />
               )}
               <span className="row-name">{it.name}</span>
+              {mode === 'search' && i === 0 && <kbd className="row-key">Enter</kbd>}
               {it.kind === 'file' ? (
                 it.folder && <span className="row-sub">{it.folder}</span>
               ) : it.kind === 'setting' || it.kind === 'emoji' ? null : (
