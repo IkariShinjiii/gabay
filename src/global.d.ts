@@ -2,6 +2,7 @@ export interface DockLook {
   accent: string
   language: string
   visibility: string
+  openOnClick: boolean
 }
 
 export interface OverlayApi {
@@ -224,6 +225,7 @@ export interface Settings {
   taskbarFull: boolean
   trayIcons: boolean
   winKey: boolean
+  openOnClick: boolean
   autoUpdate: boolean
   updateChannel: 'stable' | 'preview'
   language: 'en' | 'fil'

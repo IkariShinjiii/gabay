@@ -1288,7 +1288,7 @@ app.whenReady().then(async () => {
     }
   }
   // What a dock notch needs to look like the main one; nothing else of the settings.
-  const dockLook = (): unknown => ({ accent: settings.accent, language: settings.language, visibility: settings.visibility })
+  const dockLook = (): unknown => ({ accent: settings.accent, language: settings.language, visibility: settings.visibility, openOnClick: settings.openOnClick })
   ipcMain.handle('dock:look', (e) => {
     fromDock(e)
     return dockLook()

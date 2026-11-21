@@ -3698,3 +3698,8 @@ button.big-icon {
 @media (prefers-reduced-motion: reduce) {
   .foc, .foc-ring, .tools-scroll, .foc-more svg { animation: none; transition: none; }
 }
+
+/* Click mode: the closed notch shows it can be pressed (a soft accent glow, reduced motion gets no fade). */
+.notch.clickable { cursor: pointer; transition: filter 0.2s ease; }
+.notch.clickable:hover { filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--accent) 55%, transparent)); }
+@media (prefers-reduced-motion: reduce) { .notch.clickable { transition: none; } }
