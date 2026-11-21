@@ -803,6 +803,17 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onSho
       </Group>
 
       <Group title={tr('Taskbar')} badge={tr('Experimental')}>
+        <Row label={tr('Open Gabay')} desc={tr('When Gabay is hidden at the top, moving the pointer there still brings it down. The Windows key and the shortcut work either way.')}>
+          <Seg
+            label={tr('Open Gabay')}
+            value={settings.openOnClick ? 'click' : 'hover'}
+            options={[
+              { value: 'hover', label: tr('Hover') },
+              { value: 'click', label: tr('Click') }
+            ]}
+            onChange={(v) => void save({ openOnClick: v === 'click' })}
+          />
+        </Row>
         <SwitchRow
           label={tr('Reserve space at the top')}
           desc={settings.reserveTop ? tr('Maximized windows now start below the notch. Full screen still uses the whole screen.') : tr('Maximized and snapped windows fit below the notch, like they do above the taskbar')}

@@ -224,6 +224,7 @@ export interface Settings {
   taskbarFull: boolean
   trayIcons: boolean
   winKey: boolean
+  openOnClick: boolean
   autoUpdate: boolean
   updateChannel: 'stable' | 'preview'
   language: 'en' | 'fil'

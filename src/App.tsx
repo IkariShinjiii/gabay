@@ -132,6 +132,8 @@ export default function App(): React.JSX.Element {
   const holds = useRef(new Set<string>())
   const isOpen = useRef(previewTab !== undefined || previewWelcome || previewTour)
   const collapseMs = useRef(COLLAPSE_DELAY_MS) // replaced by the saved setting once it loads
+  const openOnClick = useRef(false) // Settings: the closed notch opens on a click, not on hover
+  const overClosed = useRef(false) // click mode: pointer is on the closed notch, so the window takes the click
   const timer = useRef<number | undefined>(undefined)
 
   // The open notch takes the height of what the current tab shows (capped at NOTCH.expanded.height), so the box
@@ -188,6 +190,7 @@ export default function App(): React.JSX.Element {
       timer.current = undefined
       if (pointerInside.current || holds.current.size > 0) return
       isOpen.current = false
+      overClosed.current = false
       setExpanded(false)
       setInput('')
       setLaunchView('home')
@@ -236,6 +239,7 @@ export default function App(): React.JSX.Element {
   const [dockOn, setDockOn] = useState(false)
   const applySettings = useCallback((s: Settings): void => {
     collapseMs.current = s.collapseMs
+    openOnClick.current = s.openOnClick
     void resolveAccent(s.accent).then(applyAccent)
     setDndUntil(s.dndUntil)
     setLang((new URLSearchParams(location.hash.slice(1)).get('lang') as Language | null) ?? s.language)
@@ -311,6 +315,14 @@ export default function App(): React.JSX.Element {
           window.clearTimeout(toastTimer.current)
           if (!inside) toastTimerRef.current = window.setTimeout(() => showNextRef.current(), 1800)
         }
+      } else if (openOnClick.current && !isOpen.current) {
+        // Click mode: hovering only makes the closed notch take the click; opening happens in onClick below.
+        pointerInside.current = false
+        if (inside !== overClosed.current) {
+          overClosed.current = inside
+          setInteractive(inside)
+        }
+        evaluate()
       } else {
         pointerInside.current = inside
         evaluate()
@@ -334,7 +346,7 @@ export default function App(): React.JSX.Element {
             scheduleHide()
           }, REVEAL_DWELL_MS)
         }
-      } else if (pointerInside.current || isOpen.current) {
+      } else if (pointerInside.current || overClosed.current || isOpen.current) {
         window.clearTimeout(hideTimer.current)
         hideTimer.current = undefined
       } else if (hideTimer.current === undefined) {
@@ -344,6 +356,10 @@ export default function App(): React.JSX.Element {
     // Pointer left the whole window while interactive: no mousemove will follow, so treat as outside.
     const onLeave = (): void => {
       pointerInside.current = false
+      if (overClosed.current) {
+        overClosed.current = false
+        setInteractive(false)
+      }
       window.clearTimeout(edgeTimer.current)
       edgeTimer.current = undefined
       evaluate()
@@ -1198,6 +1214,12 @@ export default function App(): React.JSX.Element {
       className="notch"
       initial={false}
       onMouseDown={onMiddleClick}
+      onClick={() => {
+        if (!openOnClick.current || isOpen.current) return
+        overClosed.current = false
+        pointerInside.current = true
+        evaluate()
+      }}
       animate={{
         width: size.width,
         height: size.height,
