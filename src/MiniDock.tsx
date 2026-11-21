@@ -37,6 +37,8 @@ export default function MiniDock(): React.JSX.Element {
   const closeTimer = useRef(0)
   const edgeTimer = useRef(0)
   const hideTimer = useRef(0)
+  const clickMode = useRef(false) // Settings: the closed strip opens on a click, not on hover
+  const overClosed = useRef(false) // click mode: pointer is on the closed strip, so the window takes the click
   const hasDock = apps.length > 0 || tray.length > 0
   const state = useRef({ auto: false, revealed: false, fullscreen: false, hasDock })
   state.current = { auto, revealed, fullscreen, hasDock }
@@ -47,6 +49,7 @@ export default function MiniDock(): React.JSX.Element {
       void resolveAccent(l.accent).then(applyAccent)
       setLang((hash.get('lang') as Language | null) ?? (l.language as Language))
       setAuto(l.visibility === 'auto')
+      clickMode.current = l.openOnClick
     }
     void window.overlay.dockLook().then(apply, () => undefined)
     return window.overlay.onDockLook(apply)
@@ -107,13 +110,22 @@ export default function MiniDock(): React.JSX.Element {
         window.clearTimeout(hideTimer.current)
         hideTimer.current = 0
         // nothing to switch to on this screen: stay a slim strip rather than open onto an empty bar
-        if (!openRef.current && !openTimer.current && s.hasDock) {
+        if (clickMode.current && !openRef.current) {
+          if (!overClosed.current) {
+            overClosed.current = true
+            window.overlay.setInteractive(true)
+          }
+        } else if (!openRef.current && !openTimer.current && s.hasDock) {
           openTimer.current = window.setTimeout(() => {
             openTimer.current = 0
             show(true)
           }, OPEN_DWELL_MS)
         }
         return
+      }
+      if (overClosed.current) {
+        overClosed.current = false
+        window.overlay.setInteractive(false)
       }
       scheduleClose()
       if (!s.auto || s.fullscreen) return
@@ -137,6 +149,10 @@ export default function MiniDock(): React.JSX.Element {
       }
     }
     const onLeave = (): void => {
+      if (overClosed.current) {
+        overClosed.current = false
+        window.overlay.setInteractive(false)
+      }
       window.clearTimeout(edgeTimer.current)
       edgeTimer.current = 0
       scheduleClose()
@@ -187,6 +203,11 @@ export default function MiniDock(): React.JSX.Element {
       ref={notchRef}
       className={open ? 'notch mini open' : 'notch mini'}
       initial={false}
+      onClick={() => {
+        if (!clickMode.current || openRef.current || !hasDock) return
+        overClosed.current = false
+        show(true)
+      }}
       animate={{
         width: open ? NOTCH.expanded.width : NOTCH.collapsed.width,
         y: parked ? -(NOTCH.collapsed.height + 4) : 0,

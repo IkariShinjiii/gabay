@@ -134,6 +134,7 @@ export default function App(): React.JSX.Element {
   const collapseMs = useRef(COLLAPSE_DELAY_MS) // replaced by the saved setting once it loads
   const openOnClick = useRef(false) // Settings: the closed notch opens on a click, not on hover
   const overClosed = useRef(false) // click mode: pointer is on the closed notch, so the window takes the click
+  const [clickMode, setClickMode] = useState(false)
   const timer = useRef<number | undefined>(undefined)
 
   // The open notch takes the height of what the current tab shows (capped at NOTCH.expanded.height), so the box
@@ -240,6 +241,7 @@ export default function App(): React.JSX.Element {
   const applySettings = useCallback((s: Settings): void => {
     collapseMs.current = s.collapseMs
     openOnClick.current = s.openOnClick
+    setClickMode(s.openOnClick)
     void resolveAccent(s.accent).then(applyAccent)
     setDndUntil(s.dndUntil)
     setLang((new URLSearchParams(location.hash.slice(1)).get('lang') as Language | null) ?? s.language)
@@ -1211,7 +1213,7 @@ export default function App(): React.JSX.Element {
   return (
     <motion.div
       ref={notchRef}
-      className="notch"
+      className={clickMode && !expanded ? 'notch clickable' : 'notch'}
       initial={false}
       onMouseDown={onMiddleClick}
       onClick={() => {

@@ -2,6 +2,7 @@ export interface DockLook {
   accent: string
   language: string
   visibility: string
+  openOnClick: boolean
 }
 
 export interface OverlayApi {

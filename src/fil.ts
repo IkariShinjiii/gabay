@@ -488,6 +488,9 @@ export const FIL: Record<string, string> = {
   "Couldn't open {0} settings": "Hindi mabuksan ang settings ng {0}",
   "Sunrise {0}": "Pagsikat ng araw {0}",
   "Sunset {0}": "Paglubog ng araw {0}",
+  "Open Gabay": "Buksan ang Gabay",
+  "Click": "I-click",
+  "When Gabay is hidden at the top, moving the pointer there still brings it down. The Windows key and the shortcut work either way.": "Kapag nakatago ang Gabay sa itaas, ibababa pa rin ito kapag itinapat ang pointer doon. Gumagana ang Windows key at ang shortcut sa alinman.",
   "Paste on click": "I-paste kapag na-click",
   "Clicking a clip pastes it (Ctrl+V) into the window you were using. Off by default.": "Kapag na-click ang clip, ipe-paste ito (Ctrl+V) sa window na ginagamit mo. Naka-off bilang default.",
 }
