@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.9
+
+- New setting Open Gabay (Settings > Notch): open on hover as before, or on a click. Other screens follow it. Hidden at the top, the pointer still brings it down
+
 ## 1.6.8
 
 - The Wi-Fi tile shows the network name and signal on Windows set to any language, not just English (thanks to bfs2021)

@@ -2,6 +2,12 @@
 // Newest first; add an entry with every release.
 export const WHATS_NEW: [version: string, items: string[]][] = [
   [
+    '1.6.9',
+    [
+      "New setting Open Gabay in Settings > Notch: open on hover as before, or only on a click. Your other screens follow it, and a hidden notch still comes down when you point at the top edge"
+    ]
+  ],
+  [
     '1.6.8',
     [
       "The Wi-Fi tile shows the network name and signal on Windows set to any language, not just English (thanks to bfs2021)",
