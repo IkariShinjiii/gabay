@@ -68,7 +68,7 @@ export default function NotchToast({ toast, actions }: { toast: Toast; actions?:
         {toast.sub && <span className="toast-sub">{toast.sub}</span>}
       </span>
       {toast.noteId !== undefined && actions && (
-        <span className="toast-actions">
+        <span className="toast-actions" onClick={(e) => e.stopPropagation()}>
           <button type="button" className="toast-act" aria-label={tr('Open the app')} title={tr('Open the app')} onClick={actions.onOpen}>
             <Icon name="app-window" size={15} />
           </button>

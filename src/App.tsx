@@ -1217,7 +1217,17 @@ export default function App(): React.JSX.Element {
       initial={false}
       onMouseDown={onMiddleClick}
       onClick={() => {
-        if (!openOnClick.current || isOpen.current) return
+        // A click on a notification toast opens Gabay too: hovering one only shows its buttons, so with notifications
+        // arriving back to back there was no way to open the panel.
+        if (isOpen.current || !(openOnClick.current || toastNoteRef.current)) return
+        if (toastNoteRef.current) {
+          window.clearTimeout(toastTimer.current)
+          window.clearTimeout(toastTimerRef.current)
+          toastHoverRef.current = false
+          toastNoteRef.current = false
+          showing.current = false
+          setToast(null)
+        }
         overClosed.current = false
         pointerInside.current = true
         evaluate()
