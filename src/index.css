@@ -3742,3 +3742,13 @@ button.big-icon {
 .sh-open { align-self: flex-start; min-height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--text-2); font: inherit; font-size: 13px; cursor: pointer; }
 .sh-open:hover:not(:disabled) { background: var(--surface-hover); }
 @media (prefers-reduced-motion: reduce) { .sh-hex.work polygon { animation: none; } }
+
+/* Shinji hexes in the collapsed notch: three small hexes, only the active tier lit. */
+.st-shinji { flex: none; }
+.st-shinji polygon { fill: none; stroke: #ff9a5c; stroke-width: 1; }
+.st-shinji polygon.dim { opacity: 0.35; }
+.st-shinji.work polygon.on { fill: #ff9a5c; fill-opacity: 0.45; animation: sh-breathe 1.2s ease-in-out infinite; }
+.st-shinji.work polygon:not(.on):not(.dim) { animation: sh-breathe 1.2s ease-in-out infinite; }
+.st-shinji.done polygon.on { stroke: var(--accent); fill: var(--accent); fill-opacity: 0.5; }
+.st-shinji.fail polygon.on { stroke: #ff6b6b; fill: #ff6b6b; fill-opacity: 0.5; }
+@media (prefers-reduced-motion: reduce) { .st-shinji polygon { animation: none !important; } }

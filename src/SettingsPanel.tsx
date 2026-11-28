@@ -809,6 +809,14 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onSho
           on={settings.shinji}
           onChange={(shinji) => void save({ shinji })}
         />
+        {settings.shinji && (
+          <SwitchRow
+            label={tr('Shinji in the collapsed notch')}
+            desc={tr('Three small hexes show what Shinji OS is doing. Checks only while the notch is on screen.')}
+            on={settings.shinjiPill}
+            onChange={(shinjiPill) => void save({ shinjiPill })}
+          />
+        )}
         <SwitchRow
           label={tr('Lyrics in Now playing')}
           desc={tr("Looks up the song's title and artist on lrclib.net (free, open lyrics).")}

@@ -220,6 +220,7 @@ export interface Settings {
   place: { name: string; lat: number; lon: number } | null
   lyrics: boolean
   shinji: boolean
+  shinjiPill: boolean
   recentFiles: boolean
   pasteOnClick: boolean
   dndUntil: number

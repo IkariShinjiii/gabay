@@ -6,6 +6,7 @@ import { formatMs, type FocusTimer } from './useFocusTimer'
 import { formatClock } from './useTimers'
 import { weatherLook } from './weatherIcon'
 import { tr } from './i18n'
+import type { HexState } from './shinjiState'
 
 const R = 8
 const C = 2 * Math.PI * R
@@ -18,6 +19,10 @@ export function batteryIcon(b: BatteryInfo): IconName {
   if (b.level <= 0.6) return 'battery-medium'
   return 'battery-full'
 }
+
+const SHINJI_LABEL: Record<HexState['cls'], string> = { idle: 'Ready', work: 'Working', done: 'Done', fail: 'Failed', off: 'Offline' }
+const hexPoints = (cx: number): string =>
+  [0, 1, 2, 3, 4, 5].map((i) => `${(cx + 4.2 * Math.sin((i * Math.PI) / 3)).toFixed(1)},${(5 - 4.2 * Math.cos((i * Math.PI) / 3)).toFixed(1)}`).join(' ')
 
 const NET_ICON: Record<NetKind, IconName> = { wifi: 'wifi', ethernet: 'cable', offline: 'wifi-off' }
 const NET_LABEL: Record<NetKind, string> = { wifi: 'Wi-Fi connected', ethernet: 'Ethernet connected', offline: 'Offline' }
@@ -49,6 +54,8 @@ interface Props {
   download: DownloadState | null
   /** A Gabay update downloading or installing: a ring and how far it has got, in place of a file download. */
   update: UpdateProgress | null
+  /** Shinji OS activity as three small hexes (only while its setting is on and the console is running). */
+  shinji: HexState | null
 }
 
 function Ring({ fraction, size = 16 }: { fraction: number; size?: number }): React.JSX.Element {
@@ -148,6 +155,14 @@ export default function NotchStatus(p: Props): React.JSX.Element {
       {center}
 
       <span className={low && !p.minimal ? 'st-side st-right st-warn' : 'st-side st-right'}>
+        {p.shinji && !p.minimal && (
+          <svg className={`st-shinji ${p.shinji.cls}`} width="26" height="10" viewBox="0 0 26 10" role="img" aria-label={`${tr('Shinji OS')}: ${tr(SHINJI_LABEL[p.shinji.cls])}`}>
+            <title>{`${tr('Shinji OS')}: ${tr(SHINJI_LABEL[p.shinji.cls])}`}</title>
+            {[0, 1, 2].map((i) => (
+              <polygon key={i} points={hexPoints(4.5 + i * 8.5)} className={p.shinji && p.shinji.tier === i + 1 ? 'on' : p.shinji && p.shinji.tier ? 'dim' : ''} />
+            ))}
+          </svg>
+        )}
         {battery && !p.minimal && (
           <>
             <Icon name={batteryIcon(battery)} size={13} />

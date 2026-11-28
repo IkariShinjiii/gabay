@@ -24,3 +24,6 @@ export const COLLAPSE_STEP_MS = 100
 
 // Stats refresh interval; polling runs only while the panel is open on the System tab.
 export const STATS_POLL_MS = 1500
+
+// Shinji hexes in the collapsed notch: polled only while the notch is on screen and the setting is on.
+export const SHINJI_PILL_POLL_MS = 3000

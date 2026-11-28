@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { loopbackUrl, parseReply, parseStatus, parseUsage } from '../electron/shinji.ts'
+import { hexState } from '../src/shinjiState.ts'
 
 // The address must stay on this PC: plain http, loopback host, no credentials, path or query.
 assert.equal(loopbackUrl('http://127.0.0.1:3000'), 'http://127.0.0.1:3000')
@@ -25,5 +26,15 @@ assert.equal(parseUsage(null), null)
 assert.deepEqual(parseReply({ reply: 'hi', tier: 1, heard: 'x' }), { reply: 'hi', tier: 1 })
 assert.equal(parseReply({ tier: 1 }), null)
 assert.equal(parseReply({ reply: 'x'.repeat(2000) })?.reply.length, 1000)
+
+// The tab and the collapsed notch share one mapping from the console's answer to the hexes.
+const st = (phase, tier) => ({ state: 'ok', status: { phase, tier } })
+assert.deepEqual(hexState(null), { cls: 'off', tier: null })
+assert.deepEqual(hexState({ state: 'offline' }), { cls: 'off', tier: null })
+assert.deepEqual(hexState({ state: 'busy' }), { cls: 'work', tier: null })
+assert.deepEqual(hexState(st('thinking', 2)), { cls: 'work', tier: 2 })
+assert.deepEqual(hexState(st('done', 1)), { cls: 'done', tier: 1 })
+assert.deepEqual(hexState(st('failed', 3)), { cls: 'fail', tier: 3 })
+assert.deepEqual(hexState(st('idle', null)), { cls: 'idle', tier: null })
 
 console.log('shinji checks passed')

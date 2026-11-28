@@ -1458,7 +1458,7 @@ app.whenReady().then(async () => {
   })
 
   // Shinji OS companion. Main fetches the saved loopback address; the page gets small validated objects, never the address.
-  const shinjiOn = (): boolean => settings.shinji || PREVIEW === 'Shinji' // the preview has no saved setting
+  const shinjiOn = (): boolean => settings.shinji || PREVIEW === 'Shinji' || PREVIEW === 'ShinjiPill' // the preview has no saved setting
   ipcMain.handle('shinji:status', (e) => {
     fromUi(e)
     return shinjiOn() ? shinjiStatus(settings.shinjiUrl) : null

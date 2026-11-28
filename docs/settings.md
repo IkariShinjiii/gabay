@@ -52,3 +52,8 @@ PC. The main process reads its `/api/status` and `/api/usage` from the saved add
 default `http://127.0.0.1:3000`; plain http on this PC only, never changed from the page) and passes the page small,
 validated values. The page can also send a typed question and ask to open the console in the browser. It polls only
 while the tab is open. Check the reply parsing with `npm run check:shinji`.
+
+With the tab on, **Shinji in the collapsed notch** (Settings > Features, off by default) adds three small hexes to the pill's right
+side: outlines when Shinji OS is ready, the active tier filled and breathing while it works, green when it finishes, red when it fails.
+Nothing is shown while Shinji OS is not running. It checks every 3 seconds, and only while the pill is on screen: not when the notch
+is expanded, auto-hidden, over a full-screen app or in Do not disturb.

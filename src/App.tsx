@@ -1,13 +1,14 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { COLLAPSE_DELAY_MS, HIDE_DELAY_MS, NOTCH, REVEAL_DWELL_MS } from './constants'
-import type { ClipCopyResult, DownloadState, LauncherItem, DockApp, TrayIcon, LiveMedia, PowerAction, Settings, SettingsKey, UpdateProgress, Weather } from './global'
+import { COLLAPSE_DELAY_MS, HIDE_DELAY_MS, NOTCH, REVEAL_DWELL_MS, SHINJI_PILL_POLL_MS } from './constants'
+import type { ClipCopyResult, DownloadState, LauncherItem, DockApp, TrayIcon, LiveMedia, PowerAction, Settings, SettingsKey, ShinjiResult, UpdateProgress, Weather } from './global'
 import Dock from './Dock'
 import { parseCommand, type CommandActions } from './commands'
 import Launcher, { findSettings, pinnedCount, PIN_COLS } from './Launcher'
 import { findEmoji } from './emoji'
 import Icon from './Icon'
 import NotchStatus, { type NetKind } from './NotchStatus'
+import { hexState } from './shinjiState'
 import { useBattery } from './useBattery'
 import InboxPanel, { type InboxItem } from './InboxPanel'
 import NotchToast, { type Toast } from './NotchToast'
@@ -241,6 +242,8 @@ export default function App(): React.JSX.Element {
   const [place, setPlace] = useState<string | null>(null)
   const [dockOn, setDockOn] = useState(false)
   const [shinjiOn, setShinjiOn] = useState(false)
+  const [shinjiPill, setShinjiPill] = useState(false)
+  const [shinjiRes, setShinjiRes] = useState<ShinjiResult | null>(null)
   const barTabs: readonly Tab[] = shinjiOn ? BAR_TABS : BAR_TABS.filter((t) => t !== 'Shinji')
   const applySettings = useCallback((s: Settings): void => {
     collapseMs.current = s.collapseMs
@@ -252,6 +255,7 @@ export default function App(): React.JSX.Element {
     setPlace(s.place ? `${s.place.lat},${s.place.lon}` : null)
     setDockOn(previewParam ? previewDock : s.hideTaskbar)
     setShinjiOn(s.shinji || previewTab === 'Shinji')
+    setShinjiPill(s.shinjiPill || previewParam === 'ShinjiPill')
     if (!s.shinji && previewTab !== 'Shinji') setTab((t) => (t === 'Shinji' ? 'Today' : t))
     // A preview of the collapsed pill must show it, whatever the saved visibility is.
     const v = previewParam ? 'always' : s.visibility
@@ -1109,11 +1113,33 @@ export default function App(): React.JSX.Element {
   const shown = !fullscreen && (visibility === 'always' || (visibility === 'smart' && !covered))
   const onScreen = revealed || shown
   const recording = recorder.startedAt !== null
+  // The Shinji hexes: checked only while the pill is on screen (not expanded, hidden, over a full-screen app, or in Do not disturb).
+  const shinjiPoll = shinjiPill && !dndOn && !expanded && onScreen
+  useEffect(() => {
+    if (!shinjiPoll) {
+      setShinjiRes(null)
+      return
+    }
+    let dead = false
+    let timer: number | undefined
+    const tick = async (): Promise<void> => {
+      const r = await window.overlay.shinjiStatus().catch(() => null)
+      if (dead) return
+      setShinjiRes(r)
+      timer = window.setTimeout(tick, SHINJI_PILL_POLL_MS)
+    }
+    void tick()
+    return () => {
+      dead = true
+      window.clearTimeout(timer)
+    }
+  }, [shinjiPoll])
+  const shinjiHexes = shinjiPoll && shinjiRes && shinjiRes.state !== 'offline' ? hexState(shinjiRes) : null
   // Do not disturb keeps the pill to the time: no live activity, weather, battery or other icons.
   const live = !dndOn && !expanded && !showToast && onScreen && (!!media?.playing || !!download || !!updating || recording)
   // The pill is as wide as its two sides need (they are equal, so the clock stays centred): about 12 px per icon.
   const leftPx = dndOn ? 0 : 12 + (live && media?.playing ? 21 : 0) + (weather ? 41 : 0) + (attention ? 12 : 0)
-  const rightPx = (battery && !dndOn ? 34 : 0) + (live && (download || updating) ? 52 : live && media?.playing ? 20 : 0) + (privacy.cam.length || privacy.mic.length ? 12 : 0)
+  const rightPx = (battery && !dndOn ? 34 : 0) + (live && (download || updating) ? 52 : live && media?.playing ? 20 : 0) + (privacy.cam.length || privacy.mic.length ? 12 : 0) + (shinjiHexes && !dndOn ? 32 : 0)
   const pillWidth = Math.max(live ? NOTCH.live.width : NOTCH.collapsed.width, 2 * Math.max(leftPx, rightPx) + 104)
   // The dock adds its own height on top of the usual cap, so tall tabs aren't squeezed by it.
   const dockShown = dockOn && !welcome && !tour && (wins.length > 0 || tray.length > 0) && tab === 'Launch' // running apps live on Launch only
@@ -1365,6 +1391,7 @@ export default function App(): React.JSX.Element {
             countdown={soonest ? { leftMs: leftOf(soonest, timers.now), totalMs: soonest.totalMs } : null}
             download={live ? download : null}
             update={live ? updating : null}
+            shinji={shinjiHexes}
           />
         </motion.div>
         <AnimatePresence>{showToast && toast && (
