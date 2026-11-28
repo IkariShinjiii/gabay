@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ShinjiReply, ShinjiResult, ShinjiUsage } from './global'
 import { tr } from './i18n'
 import Skeleton from './Skeleton'
+import { hexState, type HexState } from './shinjiState'
 
 // The three router tiers of Shinji OS, as the hexes. Names and notes live here so the look can be re-themed in one place.
 const UNITS = [
@@ -18,16 +19,16 @@ const HEX = (cx: number, cy: number, r: number): string =>
 const fmt = (n: number): string => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}K` : String(n))
 
 /** What the hexes and the status line show, from the console's reply. */
-function view(r: ShinjiResult): { label: string; cls: 'idle' | 'work' | 'done' | 'fail' | 'off'; tier: number | null; line: string } {
-  if (r.state === 'locked') return { label: tr('Locked'), cls: 'off', tier: null, line: tr('Shinji OS needs a license key. Open the console to activate it.') }
-  if (r.state === 'offline') return { label: tr('Offline'), cls: 'off', tier: null, line: tr('Shinji OS is not running. Start it from its desktop shortcut.') }
-  if (r.state === 'busy') return { label: tr('Busy'), cls: 'work', tier: null, line: tr('Shinji OS is busy with a request.') }
-  const { phase, tier } = r.status
+function view(r: ShinjiResult): { label: string; cls: HexState['cls']; tier: HexState['tier']; line: string } {
+  const { cls, tier } = hexState(r)
+  if (r.state === 'locked') return { label: tr('Locked'), cls, tier, line: tr('Shinji OS needs a license key. Open the console to activate it.') }
+  if (r.state === 'offline') return { label: tr('Offline'), cls, tier, line: tr('Shinji OS is not running. Start it from its desktop shortcut.') }
+  if (r.state === 'busy') return { label: tr('Busy'), cls, tier, line: tr('Shinji OS is busy with a request.') }
   const unit = tier ? tr(UNITS[tier - 1].name) : ''
-  if (phase === 'thinking') return { label: tr('Working'), cls: 'work', tier, line: tr('{0} is working on it…', unit || 'Shinji') }
-  if (phase === 'done') return { label: tr('Done'), cls: 'done', tier, line: tr('{0} finished.', unit || 'Shinji') }
-  if (phase === 'failed') return { label: tr('Failed'), cls: 'fail', tier, line: tr('{0} could not finish. Try again.', unit || 'Shinji') }
-  return { label: tr('Ready'), cls: 'idle', tier: null, line: tr('Waiting for a request.') }
+  if (cls === 'work') return { label: tr('Working'), cls, tier, line: tr('{0} is working on it…', unit || 'Shinji') }
+  if (cls === 'done') return { label: tr('Done'), cls, tier, line: tr('{0} finished.', unit || 'Shinji') }
+  if (cls === 'fail') return { label: tr('Failed'), cls, tier, line: tr('{0} could not finish. Try again.', unit || 'Shinji') }
+  return { label: tr('Ready'), cls, tier, line: tr('Waiting for a request.') }
 }
 
 /** Mounted only while the Shinji tab is visible in an expanded notch, so polling stops on unmount. */

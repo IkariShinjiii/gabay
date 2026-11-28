@@ -56,6 +56,8 @@ export interface Settings {
   language: 'en' | 'fil'
   /** Show the Shinji tab (a companion for the separate Shinji OS app). */
   shinji: boolean
+  /** Show three small hexes in the collapsed notch while the Shinji tab is on (polls only while the notch is on screen). */
+  shinjiPill: boolean
   /** Where Shinji OS listens. Plain http on this PC only; main's own record, never taken from the renderer. */
   shinjiUrl: string
   /** Whether the taskbar was already auto-hiding before Gabay hid it (put back when hiding stops); null while not hiding.
@@ -85,7 +87,7 @@ export const ACCENTS =['mint', 'windows', 'blue', 'purple', 'pink', 'orange', 'r
 export const COLLAPSE_MIN = 200
 export const COLLAPSE_MAX = 1500
 
-export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, noteSound: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, recentFiles: true, pasteOnClick: false, dndUntil: 0, welcomed: false, reviewAt: 0, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarFull: false, trayIcons: false, winKey: true, openOnClick: false, taskbarWasAutoHide: null, autoUpdate: true, updateChannel: 'stable', language: 'en', shinji: false, shinjiUrl: SHINJI_DEFAULT_URL }
+export const DEFAULTS: Settings = { hotkey: HOTKEYS[0], collapseMs: 400, displayId: null, followMouse: false, notifications: true, notePreview: true, noteSound: true, reserveTop: false, accent: 'mint', place: null, lyrics: false, recentFiles: true, pasteOnClick: false, dndUntil: 0, welcomed: false, reviewAt: 0, seenVersion: '', visibility: 'always', hideTaskbar: false, taskbarFull: false, trayIcons: false, winKey: true, openOnClick: false, taskbarWasAutoHide: null, autoUpdate: true, updateChannel: 'stable', language: 'en', shinji: false, shinjiPill: false, shinjiUrl: SHINJI_DEFAULT_URL }
 
 const storePath = (): string => join(app.getPath('userData'), 'settings.json')
 
@@ -131,8 +133,9 @@ export function sanitize(raw: unknown, base: Settings = DEFAULTS): Settings {
   const updateChannel = r.updateChannel === 'stable' || r.updateChannel === 'preview' ? r.updateChannel : base.updateChannel
   const language = r.language === 'en' || r.language === 'fil' ? r.language : base.language
   const shinji = typeof r.shinji === 'boolean' ? r.shinji : base.shinji
+  const shinjiPill = typeof r.shinjiPill === 'boolean' ? r.shinjiPill : base.shinjiPill
   const shinjiUrl = loopbackUrl(r.shinjiUrl) ?? base.shinjiUrl
-  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, noteSound, reserveTop, accent, place, lyrics, recentFiles, pasteOnClick, dndUntil, welcomed, reviewAt, seenVersion, visibility, hideTaskbar, taskbarFull, trayIcons, winKey, openOnClick, taskbarWasAutoHide, autoUpdate, updateChannel, language, shinji, shinjiUrl }
+  return { hotkey, collapseMs, displayId, followMouse, notifications, notePreview, noteSound, reserveTop, accent, place, lyrics, recentFiles, pasteOnClick, dndUntil, welcomed, reviewAt, seenVersion, visibility, hideTaskbar, taskbarFull, trayIcons, winKey, openOnClick, taskbarWasAutoHide, autoUpdate, updateChannel, language, shinji, shinjiPill, shinjiUrl }
 }
 
 export async function loadSettings(): Promise<Settings> {
