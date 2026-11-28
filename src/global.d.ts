@@ -10,6 +10,11 @@ export interface OverlayApi {
   setInteractive(interactive: boolean): void
   /** CPU/RAM snapshot. Only call while the System tab is visible. */
   getStats(): Promise<SystemStats>
+  /** Shinji OS companion (null while the Shinji tab is off). The page never calls the console itself. */
+  shinjiStatus(): Promise<ShinjiResult | null>
+  shinjiUsage(): Promise<ShinjiUsage | null>
+  shinjiAsk(text: string): Promise<ShinjiReply | null>
+  shinjiOpen(): Promise<boolean>
   /** Volume, brightness, radios, keyboard layout and Wi-Fi name; helper process runs only while this is being polled. */
   quickGet(): Promise<QuickState>
   quickSet(action: QuickAction): Promise<QuickState>
@@ -214,6 +219,7 @@ export interface Settings {
   accent: string
   place: { name: string; lat: number; lon: number } | null
   lyrics: boolean
+  shinji: boolean
   recentFiles: boolean
   pasteOnClick: boolean
   dndUntil: number
@@ -331,6 +337,29 @@ export type SettingsKey =
   | 'appsfeatures'
   | 'windowsupdate'
   | 'settings'
+
+export type ShinjiPhase = 'idle' | 'thinking' | 'done' | 'failed'
+export interface ShinjiStatus {
+  phase: ShinjiPhase
+  /** The router tier handling the request: 1 reflex, 2 fast model, 3 agent. */
+  tier: 1 | 2 | 3 | null
+  skill: string | null
+  repos: number
+  uncommitted: number
+  prs: number
+  nodes: number
+  links: number
+}
+/** busy: the console did not answer in time (it is working). offline: nothing is listening. */
+export type ShinjiResult = { state: 'ok'; status: ShinjiStatus } | { state: 'busy' } | { state: 'offline' }
+export interface ShinjiUsage {
+  days: number[]
+  total: number
+}
+export interface ShinjiReply {
+  reply: string
+  tier: 1 | 2 | 3 | null
+}
 
 export interface SystemStats {
   cpuPercent: number

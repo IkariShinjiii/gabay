@@ -30,10 +30,12 @@ const NotesPanel = lazy(() => import('./NotesPanel'))
 const PowerPanel = lazy(() => import('./PowerPanel'))
 const SettingsPanel = lazy(() => import('./SettingsPanel'))
 const StatsPanel = lazy(() => import('./StatsPanel'))
+const ShinjiPanel = lazy(() => import('./ShinjiPanel'))
 const QuickPanel = lazy(() => import('./QuickPanel'))
 
 // The tab bar, most used first; Launch and Settings show as icons (their name is the tooltip and screen reader label).
-const BAR_TABS = ['Today', 'Controls', 'Inbox', 'Notes', 'System', 'Launch', 'Settings'] as const
+// Shinji is a companion for the separate Shinji OS app; it is on the bar only while its setting is on.
+const BAR_TABS = ['Today', 'Controls', 'Inbox', 'Notes', 'System', 'Launch', 'Settings', 'Shinji'] as const
 // Clipboard and Power open from buttons in Controls; while one is open, Controls stays marked in the bar.
 const TABS = [...BAR_TABS, 'Clipboard', 'Power'] as const
 type Tab = (typeof TABS)[number]
@@ -238,6 +240,8 @@ export default function App(): React.JSX.Element {
   accentRef.current = accentName
   const [place, setPlace] = useState<string | null>(null)
   const [dockOn, setDockOn] = useState(false)
+  const [shinjiOn, setShinjiOn] = useState(false)
+  const barTabs: readonly Tab[] = shinjiOn ? BAR_TABS : BAR_TABS.filter((t) => t !== 'Shinji')
   const applySettings = useCallback((s: Settings): void => {
     collapseMs.current = s.collapseMs
     openOnClick.current = s.openOnClick
@@ -247,6 +251,8 @@ export default function App(): React.JSX.Element {
     setLang((new URLSearchParams(location.hash.slice(1)).get('lang') as Language | null) ?? s.language)
     setPlace(s.place ? `${s.place.lat},${s.place.lon}` : null)
     setDockOn(previewParam ? previewDock : s.hideTaskbar)
+    setShinjiOn(s.shinji || previewTab === 'Shinji')
+    if (!s.shinji && previewTab !== 'Shinji') setTab((t) => (t === 'Shinji' ? 'Today' : t))
     // A preview of the collapsed pill must show it, whatever the saved visibility is.
     const v = previewParam ? 'always' : s.visibility
     visibilityRef.current = v
@@ -1087,7 +1093,7 @@ export default function App(): React.JSX.Element {
     if (!expanded) return
     const onKey = (e: KeyboardEvent): void => {
       if (!e.ctrlKey || e.altKey || e.shiftKey) return
-      const t = BAR_TABS[Number(e.key) - 1]
+      const t = barTabs[Number(e.key) - 1]
       if (t) {
         e.preventDefault()
         selectTab(t)
@@ -1095,7 +1101,7 @@ export default function App(): React.JSX.Element {
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [expanded, selectTab])
+  }, [expanded, selectTab, barTabs])
 
   // Collapsed, the notch is the pill, a little wider while media plays, and grows for a toast.
   const showToast = !expanded && toast !== null
@@ -1192,6 +1198,9 @@ export default function App(): React.JSX.Element {
   } else if (expanded && tab === 'System') {
     // StatsPanel exists only while visible, so its polling stops when the notch collapses or the tab changes.
     body = <StatsPanel />
+  } else if (expanded && tab === 'Shinji') {
+    // ShinjiPanel exists only while visible, so its polling of the Shinji OS console stops when the notch collapses.
+    body = <ShinjiPanel />
   } else if (expanded && tab === 'Controls') {
     body = (
       <QuickPanel
@@ -1246,7 +1255,7 @@ export default function App(): React.JSX.Element {
         >
           {!welcome && !tour && (
           <div className="tabs" role="tablist" aria-label={tr('Sections')} onWheel={onTabsWheel}>
-            {BAR_TABS.map((t, i) => (
+            {barTabs.map((t, i) => (
               <button
                 key={t}
                 role="tab"

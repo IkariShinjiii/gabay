@@ -5,6 +5,7 @@ import os from 'node:os'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { getStats } from './stats'
+import { shinjiAsk, shinjiStatus, shinjiUsage } from './shinji'
 import { nativeCall, nativeRunning, startNative, stopNative } from './native'
 import { logError, sendReport } from './diagnostics'
 import { connectWifi, disconnectWifi, listWifi } from './wifi'
@@ -1309,7 +1310,7 @@ app.whenReady().then(async () => {
     const prevWinKey = settings.winKey
     const prevChannel = settings.updateChannel
     // taskbarWasAutoHide is main's own record; a patch (or Reset's defaults) never overwrites it.
-    const next: Settings = { ...sanitize(patch, settings), taskbarWasAutoHide: settings.taskbarWasAutoHide }
+    const next: Settings = { ...sanitize(patch, settings), taskbarWasAutoHide: settings.taskbarWasAutoHide, shinjiUrl: settings.shinjiUrl }
     // Also retry when the same hotkey is picked again: the other app that held it may have exited since.
     const pickedHotkey = typeof patch === 'object' && patch !== null && 'hotkey' in patch
     if (next.hotkey !== settings.hotkey || (pickedHotkey && next.hotkey !== activeHotkey)) applyHotkey(next.hotkey)
@@ -1454,6 +1455,28 @@ app.whenReady().then(async () => {
     fromUi(e)
     const hw = (await nativeCall('hw').catch(() => null)) as { battery?: unknown; wifi?: unknown } | null
     return hw && typeof hw === 'object' ? { battery: hw.battery !== false, wifi: hw.wifi !== false } : null
+  })
+
+  // Shinji OS companion. Main fetches the saved loopback address; the page gets small validated objects, never the address.
+  const shinjiOn = (): boolean => settings.shinji || PREVIEW === 'Shinji' // the preview has no saved setting
+  ipcMain.handle('shinji:status', (e) => {
+    fromUi(e)
+    return shinjiOn() ? shinjiStatus(settings.shinjiUrl) : null
+  })
+  ipcMain.handle('shinji:usage', (e) => {
+    fromUi(e)
+    return shinjiOn() ? shinjiUsage(settings.shinjiUrl) : null
+  })
+  ipcMain.handle('shinji:ask', (e, text: unknown) => {
+    fromUi(e)
+    const q = typeof text === 'string' ? text.trim() : ''
+    return shinjiOn() && q && q.length <= 500 ? shinjiAsk(settings.shinjiUrl, q) : null
+  })
+  ipcMain.handle('shinji:open', async (e) => {
+    fromUi(e)
+    if (!shinjiOn()) return false
+    await shell.openExternal(settings.shinjiUrl)
+    return true
   })
 
   ipcMain.handle('stats:get', (event) => {

@@ -29,7 +29,7 @@
   those features quietly go away and the notch simply stays visible.
 - **Language** (Settings): English or Filipino. The text lives in `src/fil.ts` (the English sentence is the key; anything missing shows in English), looked up with `tr()` from `src/i18n.ts`. Release notes and the Windows-provided names stay in English.
 - **Settings tab:** grouped into General (hotkey, language), Notch (visibility, which display or Follow mouse, how long the
-  pointer must stay away before the panel collapses, accent colour), Notifications, Features (recent files, lyrics,
+  pointer must stay away before the panel collapses, accent colour), Notifications, Features (recent files, lyrics, the Shinji tab,
   weather city, calendar), Taskbar (experimental), Help and feedback (shortcuts, tour, review, **Report a bug**) and
   About Gabay (version, updates, What's new, reset, quit).
 - **Report a bug** (Settings): describe the problem, then send it as a prefilled GitHub issue or copy it to paste in a
@@ -45,3 +45,10 @@
 - **Welcome tour:** the first start opens the notch into a four-step tour; Settings > Welcome tour shows it again. Preview it
   with `GABAY_PREVIEW='Welcome'`. Saved to `settings.json` in `%APPDATA%\gabay`; the main process validates every value.
 - The app and tray icons are drawn in `resources/` (a notch plus a compass, since gabay means guide); edit `resources/icon.svg` / `tray.svg` and run `npx electron scripts/render-icons.cjs` to regenerate the PNGs.
+
+## Shinji tab (companion)
+Off by default (Settings > Features > Shinji tab). A tab for the separate Shinji OS app, which runs a small console on this
+PC. The main process reads its `/api/status` and `/api/usage` from the saved address (`shinjiUrl` in `settings.json`,
+default `http://127.0.0.1:3000`; plain http on this PC only, never changed from the page) and passes the page small,
+validated values. The page can also send a typed question and ask to open the console in the browser. It polls only
+while the tab is open. Check the reply parsing with `npm run check:shinji`.
