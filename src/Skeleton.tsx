@@ -121,5 +121,6 @@ export const TAB_SKELETON: Record<string, SkeletonKind> = {
   Power: 'grid',
   Settings: 'settings',
   System: 'stats',
+  Shinji: 'stats',
   Controls: 'tiles'
 }

@@ -804,6 +804,12 @@ export default function SettingsPanel({ onSettings, onHold, onShowWelcome, onSho
           onChange={(pasteOnClick) => void save({ pasteOnClick })}
         />
         <SwitchRow
+          label={tr('Shinji tab')}
+          desc={tr('A tab for the separate Shinji OS app running on this PC (localhost only). Off by default.')}
+          on={settings.shinji}
+          onChange={(shinji) => void save({ shinji })}
+        />
+        <SwitchRow
           label={tr('Lyrics in Now playing')}
           desc={tr("Looks up the song's title and artist on lrclib.net (free, open lyrics).")}
           on={settings.lyrics}
