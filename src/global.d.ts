@@ -351,7 +351,7 @@ export interface ShinjiStatus {
   links: number
 }
 /** busy: the console did not answer in time (it is working). offline: nothing is listening. */
-export type ShinjiResult = { state: 'ok'; status: ShinjiStatus } | { state: 'busy' } | { state: 'offline' }
+export type ShinjiResult = { state: 'ok'; status: ShinjiStatus } | { state: 'busy' } | { state: 'offline' } | { state: 'locked' }
 export interface ShinjiUsage {
   days: number[]
   total: number

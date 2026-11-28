@@ -19,6 +19,7 @@ const fmt = (n: number): string => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >=
 
 /** What the hexes and the status line show, from the console's reply. */
 function view(r: ShinjiResult): { label: string; cls: 'idle' | 'work' | 'done' | 'fail' | 'off'; tier: number | null; line: string } {
+  if (r.state === 'locked') return { label: tr('Locked'), cls: 'off', tier: null, line: tr('Shinji OS needs a license key. Open the console to activate it.') }
   if (r.state === 'offline') return { label: tr('Offline'), cls: 'off', tier: null, line: tr('Shinji OS is not running. Start it from its desktop shortcut.') }
   if (r.state === 'busy') return { label: tr('Busy'), cls: 'work', tier: null, line: tr('Shinji OS is busy with a request.') }
   const { phase, tier } = r.status
@@ -122,8 +123,8 @@ export default function ShinjiPanel(): React.JSX.Element {
       )}
 
       <form className="sh-ask" onSubmit={ask}>
-        <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={500} aria-label={tr('Ask Shinji')} placeholder={tr('Ask Shinji…')} disabled={res.state === 'offline'} />
-        <button type="submit" disabled={asking || !q.trim() || res.state === 'offline'}>{asking ? tr('Asking…') : tr('Ask')}</button>
+        <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={500} aria-label={tr('Ask Shinji')} placeholder={tr('Ask Shinji…')} disabled={res.state === 'offline' || res.state === 'locked'} />
+        <button type="submit" disabled={asking || !q.trim() || res.state === 'offline' || res.state === 'locked'}>{asking ? tr('Asking…') : tr('Ask')}</button>
       </form>
       {reply && (
         <p className="sh-reply" role="status">

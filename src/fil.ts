@@ -497,6 +497,8 @@ export const FIL: Record<string, string> = {
   "Working": "Gumagana",
   "Failed": "Nabigo",
   "Ready": "Handa",
+  "Locked": "Naka-lock",
+  "Shinji OS needs a license key. Open the console to activate it.": "Kailangan ng license key ng Shinji OS. Buksan ang console para i-activate ito.",
   "Shinji OS is not running. Start it from its desktop shortcut.": "Hindi tumatakbo ang Shinji OS. Simulan ito mula sa shortcut nito sa desktop.",
   "Shinji OS is busy with a request.": "Abala ang Shinji OS sa isang kahilingan.",
   "{0} is working on it…": "Ginagawa na ito ng {0}…",

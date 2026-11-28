@@ -29,8 +29,8 @@ export interface ShinjiStatus {
   nodes: number
   links: number
 }
-/** busy = the console did not answer in time (it is working); offline = nothing is listening. */
-export type ShinjiResult = { state: 'ok'; status: ShinjiStatus } | { state: 'busy' } | { state: 'offline' }
+/** busy = the console did not answer in time (it is working); offline = nothing is listening; locked = it is running but waits for a license key. */
+export type ShinjiResult = { state: 'ok'; status: ShinjiStatus } | { state: 'busy' } | { state: 'offline' } | { state: 'locked' }
 export interface ShinjiUsage {
   /** Tokens per day, oldest first, last 7 days. */
   days: number[]
@@ -61,6 +61,9 @@ export function parseStatus(raw: unknown): ShinjiStatus | null {
   }
 }
 
+/** Shinji OS sells with a license: a locked console still answers /api/status, with locked: true. */
+export const isLocked = (raw: unknown): boolean => (raw as { locked?: unknown } | null)?.locked === true
+
 /** Validates /api/usage. null when absent (the console is in demo mode) or malformed. */
 export function parseUsage(raw: unknown): ShinjiUsage | null {
   const j = raw as { days?: unknown; total?: unknown } | null
@@ -81,7 +84,9 @@ const get = (base: string, path: string, ms: number): Promise<Response> => fetch
 export async function shinjiStatus(base: string): Promise<ShinjiResult> {
   try {
     const r = await get(base, '/api/status', 2500)
-    const status = r.ok ? parseStatus(await r.json()) : null
+    const json: unknown = r.ok ? await r.json() : null
+    if (isLocked(json) && parseStatus(json)) return { state: 'locked' }
+    const status = parseStatus(json)
     return status ? { state: 'ok', status } : { state: 'offline' }
   } catch (e) {
     return (e as Error).name === 'TimeoutError' ? { state: 'busy' } : { state: 'offline' }

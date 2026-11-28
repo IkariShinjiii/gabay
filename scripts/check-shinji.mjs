@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { loopbackUrl, parseReply, parseStatus, parseUsage } from '../electron/shinji.ts'
+import { isLocked, loopbackUrl, parseReply, parseStatus, parseUsage } from '../electron/shinji.ts'
 
 // The address must stay on this PC: plain http, loopback host, no credentials, path or query.
 assert.equal(loopbackUrl('http://127.0.0.1:3000'), 'http://127.0.0.1:3000')
@@ -25,5 +25,12 @@ assert.equal(parseUsage(null), null)
 assert.deepEqual(parseReply({ reply: 'hi', tier: 1, heard: 'x' }), { reply: 'hi', tier: 1 })
 assert.equal(parseReply({ tier: 1 }), null)
 assert.equal(parseReply({ reply: 'x'.repeat(2000) })?.reply.length, 1000)
+
+// A license-locked console says so in its status reply.
+assert.equal(isLocked({ ...ok, locked: true }), true)
+assert.equal(isLocked({ ...ok, locked: false }), false)
+assert.equal(isLocked({ ...ok }), false)
+assert.equal(isLocked(null), false)
+assert.equal(isLocked({ locked: 'yes' }), false)
 
 console.log('shinji checks passed')
