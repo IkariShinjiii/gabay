@@ -3715,7 +3715,7 @@ button.big-icon {
 .sh-hex .sh-num { fill: var(--sh-warn); font-size: 22px; font-weight: 600; }
 .sh-hex .sh-name { fill: var(--text); font-size: 12px; font-weight: 600; }
 .sh-hex .sh-note { fill: var(--muted); font-size: 10.5px; }
-.sh-hex.dim { opacity: 0.35; }
+.sh-hex.dim polygon, .sh-hex.dim .sh-num { opacity: 0.35; } /* names stay readable */
 .sh-hex.off polygon { stroke: var(--line); } .sh-hex.off .sh-num { fill: var(--muted); }
 .sh-hex.work polygon { fill: var(--sh-warn); fill-opacity: 0.22; animation: sh-breathe 1.2s ease-in-out infinite; }
 .sh-hex.done polygon { stroke: var(--accent); fill: var(--accent); fill-opacity: 0.16; } .sh-hex.done .sh-num { fill: var(--accent-text); }
