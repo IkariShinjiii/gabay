@@ -1134,7 +1134,8 @@ export default function App(): React.JSX.Element {
       window.clearTimeout(timer)
     }
   }, [shinjiPoll])
-  const shinjiHexes = shinjiPoll && shinjiRes && shinjiRes.state !== 'offline' ? hexState(shinjiRes) : null
+  const shinjiLook = hexState(shinjiRes)
+  const shinjiHexes = shinjiPoll && shinjiLook.cls !== 'off' ? shinjiLook : null // nothing while it is offline or locked
   // Do not disturb keeps the pill to the time: no live activity, weather, battery or other icons.
   const live = !dndOn && !expanded && !showToast && onScreen && (!!media?.playing || !!download || !!updating || recording)
   // The pill is as wide as its two sides need (they are equal, so the clock stays centred): about 12 px per icon.

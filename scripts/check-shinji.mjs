@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { loopbackUrl, parseReply, parseStatus, parseUsage } from '../electron/shinji.ts'
+import { isLocked, loopbackUrl, parseReply, parseStatus, parseUsage } from '../electron/shinji.ts'
 import { hexState } from '../src/shinjiState.ts'
 
 // The address must stay on this PC: plain http, loopback host, no credentials, path or query.
@@ -32,9 +32,16 @@ const st = (phase, tier) => ({ state: 'ok', status: { phase, tier } })
 assert.deepEqual(hexState(null), { cls: 'off', tier: null })
 assert.deepEqual(hexState({ state: 'offline' }), { cls: 'off', tier: null })
 assert.deepEqual(hexState({ state: 'busy' }), { cls: 'work', tier: null })
+assert.deepEqual(hexState({ state: 'locked' }), { cls: 'off', tier: null })
 assert.deepEqual(hexState(st('thinking', 2)), { cls: 'work', tier: 2 })
 assert.deepEqual(hexState(st('done', 1)), { cls: 'done', tier: 1 })
 assert.deepEqual(hexState(st('failed', 3)), { cls: 'fail', tier: 3 })
 assert.deepEqual(hexState(st('idle', null)), { cls: 'idle', tier: null })
+// A license-locked console says so in its status reply.
+assert.equal(isLocked({ ...ok, locked: true }), true)
+assert.equal(isLocked({ ...ok, locked: false }), false)
+assert.equal(isLocked({ ...ok }), false)
+assert.equal(isLocked(null), false)
+assert.equal(isLocked({ locked: 'yes' }), false)
 
 console.log('shinji checks passed')

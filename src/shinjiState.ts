@@ -7,7 +7,7 @@ export interface HexState {
 }
 
 export function hexState(r: ShinjiResult | null): HexState {
-  if (!r || r.state === 'offline') return { cls: 'off', tier: null }
+  if (!r || r.state === 'offline' || r.state === 'locked') return { cls: 'off', tier: null }
   // The console did not answer in time: it is busy, but we do not know with what.
   if (r.state === 'busy') return { cls: 'work', tier: null }
   const { phase, tier } = r.status
